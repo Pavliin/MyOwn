@@ -1,0 +1,20 @@
+# Accès local uniquement (cluster de dev k3d). En prod (mini PC), ArgoCD sera
+# exposé sur le vrai domaine avec TLS Let's Encrypt via Traefik, pas ce host.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: myown-argocd.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
