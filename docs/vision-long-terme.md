@@ -17,6 +17,7 @@ Modèle fédéré : chaque établissement héberge et reste maître de ses propr
 Le logiciel reste intégralement open source — le modèle économique porte sur le service de déploiement et de maintenance, pas sur la vente de licence. C'est la tendance dominante, et souvent la seule politiquement acceptable, dans le secteur public français actuel (doctrine des "communs numériques").
 
 Contraintes identifiées :
+
 - Les données de santé (hôpitaux) restent un mur dur même en fédéré : la certification HDS s'attache aussi à l'infogérance (accès technique à distance), pas seulement au lieu d'hébergement. À vérifier précisément avec un juriste avant d'envisager ce segment.
 - Écoles/mairies sont nettement plus praticables via ce modèle, à condition de rester sur le périmètre du **personnel administratif** (mail, fichiers, mots de passe internes) plutôt que sur les données d'élèves, qui relèvent d'un régime de protection et d'homologation plus lourd (ENT/GAR).
 - Techniquement, l'architecture du POC tient bien à l'échelle d'un établissement (20-100 utilisateurs par nœud, proche de l'échelle familiale déjà validée). Le déploiement en flotte multi-établissements correspond au modèle "hub-and-spoke" déjà permis par ArgoCD (ApplicationSets multi-clusters) — pas de réarchitecture nécessaire.
