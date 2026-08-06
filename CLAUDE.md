@@ -24,6 +24,7 @@ Docs-only. No infrastructure code, manifests, or application code exist yet — 
 - **CI**: `.github/workflows/lint.yml` lints Markdown and lints every commit in a PR (commitlint). Expect this to grow (Helm lint, Trivy CVE scan) once Phase 0 introduces actual manifests — don't pre-build CI stages for infra that doesn't exist yet.
 - **Language**: project docs and communication are in French.
 - **`package.json` / `node_modules`**: not a JS project — this Node tooling exists solely to run commit-and-tag-version, husky and commitlint. Don't treat its presence as an invitation to scaffold a JS/TS app here.
+- **Test locally before pushing, not after**: run `npm run lint:md` before opening/updating a PR — don't rely on CI to discover a lint error that a 5-second local command would have caught. Commit message format is already covered by the local `commit-msg` hook. No self-hosted runner: this repo is public, and GitHub explicitly warns against self-hosted runners on public repos (a fork's PR could run arbitrary code on the runner's host) — public repos get free/unlimited Actions minutes on hosted runners anyway, so there's no capacity reason to reach for one.
 
 ## Git workflow & releases
 
