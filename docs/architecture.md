@@ -57,18 +57,23 @@ Le projet n'est pas une réécriture des briques critiques (mot de passe, mail, 
 ## 5. Composants applicatifs
 
 ### 5.1 Identité — Authentik
+
 SSO/OIDC devant tous les services. Un seul compte par personne. Choisi plutôt que Keycloak pour une empreinte plus légère et une administration plus simple.
 
 ### 5.2 Mots de passe — Vaultwarden
+
 Réimplémentation Rust légère de l'API Bitwarden. Compatible avec toutes les apps officielles Bitwarden (Android, extensions navigateur, desktop). Premier service à livrer : risque faible, valeur immédiate.
 
 ### 5.3 Fichiers, contacts, calendrier — Nextcloud
+
 Suite complète plutôt qu'un empilement de services séparés (fichiers + Radicale/Baïkal pour contacts/calendrier) : moins de composants à opérer et à sécuriser pour un gain de légèreté marginal à l'échelle de 4-9 utilisateurs.
 
 ### 5.4 Photos / vidéos — Immich
+
 Remplace Google Photos. ML local embarqué (reconnaissance faciale, recherche sémantique), backup automatique depuis Android très proche en UX de l'original. Pas de développement custom nécessaire ici.
 
 ### 5.5 Messagerie — Conduwuit + Element X + LiveKit
+
 - **Conduwuit** (fork actif de Conduit, Rust) : serveur Matrix léger, adapté à un petit serveur personnel/familial, sans base Postgres séparée.
 - **Fédération native** : condition du besoin exprimé de "discovery" avec d'autres serveurs personnels tiers (comme l'email), impossible avec WhatsApp/Signal.
 - **Spaces** : équivalent Matrix des "communautés" WhatsApp.
@@ -76,9 +81,11 @@ Remplace Google Photos. ML local embarqué (reconnaissance faciale, recherche s�
 - **Element X** : client Android.
 
 ### 5.6 Mail — Mailcow + façade VPS
+
 Le composant le plus risqué techniquement (cf. §7). Mailcow (Postfix/Dovecot/Rspamd/SOGo) pour la maturité et le webmail intégré, stockage réel à domicile. Un VPS à bonne réputation IP (Hetzner/OVH/Scaleway, ~5€/mois) sert de façade SMTP entrée/sortie et relaie vers le domicile — seule dépense récurrente acceptée du projet.
 
 ### 5.7 IA locale — Ollama
+
 Modèle local (Llama 3.1 8B ou Mistral 7B selon RAM disponible) pour tri/résumé de mails dans un premier temps. Aucune donnée ne sort du réseau local. Extension possible à d'autres automatisations une fois le socle stable.
 
 ## 6. Infrastructure & orchestration
@@ -92,6 +99,7 @@ Modèle local (Llama 3.1 8B ou Mistral 7B selon RAM disponible) pour tri/résum�
 ## 7. Mail : risques et mitigation
 
 Un domicile résidentiel français est structurellement inadapté à l'envoi de mail direct :
+
 - **Blacklist par politique** (ex. Spamhaus PBL) sur les plages IP résidentielles, indépendamment du comportement — n'affecte que l'**envoi**, pas la réception.
 - **Port 25 bloqué** par la plupart des FAI résidentiels en sortie (anti-botnet).
 - Aucun des deux points n'est une question légale : ce sont des mécanismes privés/techniques, pas une interdiction réglementaire.
