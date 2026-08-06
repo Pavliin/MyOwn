@@ -3,3 +3,6 @@ MD013: false
 MD033: false
 MD040: false
 MD041: false
+# Not enforced by the pinned CI action version (DavidAnson/markdownlint-cli2-action@v18);
+# disabled locally too so `npm run lint:md` matches what CI actually checks.
+MD060: false
