@@ -30,10 +30,14 @@ Docs-only. No infrastructure code, manifests, or application code exist yet — 
 Trunk-based, single long-lived branch (`master`), no `develop`/`release` branches.
 
 - **Dev branches**: short-lived, one per feature/fix. Before merging, clean up history with interactive rebase (`git rebase -i`) so every commit that lands on `master` is itself a valid, atomic Conventional Commit — commits are preserved through the merge, not squashed.
-- **Commit format**: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `ci:`, …). Enforced by a local `commit-msg` hook (husky + commitlint, `commitlint.config.js`) and again in CI (`wagoid/commitlint-github-action`, checks every commit in the PR range) since local hooks can be bypassed or skipped.
+- **Commit format**: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `ci:`, …). Enforced by a local `commit-msg` hook (husky + commitlint, `commitlint.config.mjs` — `.mjs` is required, the commitlint GitHub Action rejects `.js`) and again in CI (`wagoid/commitlint-github-action`, checks every commit in the PR range) since local hooks can be bypassed or skipped.
 - **Versioning**: SemVer (`major.minor.patch`). Stay in `0.x.y` through the POC phases (0–3 in the roadmap); reserve `1.0.0` for the MVP milestone (end of roadmap phase 3 — passwords + files/photos + messaging in real use).
 - **Releases**: cut when a feature is implemented *and* validated in real use (matches the roadmap's exit-criteria philosophy — no release for a merge that only compiles/deploys but hasn't been used). Run `npm run release` (wraps `commit-and-tag-version`): bumps `package.json` version per the highest-impact commit type since the last tag, regenerates `CHANGELOG.md` from Conventional Commits (section mapping in `.versionrc.json`), creates a `chore(release): x.y.z` commit and a `vX.Y.Z` git tag. Push both the commit and the tag (`git push --follow-tags`).
-- **Branch protection on `master`** (PR required, CI green before merge) is a manual GitHub setting — not something configured from this repo's files, ask the user to set it up rather than assuming it's on.
+- **Branch protection on `master`** is active (GitHub ruleset `master_protect`, repo Settings → Rules): PR required, `commitlint`+`markdown` checks required, no force-push, no branch deletion, **signed commits required**. Branch protection/rulesets need either a public repo or GitHub Pro on a personal (non-org) account — this repo is public specifically to get this for free.
+- **Commit signing**: every commit on `master` must be SSH-signed. Anyone pushing to this repo (including on a new machine) needs their own signing key:
+  1. `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_signing -C "commit-signing"`
+  2. `gh ssh-key add ~/.ssh/id_ed25519_signing.pub --type signing` (or add it manually under GitHub Settings → SSH and GPG keys, as a *Signing Key*, not an *Authentication Key*)
+  3. Locally, in the repo: `git config gpg.format ssh`, `git config user.signingkey ~/.ssh/id_ed25519_signing.pub`, `git config commit.gpgsign true` — the user should run these themselves, Claude must never modify git config.
 
 ## Design philosophy to respect when implementing
 
