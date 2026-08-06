@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: uptime-kuma
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://dirsigler.github.io/uptime-kuma-helm
+    chart: uptime-kuma
+    targetRevision: 4.1.0
+    helm:
+      valuesObject:
+        ingress:
+          enabled: true
+          className: traefik
+          hosts:
+            - host: myown-uptime.local
+              paths:
+                - path: /
+                  pathType: ImplementationSpecific
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
