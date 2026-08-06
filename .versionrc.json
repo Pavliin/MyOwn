@@ -1,0 +1,15 @@
+{
+  "types": [
+    { "type": "feat", "section": "Fonctionnalités" },
+    { "type": "fix", "section": "Correctifs" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "revert", "section": "Retours en arrière" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "refactor", "section": "Refactoring", "hidden": true },
+    { "type": "style", "hidden": true },
+    { "type": "test", "hidden": true },
+    { "type": "build", "hidden": true },
+    { "type": "ci", "hidden": true },
+    { "type": "chore", "hidden": true }
+  ]
+}

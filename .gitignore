@@ -12,6 +12,9 @@ kubeconfig*
 charts/**/charts/
 .helm/
 
+# Node (tooling de versioning uniquement, pas un projet JS)
+node_modules/
+
 # OS / éditeurs
 .DS_Store
 Thumbs.db

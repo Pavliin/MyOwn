@@ -1,0 +1,17 @@
+{
+  "name": "myown",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cloud personnel auto-hébergé — reprendre possession de ses données.",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "release": "commit-and-tag-version",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "commit-and-tag-version": "^13.1.2",
+    "husky": "^9.1.7"
+  }
+}
