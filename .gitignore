@@ -1,0 +1,23 @@
+# Secrets déchiffrés (SOPS chiffre en place, jamais de clair en dépôt)
+*.dec.yaml
+*.dec.yml
+*.age
+!.sops.yaml
+.env
+.env.*
+
+# Kubernetes / Helm
+kubeconfig*
+*.tgz
+charts/**/charts/
+.helm/
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Claude Code — settings locaux, propres à la machine
+.claude/settings.local.json
