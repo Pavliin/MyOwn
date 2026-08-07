@@ -95,7 +95,20 @@ kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
 
 À partir de là, tout le reste (monitoring, Authentik, futurs services) se synchronise automatiquement depuis `gitops/apps/` — plus aucune commande manuelle nécessaire pour les services eux-mêmes.
 
-## 8. Accès local
+## 8. TLS local (mkcert) — nécessaire pour certains services
+
+Certains services (Vaultwarden, et probablement Nextcloud/tout ce qui chiffre côté client plus tard) utilisent l'API Subtle Crypto du navigateur, indisponible en HTTP sur un nom d'hôte personnalisé — même si celui-ci pointe vers `127.0.0.1` (seuls `localhost`/`127.0.0.1` littéraux ou HTTPS comptent comme "contexte sécurisé"). Ces services sont donc exposés en HTTPS sur le port 8453 plutôt qu'en HTTP sur 8090.
+
+```bash
+mkcert -install   # une fois par machine — installe une CA locale de confiance
+mkcert -cert-file myown-vaultwarden.local.pem -key-file myown-vaultwarden.local-key.pem myown-vaultwarden.local
+kubectl create secret tls vaultwarden-tls -n vaultwarden \
+  --cert=myown-vaultwarden.local.pem --key=myown-vaultwarden.local-key.pem
+```
+
+Ce secret est volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
+
+## 9. Accès local
 
 Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.yaml` pour la liste à jour) :
 
@@ -104,9 +117,10 @@ Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.y
 127.0.0.1 myown-grafana.local
 127.0.0.1 myown-uptime.local
 127.0.0.1 myown-authentik.local
+127.0.0.1 myown-vaultwarden.local
 ```
 
-## 9. Vérification
+## 10. Vérification
 
 ```bash
 kubectl get application -n argocd
