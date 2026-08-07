@@ -10,10 +10,15 @@ A personal self-hosted cloud project (files, photos, passwords, messaging, mail 
 - [`docs/roadmap.md`](docs/roadmap.md) — phased development plan with exit criteria per phase
 - [`docs/pitch.md`](docs/pitch.md) — technical presentation of the project
 - [`docs/vision-long-terme.md`](docs/vision-long-terme.md) — long-term directions to keep in mind, out of scope for the POC
+- [`docs/notes-techniques.md`](docs/notes-techniques.md) — as-built reference: deployed versions, notable config choices, gotchas actually hit and how they were resolved
+- [`docs/manuel-installation.md`](docs/manuel-installation.md) — reproducible steps for a first install
+- [`docs/manuel-utilisateur.md`](docs/manuel-utilisateur.md) — how to use each deployed service (URL, credentials, basics)
+
+**Keep the last three updated as you go, not retroactively**: whenever a service is added or changed in `gitops/apps/`, or a real bug/gotcha is hit and fixed (not a typo — an actual "this didn't work the way the docs/chart suggested" moment), add it to `notes-techniques.md` in the same PR. Same for `manuel-installation.md` (new bootstrap step) and `manuel-utilisateur.md` (new service reachable by a human) whenever they change. Retrofitting these later is much easier to get wrong or skip entirely.
 
 ## Current state
 
-Roadmap Phase 0 ("Socle") is underway, on a local k3d dev cluster (`myown-dev`) — no mini PC or domain yet, everything is reachable at `myown-<service>.local:8090` (add the host to `/etc/hosts`, HTTP not HTTPS, dev-only). ArgoCD is bootstrapped and watches `gitops/apps/` (app-of-apps pattern). Deployed so far: monitoring (kube-prometheus-stack + Uptime Kuma), Authentik (SSO) in progress. See `gitops/README.md` for the directory layout and `git log` for what's actually landed — don't assume a service exists in `gitops/apps/` until you've checked.
+Roadmap Phase 0 ("Socle") is underway, on a local k3d dev cluster (`myown-dev`) — no mini PC or domain yet, everything is reachable at `myown-<service>.local:8090` (add the host to `/etc/hosts`, HTTP not HTTPS, dev-only). ArgoCD is bootstrapped and watches `gitops/apps/` (app-of-apps pattern). Deployed so far: monitoring (kube-prometheus-stack + Uptime Kuma), Authentik (SSO). See `gitops/README.md` for the directory layout, `docs/notes-techniques.md` for what's actually running, and `git log` for the rest — don't assume a service exists in `gitops/apps/` until you've checked.
 
 ## Repository conventions (decided, not yet all implemented)
 

@@ -1,0 +1,115 @@
+# Manuel d'installation
+
+Reproduit l'état actuel du projet : un cluster de développement local (k3d), pas encore le mini PC de production ni un vrai nom de domaine. Ce document sera étendu avec une section "installation en production" une fois la Phase 0 de la roadmap déplacée sur le matériel cible.
+
+## Prérequis
+
+- Docker (avec accès au daemon)
+- `git`, et [`gh`](https://cli.github.com/) authentifié (`gh auth login`)
+- Node.js/npm (outillage de versioning du dépôt — voir `CLAUDE.md`)
+- Une clé SSH de signature de commits configurée (obligatoire pour pousser sur `master` — voir `CLAUDE.md`, section "Commit signing")
+
+## 1. Cloner le dépôt
+
+```bash
+git clone https://github.com/Pavliin/MyOwn.git
+cd MyOwn
+npm install
+```
+
+## 2. Installer les outils
+
+```bash
+# k3d, kubectl, helm : à adapter selon votre gestionnaire de paquets si des
+# versions plus récentes existent — testé avec k3d v5.9.0, kubectl v1.36.2,
+# helm v3.16.4.
+
+# sops
+curl -fsSL -o ~/.local/bin/sops \
+  https://github.com/getsops/sops/releases/download/v3.10.2/sops-v3.10.2.linux.amd64
+chmod +x ~/.local/bin/sops
+
+# age (age-keygen) — souvent disponible via le gestionnaire de paquets système
+```
+
+## 3. Clé de chiffrement des secrets (age)
+
+**Sur la toute première installation du projet** (pas votre cas si vous reproduisez ce dépôt) :
+
+```bash
+mkdir -p ~/.config/sops/age
+age-keygen -o ~/.config/sops/age/keys.txt
+```
+
+Remplacer la clé publique dans `.sops.yaml` par celle affichée, committer.
+
+**Pour reproduire ce dépôt sur une nouvelle machine** (le cas normal) : restaurer le fichier `~/.config/sops/age/keys.txt` depuis votre sauvegarde. Sans lui, tous les secrets déjà chiffrés dans le dépôt (Authentik, etc.) sont définitivement illisibles — ce fichier n'est jamais dans git, il faut le sauvegarder soi-même ailleurs (gestionnaire de mots de passe, coffre chiffré...).
+
+## 4. Créer le cluster
+
+```bash
+k3d cluster create myown-dev -p "8090:80@loadbalancer" -p "8453:443@loadbalancer" --wait
+kubectl config use-context k3d-myown-dev
+```
+
+Le mapping de ports doit être fait **à la création** — impossible à ajouter après coup sans recréer le cluster.
+
+## 5. Installer ArgoCD
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side --force-conflicts \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl wait --for=condition=available --timeout=180s deployment --all -n argocd
+```
+
+`--server-side` est obligatoire (les CRDs d'ArgoCD dépassent la limite de taille d'annotation en `apply` classique).
+
+Passer `argocd-server` en mode insecure (TLS géré par l'Ingress) :
+
+```bash
+kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge \
+  -p '{"data":{"server.insecure":"true"}}'
+kubectl rollout restart deployment argocd-server -n argocd
+```
+
+## 6. Activer KSOPS (déchiffrement automatique des secrets)
+
+```bash
+kubectl create secret generic sops-age -n argocd \
+  --from-file=keys.txt=$HOME/.config/sops/age/keys.txt
+
+kubectl patch configmap argocd-cm -n argocd --type merge \
+  -p '{"data":{"kustomize.buildOptions":"--enable-alpha-plugins --enable-exec"}}'
+
+kubectl patch deployment argocd-repo-server -n argocd --type strategic \
+  --patch-file gitops/bootstrap/argocd-repo-server-ksops-patch.yaml
+```
+
+## 7. Bootstrap GitOps
+
+```bash
+kubectl apply -f gitops/bootstrap/root-app.yaml
+kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
+```
+
+À partir de là, tout le reste (monitoring, Authentik, futurs services) se synchronise automatiquement depuis `gitops/apps/` — plus aucune commande manuelle nécessaire pour les services eux-mêmes.
+
+## 8. Accès local
+
+Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.yaml` pour la liste à jour) :
+
+```
+127.0.0.1 myown-argocd.local
+127.0.0.1 myown-grafana.local
+127.0.0.1 myown-uptime.local
+127.0.0.1 myown-authentik.local
+```
+
+## 9. Vérification
+
+```bash
+kubectl get application -n argocd
+```
+
+Toutes les `Application` doivent converger vers `Synced`/`Healthy` (quelques minutes le temps que les images se téléchargent). Détail de chaque service et de ses identifiants : [`manuel-utilisateur.md`](manuel-utilisateur.md).

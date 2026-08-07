@@ -2,7 +2,7 @@
 
 Projet de cloud personnel auto-hébergé — fichiers, photos/vidéos, mots de passe, messagerie et mail, hébergés localement plutôt que chez Google/Meta/Microsoft, pour un usage personnel et un cercle proche (famille, amis).
 
-Statut actuel : **POC en cours de démarrage** — la phase de définition (architecture, feuille de route) est bouclée, la mise en place de l'infrastructure n'a pas encore commencé.
+Statut actuel : **Phase 0 (Socle) en cours**, sur un cluster de développement local — GitOps/ArgoCD, monitoring et SSO (Authentik) opérationnels. Pas encore de mini PC ni de nom de domaine réel.
 
 ## Documentation
 
@@ -10,6 +10,9 @@ Statut actuel : **POC en cours de démarrage** — la phase de définition (arch
 - [`docs/roadmap.md`](docs/roadmap.md) — plan de développement phase par phase, avec critères de sortie
 - [`docs/pitch.md`](docs/pitch.md) — présentation technique du projet
 - [`docs/vision-long-terme.md`](docs/vision-long-terme.md) — pistes d'évolution à garder en tête (hors scope du POC actuel)
+- [`docs/notes-techniques.md`](docs/notes-techniques.md) — état réel du déployé, choix de config, difficultés rencontrées
+- [`docs/manuel-installation.md`](docs/manuel-installation.md) — étapes d'une première installation
+- [`docs/manuel-utilisateur.md`](docs/manuel-utilisateur.md) — comment utiliser chaque service déployé
 
 ## Principes
 
