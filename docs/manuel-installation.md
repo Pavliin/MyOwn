@@ -108,6 +108,12 @@ kubectl create secret tls vaultwarden-tls -n vaultwarden \
 
 Ce secret est volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
 
+**Si le navigateur affiche quand même "non sécurisé" après `mkcert -install`** (vécu avec Chromium/Firefox installés en snap — cas fréquent sur Ubuntu) :
+
+- `mkcert -install` peut répondre "already installed" sans avoir réellement rien fait : les navigateurs snap utilisent leur propre profil isolé (`~/snap/firefox/common/.mozilla/...`, `~/snap/chromium/<revision>/.local/share/pki/nssdb`), pas les emplacements standards. Vérifier avec `certutil -L -d sql:<chemin du profil>` que `mkcert development CA` y figure bien avec les droits `CT,C,C`.
+- Même avec cette entrée correcte, les versions récentes de Chrome/Chromium (Chrome Root Store) peuvent ignorer le magasin NSS système pour la validation TLS. Solution fiable : `chrome://certificate-manager` → **Personnalisé (installé par vous)** → **Certificats approuvés** → importer directement `$(mkcert -CAROOT)/rootCA.pem`. La section "Linux" du même écran peut lister le certificat mkcert en tant qu'« intermédiaire » sans qu'il serve réellement d'ancre de confiance — l'import manuel dans "Certificats approuvés" est ce qui a résolu le problème.
+- Toujours quitter le navigateur **complètement** (vérifier qu'aucun processus ne reste : `ps aux | grep -i chromium`) avant de retester — fermer la fenêtre ne suffit pas, le profil réel n'est relu qu'au prochain vrai démarrage.
+
 ## 9. Accès local
 
 Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.yaml` pour la liste à jour) :
