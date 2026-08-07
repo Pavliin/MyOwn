@@ -1,10 +1,13 @@
 # Chiffrement des secrets du dépôt GitOps via SOPS + age.
 # 1. Installer age et sops localement.
-# 2. Générer une paire de clés :  age-keygen -o age.key
-#    (ne jamais committer age.key — la clé privée reste locale, hors dépôt)
+# 2. Générer une paire de clés à l'emplacement standard que sops lit
+#    automatiquement (aucune variable d'env à positionner) :
+#      age-keygen -o ~/.config/sops/age/keys.txt
+#    La clé privée reste locale, hors dépôt — ne jamais la committer.
 # 3. Remplacer la clé publique ci-dessous par celle affichée par age-keygen.
-# 4. Chiffrer un fichier :  sops --encrypt --in-place chemin/vers/secret.yaml
+# 4. Nommer les fichiers de secrets *.sops.yaml (cf. path_regex ci-dessous)
+#    et les chiffrer :  sops --encrypt --in-place chemin/vers/nom.sops.yaml
 
 creation_rules:
   - path_regex: .*\.sops\.ya?ml$
-    age: age1rh52mnlegra5rrsw329zcx5k59tgct8zhgm4jhzyauy0md9t45csahh8jy
+    age: age1l6tfhv38sf0rdg4kw7l6mjugp7jvsvwrf3zul3ptz43cad2pkucsg5ks42
