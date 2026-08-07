@@ -22,7 +22,8 @@ spec:
           ingress:
             enabled: true
             class: traefik
-            tls: false
+            tls: true
+            tlsSecret: vaultwarden-tls
             nginxIngressAnnotations: false
             hostname: myown-vaultwarden.local
     - repoURL: https://github.com/Pavliin/MyOwn.git
