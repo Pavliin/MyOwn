@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: authentik
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.goauthentik.io
+      chart: authentik
+      targetRevision: 2026.5.6
+      helm:
+        valuesObject:
+          authentik:
+            existingSecret:
+              secretName: authentik-secrets
+          postgresql:
+            enabled: true
+            auth:
+              existingSecret: authentik-secrets
+          server:
+            ingress:
+              enabled: true
+              ingressClassName: traefik
+              hosts:
+                - myown-authentik.local
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/authentik
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authentik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

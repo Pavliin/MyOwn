@@ -13,14 +13,21 @@ A personal self-hosted cloud project (files, photos, passwords, messaging, mail 
 
 ## Current state
 
-Docs-only. No infrastructure code, manifests, or application code exist yet — the repo currently holds only documentation and scaffolding (license, CI lint, secrets config). Do not assume any `gitops/`, `helm/`, or app code directories exist until they're actually created. The roadmap's "Phase 0 — Socle" (k3s, ArgoCD, Traefik, Authentik, monitoring) has not started.
+Roadmap Phase 0 ("Socle") is underway, on a local k3d dev cluster (`myown-dev`) — no mini PC or domain yet, everything is reachable at `myown-<service>.local:8090` (add the host to `/etc/hosts`, HTTP not HTTPS, dev-only). ArgoCD is bootstrapped and watches `gitops/apps/` (app-of-apps pattern). Deployed so far: monitoring (kube-prometheus-stack + Uptime Kuma), Authentik (SSO) in progress. See `gitops/README.md` for the directory layout and `git log` for what's actually landed — don't assume a service exists in `gitops/apps/` until you've checked.
 
 ## Repository conventions (decided, not yet all implemented)
 
 - **Structure**: monorepo — docs, GitOps manifests (once they exist, ArgoCD will watch this repo directly), and any custom integration code all live here. No plan to split repos at this stage.
 - **License**: AGPL-3.0 (`LICENSE`) — network-copyleft, chosen deliberately so a third party can't wrap this project into a closed SaaS.
 - **Git platform**: GitHub.
-- **Secrets**: SOPS + age. `.sops.yaml` holds the real public key — never commit an unencrypted secret or the age private key.
+- **Secrets**: SOPS + age, decrypted automatically at ArgoCD sync time via KSOPS (chosen over manual `sops -d | kubectl apply` to keep disaster recovery fully automatic once the age key is restored — see `docs/vision-long-terme.md`-style reasoning: worth the extra setup cost for a project meant to be reproducible by others). `.sops.yaml` holds the real public key — never commit an unencrypted secret or the age private key.
+  - Private key lives at `~/.config/sops/age/keys.txt` (sops' default lookup path, no env var needed) — **back this up somewhere durable**. Losing it is only harmless while zero secrets are encrypted; past that point it means every encrypted secret in the repo becomes permanently unrecoverable and has to be rotated.
+  - New secret files: name them `*.sops.yaml` (matches `.sops.yaml`'s `path_regex`), write plaintext under `stringData`, then `sops --encrypt --in-place path/to/name.sops.yaml`. Never hand-edit an already-encrypted file.
+  - Each secret lives in `gitops/secrets/<name>/` as a small kustomize app (`kustomization.yaml` + `secret-generator.yaml` ksops generator + the `*.sops.yaml`), wired into the owning service's Application as a second `sources` entry (multi-source Application) — see `gitops/apps/authentik.yaml` for the pattern to copy.
+  - KSOPS itself is bootstrapped onto `argocd-repo-server` the same way ArgoCD is bootstrapped: not GitOps-managed. On a fresh cluster, after installing ArgoCD:
+    1. `kubectl create secret generic sops-age -n argocd --from-file=keys.txt=$HOME/.config/sops/age/keys.txt`
+    2. `kubectl patch configmap argocd-cm -n argocd --type merge -p '{"data":{"kustomize.buildOptions":"--enable-alpha-plugins --enable-exec"}}'`
+    3. `kubectl patch deployment argocd-repo-server -n argocd --type strategic --patch-file gitops/bootstrap/argocd-repo-server-ksops-patch.yaml`
 - **CI**: `.github/workflows/lint.yml` lints Markdown and lints every commit in a PR (commitlint). Expect this to grow (Helm lint, Trivy CVE scan) once Phase 0 introduces actual manifests — don't pre-build CI stages for infra that doesn't exist yet.
 - **Language**: project docs and communication are in French.
 - **`package.json` / `node_modules`**: not a JS project — this Node tooling exists solely to run commit-and-tag-version, husky and commitlint. Don't treat its presence as an invitation to scaffold a JS/TS app here.
