@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vaultwarden
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://guerzon.github.io/vaultwarden
+      chart: vaultwarden
+      targetRevision: 0.46.0
+      helm:
+        valuesObject:
+          adminToken:
+            existingSecret: vaultwarden-secrets
+            existingSecretKey: ADMIN_TOKEN
+          storage:
+            data:
+              name: data
+              size: 1Gi
+              accessMode: ReadWriteOnce
+          ingress:
+            enabled: true
+            class: traefik
+            tls: false
+            nginxIngressAnnotations: false
+            hostname: myown-vaultwarden.local
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/vaultwarden
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vaultwarden
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
