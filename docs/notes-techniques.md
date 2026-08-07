@@ -14,6 +14,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | Uptime Kuma (chart `dirsigler/uptime-kuma-helm`) | chart 4.1.0, app 2.3.0 |
 | Authentik | chart/app 2026.5.6 |
 | PostgreSQL (Authentik, via sous-chart Bitnami) | 17.10-bookworm |
+| Vaultwarden (chart `guerzon/vaultwarden`) | chart 0.46.0, app 1.37.1 |
 | SOPS | 3.10.2 |
 | KSOPS | v4.5.1 |
 
@@ -62,6 +63,17 @@ Secret unique (`gitops/secrets/authentik/authentik.sops.yaml`, chiffré) référ
 **Incident** : `authentik.existingSecret` remplace **l'intégralité** du Secret de configuration généré par le chart, pas seulement ses champs sensibles — la connexion PostgreSQL (host/port/nom/utilisateur), non sensible, y est mélangée par le chart et disparaît donc aussi si on ne la fournit pas explicitement. Symptôme : `authentik-server`/`authentik-worker` en `CrashLoopBackOff`, tentant de se connecter à `localhost:5432` (repli interne d'Authentik en l'absence totale de configuration PostgreSQL) plutôt qu'au vrai service `authentik-postgresql`.
 
 **Leçon retenue pour les prochains services** (Vaultwarden, Nextcloud, Mailcow auront le même genre d'option) : avant de configurer un `existingSecret` sur un nouveau chart, toujours rendre le chart sans cette option (`helm template ...`) pour voir la liste complète des clés que le Secret généré contient normalement, et répliquer cette liste intégrale — ne pas supposer que seuls les champs visiblement sensibles sont concernés.
+
+## Vaultwarden (mots de passe)
+
+Premier service de la Phase 1 de la roadmap. Chart communautaire `guerzon/vaultwarden` (342 étoiles, mis à jour la veille du déploiement — même vérification de fraîcheur que pour Uptime Kuma), faute de chart officiel. Base SQLite par défaut du chart — pas de service de base de données séparé à ce stade. Modèle de secrets par option (`adminToken.existingSecret`, `database.existingSecret`, etc.) plutôt qu'un seul Secret monolithique comme Authentik : plus précis, pas le même risque d'oubli de champ.
+
+**Incidents rencontrés (deux) :**
+
+1. **`volumeClaimTemplates` invalide si seul `storage.data.size` est renseigné** — le nom (`metadata.name`) et les modes d'accès (`accessModes`) du template de PVC restent vides malgré des valeurs par défaut suggérées dans les commentaires du chart, produisant un StatefulSet rejeté par l'API Kubernetes. Trouvé et corrigé *avant* le push grâce à `kubectl apply --dry-run=client` sur le rendu complet — pas besoin d'un cycle d'échec en cluster réel pour l'attraper.
+2. **`OutOfSync` persistant sur le StatefulSet malgré un état réellement synchronisé** — Kubernetes normalise chaque `volumeClaimTemplate` une fois le PVC provisionné : ajoute `apiVersion`/`kind`, positionne `spec.volumeMode` par défaut, et remplit `status`. Aucun de ces champs n'existe dans le manifest désiré. `ignoreDifferences` (`jqPathExpressions`) nécessaire sur les quatre champs, pas seulement `status` comme il semblait suffisant au premier abord. Distinction importante faite pendant le diagnostic : `argocd app diff --hard-refresh` (calcul en direct) confirmait déjà un état propre alors que le badge `Sync Status` agrégé restait bloqué sur `OutOfSync` — un vrai bug d'affichage ArgoCD sur ce type de ressource, vérifié inoffensif (0 redémarrage du pod, dernière opération de synchro terminée en 0 seconde, donc no-op) plutôt qu'un signe de dérive réelle à corriger davantage.
+
+**Reporté à un travail séparé** : l'intégration SSO avec Authentik (mentionnée dans le périmètre de la roadmap Phase 1). Le chart supporte nativement l'OpenID Connect (`sso.*`), mais ça suppose de créer d'abord un provider/une application côté Authentik — une pièce de travail à part entière, pas juste un ajustement de valeurs Helm.
 
 ## Git / CI / signature de commits
 

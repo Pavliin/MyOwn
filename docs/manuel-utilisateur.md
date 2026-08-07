@@ -36,7 +36,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 - **URL** : <http://myown-uptime.local:8090>
 - **Identifiants** : aucun compte créé automatiquement — un écran de création de compte admin apparaît au premier accès (email/mot de passe au choix, stockés localement dans Uptime Kuma, sans lien avec Authentik).
-- **Usage** : actuellement vide (aucun moniteur configuré) — normal, aucun service applicatif (Nextcloud, Vaultwarden...) n'existe encore pour être surveillé. Pour ajouter un moniteur : **+ Add New Monitor**, choisir un type (HTTP(s), TCP, DNS...), renseigner l'URL/hôte à vérifier et l'intervalle de check.
+- **Usage** : actuellement vide (aucun moniteur configuré) — à ajouter vous-même. Pour ajouter un moniteur : **+ Add New Monitor**, choisir un type (HTTP(s), TCP, DNS...), renseigner l'URL/hôte à vérifier (par exemple Vaultwarden ci-dessous) et l'intervalle de check.
 
 ## Authentik — identité et authentification (SSO)
 
@@ -44,7 +44,21 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 - **URL** : <http://myown-authentik.local:8090>
 - **Identifiants** : aucun compte bootstrap configuré — au premier accès, Authentik propose son propre flow de configuration initiale pour créer le compte administrateur (`akadmin`).
-- **Usage** : rien à configurer pour l'instant côté applications (aucune n'est encore déployée). Une fois Vaultwarden/Nextcloud/etc. en place (roadmap Phase 1+), ce manuel décrira comment déclarer chaque nouvelle application dans Authentik pour l'intégrer au SSO.
+- **Usage** : rien à configurer pour l'instant côté applications. L'intégration SSO de Vaultwarden (premier candidat) est un travail séparé, pas encore fait — ce manuel sera mis à jour quand ce sera le cas.
+
+## Vaultwarden — mots de passe
+
+**À quoi ça sert** : gestionnaire de mots de passe auto-hébergé, compatible avec toutes les applications officielles Bitwarden (navigateur, mobile, desktop) — c'est le premier service applicatif "réel" du projet.
+
+- **URL** : <http://myown-vaultwarden.local:8090> (interface web classique) — le panneau d'administration est à `/admin`
+- **Identifiants utilisateur** : aucun compte par défaut — créez le vôtre depuis la page d'accueil (**Create Account**), comme sur bitwarden.com
+- **Jeton du panneau admin** (`/admin`) :
+
+  ```bash
+  kubectl -n vaultwarden get secret vaultwarden-secrets -o jsonpath="{.data.ADMIN_TOKEN}" | base64 -d
+  ```
+
+- **Usage** : pour vous y connecter depuis une app Bitwarden (navigateur ou mobile), il faut changer le "serveur" dans les réglages de l'application vers l'URL ci-dessus avant de vous connecter — Bitwarden pointe vers bitwarden.com par défaut. Non encore intégré au SSO Authentik : connexion par email/mot de passe classique pour l'instant.
 
 ## À venir
 
