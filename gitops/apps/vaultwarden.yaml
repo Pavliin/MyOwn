@@ -31,6 +31,16 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: vaultwarden
+  ignoreDifferences:
+    # Kubernetes populates volumeClaimTemplates[].status once the PVC is
+    # provisioned; the desired manifest never has it, so without this the
+    # StatefulSet stays OutOfSync forever (well-known ArgoCD/StatefulSet
+    # limitation, not specific to this chart).
+    - group: apps
+      kind: StatefulSet
+      name: vaultwarden
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates[].status
   syncPolicy:
     automated:
       prune: true
