@@ -50,7 +50,8 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 **À quoi ça sert** : gestionnaire de mots de passe auto-hébergé, compatible avec toutes les applications officielles Bitwarden (navigateur, mobile, desktop) — c'est le premier service applicatif "réel" du projet.
 
-- **URL** : <http://myown-vaultwarden.local:8090> (interface web classique) — le panneau d'administration est à `/admin`
+- **URL** : <https://myown-vaultwarden.local:8453> (⚠️ HTTPS et port 8453, pas 8090 comme les autres services — le web vault a besoin de l'API Subtle Crypto du navigateur pour chiffrer/déchiffrer côté client, indisponible en HTTP sur un nom d'hôte personnalisé même si celui-ci pointe vers `127.0.0.1`) — le panneau d'administration est à `/admin`
+- **Premier accès** : le certificat est signé par une CA locale (mkcert) déjà approuvée sur cette machine — pas d'avertissement de sécurité attendu. Sur une autre machine, voir `manuel-installation.md` pour régénérer/faire confiance au certificat.
 - **Identifiants utilisateur** : aucun compte par défaut — créez le vôtre depuis la page d'accueil (**Create Account**), comme sur bitwarden.com
 - **Jeton du panneau admin** (`/admin`) :
 
