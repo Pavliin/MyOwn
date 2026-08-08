@@ -28,7 +28,7 @@ spec:
             hostname: myown-vaultwarden.local
           sso:
             enabled: true
-            authority: "http://myown-authentik.local:8090/application/o/vaultwarden"
+            authority: "http://myown-authentik.local:8090/application/o/vaultwarden/"
             scopes: "openid email profile"
             existingSecret: vaultwarden-secrets
             clientId:
