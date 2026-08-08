@@ -44,7 +44,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 - **URL** : <http://myown-authentik.local:8090>
 - **Identifiants** : aucun compte bootstrap configuré — au premier accès, Authentik propose son propre flow de configuration initiale pour créer le compte administrateur (`akadmin`).
-- **Usage** : rien à configurer pour l'instant côté applications. L'intégration SSO de Vaultwarden (premier candidat) est un travail séparé, pas encore fait — ce manuel sera mis à jour quand ce sera le cas.
+- **Usage** : l'application "Vaultwarden" y est déclarée automatiquement (via blueprint, pas besoin de la créer à la main). Menu **Applications** pour voir/gérer qui peut y accéder.
 
 ## Vaultwarden — mots de passe
 
@@ -59,7 +59,8 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
   kubectl -n vaultwarden get secret vaultwarden-secrets -o jsonpath="{.data.ADMIN_TOKEN}" | base64 -d
   ```
 
-- **Usage** : pour vous y connecter depuis une app Bitwarden (navigateur ou mobile), il faut changer le "serveur" dans les réglages de l'application vers l'URL ci-dessus avant de vous connecter — Bitwarden pointe vers bitwarden.com par défaut. Non encore intégré au SSO Authentik : connexion par email/mot de passe classique pour l'instant.
+- **Usage** : pour vous y connecter depuis une app Bitwarden (navigateur ou mobile), il faut changer le "serveur" dans les réglages de l'application vers l'URL ci-dessus avant de vous connecter — Bitwarden pointe vers bitwarden.com par défaut.
+- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via SSO" (ou équivalent selon le client) redirige vers Authentik. La connexion classique par email/mot de passe reste aussi disponible — les deux ne sont pas exclusives à ce stade.
 
 ## À venir
 
