@@ -47,7 +47,7 @@ MVP démontrable visé à 3-6 mois (mots de passe + fichiers/photos + messagerie
 2. **Mots de passe** (Vaultwarden) — premier service en usage réel
 3. **Fichiers & photos** (Nextcloud + Immich)
 4. **Messagerie** (Conduwuit + Element X + LiveKit) — *point de démo MVP*
-5. **Mail** (façade VPS + Mailcow)
+5. **Bascule infra réelle & Mail** (mini PC + domaine, façade VPS + Mailcow)
 6. **IA locale** (Ollama)
 7. **Montée en échelle** — profils de dimensionnement matériel, multi-nœuds, ouverture à d'autres serveurs fédérés
 

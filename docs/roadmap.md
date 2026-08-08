@@ -6,11 +6,10 @@ Horizon visé : MVP démontrable à 3-6 mois (mots de passe + fichiers/photos + 
 
 Objectif : avoir une plateforme k3s opérationnelle, pilotée en GitOps, avant de déployer le moindre service applicatif.
 
-- Achat et mise en service du mini PC
 - Installation k3s (mono-nœud)
 - Environnement de dev miroir (k3d/kind) sur poste personnel
 - ArgoCD connecté à ce dépôt Git
-- Traefik (ingress + TLS Let's Encrypt) — nécessite le nom de domaine (à acquérir)
+- Traefik (ingress + TLS) — certificats locaux (mkcert) en dev ; bascule vers Let's Encrypt avec le vrai domaine en Phase 4
 - Prometheus + Grafana + Uptime Kuma
 - Authentik (SSO/OIDC) — brique transverse, condition préalable à un onboarding simple des autres services
 - Stratégie de secrets (SOPS ou Sealed Secrets) tranchée et mise en place
@@ -22,9 +21,10 @@ Objectif : avoir une plateforme k3s opérationnelle, pilotée en GitOps, avant d
 Objectif : premier service réel livré, risque faible, valeur immédiate.
 
 - Déploiement Vaultwarden + intégration Authentik
-- App Android (Bitwarden officielle, pointée vers le serveur)
 - Sauvegarde Restic vers le nœud ami (première mise en place du pipeline de sauvegarde, réutilisée ensuite pour tous les services)
 - Test de restauration
+
+(App Android : différée à la Phase 4, qui regroupe tout ce qui nécessite l'infra réelle — mini PC + domaine.)
 
 **Critère de sortie** : usage quotidien réel par l'auteur (dogfooding), sauvegarde/restauration validée.
 
@@ -34,11 +34,12 @@ Objectif : couvrir le cas d'usage le plus visible pour convaincre (remplacement 
 
 - Déploiement Nextcloud (fichiers, contacts, calendrier) + Immich (photos/vidéos)
 - Intégration Authentik
-- Apps Android : Nextcloud + Immich, configuration du backup automatique photos/vidéos
 - Sauvegarde Restic étendue à ces services
 - Test avec 2-3 utilisateurs réels (famille proche) hors auteur
 
-**Critère de sortie** : migration effective des photos/fichiers d'au moins un membre de la famille, backup mobile automatique fonctionnel.
+(Apps Android + backup automatique photos/vidéos en conditions réelles : différés à la Phase 4.)
+
+**Critère de sortie** : migration effective des photos/fichiers d'au moins un membre de la famille.
 
 ## Phase 3 — Messagerie (Conduwuit + Element X + LiveKit)
 
@@ -46,25 +47,30 @@ Objectif : couvrir l'usage courant (groupes, appels vidéo à 3-4) avec un candi
 
 - Déploiement Conduwuit
 - Déploiement LiveKit (appels vidéo de groupe)
-- App Android Element X
-- Test des appels vidéo de groupe en conditions réelles (3-4 participants)
-- Test de fédération avec un second serveur Matrix externe (validation du besoin de "discovery")
+- Test des appels vidéo de groupe en conditions réelles (3-4 participants, en LAN)
+
+(App Android Element X et test de fédération avec un second serveur Matrix externe : différés à la Phase 4 — le premier a le même problème de résolution DNS locale sur mobile que les autres apps Android, le second nécessite une joignabilité publique réelle.)
 
 **Critère de sortie** : un groupe familial migré sur la messagerie pour les échanges courants, appel vidéo de groupe fonctionnel.
 
 **→ Point de démonstration MVP aux amis techos** (mdp + fichiers/photos + messagerie fonctionnels).
 
-## Phase 4 — Mail (VPS façade + Mailcow)
+## Phase 4 — Bascule vers l'infra réelle & Mail
 
-Objectif : la brique la plus complexe, traitée une fois le socle et l'expérience opérationnelle acquis sur les phases précédentes.
+Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + domaine) — le premier composant, Mail, en a de toute façon besoin dès le départ, donc cette bascule sert aussi à débloquer d'un coup toutes les validations différées des phases précédentes, avant de livrer la brique la plus complexe techniquement.
 
-- Acquisition du nom de domaine
+- Achat et mise en service du mini PC, migration du cluster GitOps du dev (k3d) vers le mini PC (mêmes manifests, changement de cible uniquement)
+- Acquisition du nom de domaine, bascule Traefik vers Let's Encrypt réel (remplace les certificats mkcert du dev)
+- Validation des items différés, désormais débloqués par l'exposition internet réelle :
+  - App Android Vaultwarden (Phase 1)
+  - Apps Android Nextcloud + Immich, backup automatique photos/vidéos en conditions réelles (Phase 2)
+  - App Android Element X, test de fédération Matrix avec un second serveur externe (Phase 3)
 - Provisionnement du VPS façade (Hetzner/OVH/Scaleway), configuration Postfix relay + SPF/DKIM/DMARC
 - Déploiement Mailcow à domicile, connexion au relais VPS
 - Migration progressive des correspondants (soi-même d'abord, en parallèle d'un compte existant le temps de valider la délivrabilité)
 - Suivi de délivrabilité (tests d'envoi vers Gmail/Outlook, monitoring des blacklists)
 
-**Critère de sortie** : mail envoyé/reçu de façon fiable vers/depuis Gmail et Outlook sur une période de test soutenue (pas de classement spam systématique).
+**Critère de sortie** : tous les services précédemment validés en dev tournent sur le mini PC réel, toutes les validations différées sont passées avec succès, et le mail est envoyé/reçu de façon fiable vers/depuis Gmail et Outlook sur une période de test soutenue (pas de classement spam systématique).
 
 ## Phase 5 — Intelligence locale (Ollama)
 
