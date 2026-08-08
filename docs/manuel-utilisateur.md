@@ -61,6 +61,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 - **Usage** : pour vous y connecter depuis une app Bitwarden (navigateur ou mobile), il faut changer le "serveur" dans les réglages de l'application vers l'URL ci-dessus avant de vous connecter — Bitwarden pointe vers bitwarden.com par défaut.
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via SSO" (ou équivalent selon le client) redirige vers Authentik. La connexion classique par email/mot de passe reste aussi disponible — les deux ne sont pas exclusives à ce stade.
+- **Le mot de passe principal reste demandé après le SSO — c'est normal.** Le SSO prouve *qui* vous êtes (authentification) ; il ne peut pas fournir la clé qui déchiffre votre coffre (chiffrement), parce que cette clé est dérivée du mot de passe principal **côté navigateur uniquement** — le serveur ne le connaît jamais, même l'opérateur du serveur ne peut pas lire vos mots de passe sans lui. Les deux mécanismes sont volontairement séparés (zero-knowledge encryption) ; ce n'est pas une étape de connexion en trop.
 
 ## À venir
 
