@@ -1,6 +1,6 @@
 # Manuel d'utilisation
 
-Guide des services déployés : à quoi chacun sert, comment y accéder, comment s'en servir. Pour l'instant, tous les services en place sont des outils d'administration/supervision (aucun service "famille" comme Nextcloud ou Vaultwarden n'existe encore) — ce document grandira au même rythme que la roadmap.
+Guide des services déployés : à quoi chacun sert, comment y accéder, comment s'en servir. Ce document grandit au même rythme que la roadmap.
 
 Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajoutée (voir [`manuel-installation.md`](manuel-installation.md)) et un accès HTTP simple (`:8090`) — pas de HTTPS tant qu'on est sur le cluster de dev local.
 
@@ -63,6 +63,19 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via SSO" (ou équivalent selon le client) redirige vers Authentik. La connexion classique par email/mot de passe reste aussi disponible — les deux ne sont pas exclusives à ce stade.
 - **Le mot de passe principal reste demandé après le SSO — c'est normal.** Le SSO prouve *qui* vous êtes (authentification) ; il ne peut pas fournir la clé qui déchiffre votre coffre (chiffrement), parce que cette clé est dérivée du mot de passe principal **côté navigateur uniquement** — le serveur ne le connaît jamais, même l'opérateur du serveur ne peut pas lire vos mots de passe sans lui. Les deux mécanismes sont volontairement séparés (zero-knowledge encryption) ; ce n'est pas une étape de connexion en trop.
 
+## Nextcloud — fichiers, contacts, calendrier
+
+**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers (à terme aussi contacts et calendrier). Déploiement nu pour l'instant (Phase 2, sans SSO ni sauvegarde Restic ni app Android — cf. `roadmap.md`).
+
+- **URL** : <http://myown-nextcloud.local:8090>
+- **Identifiants** : utilisateur `admin`, mot de passe :
+
+  ```bash
+  kubectl -n nextcloud get secret nextcloud-secrets -o jsonpath="{.data.NEXTCLOUD_PASSWORD}" | base64 -d
+  ```
+
+- **Usage** : interface web classique Nextcloud, glisser-déposer pour envoyer des fichiers. Pas encore de SSO Authentik ni d'app mobile à ce stade — connexion par mot de passe uniquement.
+
 ## À venir
 
-Chaque nouveau service applicatif (Vaultwarden en premier, cf. `roadmap.md`) aura sa propre section ici : URL, identifiants, prise en main de base, et pour les services destinés à la famille/aux amis, des instructions pensées pour un public non technique.
+Chaque nouveau service applicatif aura sa propre section ici : URL, identifiants, prise en main de base, et pour les services destinés à la famille/aux amis, des instructions pensées pour un public non technique.
