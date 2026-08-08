@@ -1,0 +1,20 @@
+# Résout les hosts myown-*.local depuis l'intérieur du cluster (pas seulement
+# depuis la machine hôte via /etc/hosts) — nécessaire pour que les services
+# puissent s'appeler entre eux via leur nom externe (ex. Vaultwarden -> Authentik
+# pour l'échange OIDC côté serveur). Réécrit vers le service Traefik (résolution
+# DNS normale, pas d'IP figée) plutôt qu'un bloc `hosts` (déjà utilisé une fois
+# par le Corefile par défaut de k3s — un seul bloc `hosts` autorisé par serveur).
+# Mécanisme officiel k3s : import /etc/coredns/custom/*.override dans le
+# Corefile par défaut. Pas GitOps-managé, même statut que l'install d'ArgoCD.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  myown.override: |
+    rewrite name exact myown-argocd.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-grafana.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-uptime.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-authentik.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-vaultwarden.local traefik-internal.kube-system.svc.cluster.local
