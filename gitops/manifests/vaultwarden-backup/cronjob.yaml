@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vaultwarden-restic-backup
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: restic-backup
+              image: restic/restic:0.19.1
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: /repo
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: vaultwarden-secrets
+                      key: RESTIC_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  restic snapshots >/dev/null 2>&1 || restic init
+                  restic backup /data --tag vaultwarden
+                  restic forget --tag vaultwarden --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: repo
+                  mountPath: /repo
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: data-vaultwarden-0
+            - name: repo
+              persistentVolumeClaim:
+                claimName: vaultwarden-restic-repo
