@@ -11,6 +11,7 @@ spec:
       targetRevision: 0.46.0
       helm:
         valuesObject:
+          domain: "https://myown-vaultwarden.local:8453"
           adminToken:
             existingSecret: vaultwarden-secrets
             existingSecretKey: ADMIN_TOKEN
