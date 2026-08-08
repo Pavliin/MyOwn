@@ -26,6 +26,15 @@ spec:
             tlsSecret: vaultwarden-tls
             nginxIngressAnnotations: false
             hostname: myown-vaultwarden.local
+          sso:
+            enabled: true
+            authority: "http://myown-authentik.local:8090/application/o/vaultwarden"
+            scopes: "openid email profile"
+            existingSecret: vaultwarden-secrets
+            clientId:
+              existingSecretKey: SSO_CLIENT_ID
+            clientSecret:
+              existingSecretKey: SSO_CLIENT_SECRET
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/vaultwarden

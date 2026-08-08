@@ -1,0 +1,23 @@
+# Service séparé (ne touche pas au Service Traefik géré par Helm/k3s, pour
+# éviter qu'une reconciliation ne l'efface) exposant les mêmes ports que le
+# load balancer k3d (8090/8453) mais accessible depuis l'intérieur du cluster.
+# Nécessaire pour que les services communiquent entre eux via leur nom externe
+# myown-*.local avec le même port qu'à l'extérieur — sinon les URLs absolues
+# renvoyées (ex. endpoints OIDC d'Authentik) ne fonctionnent pas depuis un
+# navigateur qui, lui, ne connaît que le port externe.
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-internal
+  namespace: kube-system
+spec:
+  selector:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-kube-system
+  ports:
+    - name: web-8090
+      port: 8090
+      targetPort: web
+    - name: websecure-8453
+      port: 8453
+      targetPort: websecure
