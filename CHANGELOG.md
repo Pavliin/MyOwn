@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.1](https://github.com/Pavliin/MyOwn/compare/v0.1.0...v0.1.1) (2026-08-08)
+
+### Fonctionnalités
+
+* deploy Vaultwarden (Phase 1) ([28df072](https://github.com/Pavliin/MyOwn/commit/28df072c0b1ef65f1783df7b00e37fa38ec1cb96))
+* enable TLS on Vaultwarden ingress ([aed6135](https://github.com/Pavliin/MyOwn/commit/aed6135f08f25bcfe373828d2696ba54d7d30bf6))
+* integrate Vaultwarden SSO with Authentik ([2ed050c](https://github.com/Pavliin/MyOwn/commit/2ed050cfda0f52b0a35e260d3991f200bbdbb4ed))
+* **vaultwarden:** add Restic backup pipeline ([f35b750](https://github.com/Pavliin/MyOwn/commit/f35b7501e99eb21ed60878d759b407d9f6551ccd))
+
+### Correctifs
+
+* add trailing slash to Vaultwarden SSO authority ([5734536](https://github.com/Pavliin/MyOwn/commit/5734536aa084298f60639d00526dd83587651a56))
+* broaden StatefulSet ignoreDifferences, document Vaultwarden ([80745e8](https://github.com/Pavliin/MyOwn/commit/80745e8be17f9bb8bd940af39c710af33b012263))
+* custom email scope mapping with email_verified true ([530c38b](https://github.com/Pavliin/MyOwn/commit/530c38b58b5afc04fc1141c4ea6c2dbdc9ede3ef))
+* enable authorization_code grant type on Vaultwarden provider ([a25f996](https://github.com/Pavliin/MyOwn/commit/a25f996cda3dd4ba6b1e427a4b48c512a4ef6376))
+* ignore email_verified claim for SSO, revert debug logging ([db986ab](https://github.com/Pavliin/MyOwn/commit/db986abb46ded9d89464cc42af295b5ee42b5270))
+* ignore StatefulSet volumeClaimTemplates status drift ([492a33b](https://github.com/Pavliin/MyOwn/commit/492a33bd15aa1f3d6e88671a72c3a538786e6c3c))
+* set Vaultwarden DOMAIN, correct real redirect_uri ([7ab14e2](https://github.com/Pavliin/MyOwn/commit/7ab14e29ed184b72aaa037c78cefaad52e9455f9))
+
+### Documentation
+
+* document the mkcert + snap browser + Chrome Root Store saga ([ef55e8a](https://github.com/Pavliin/MyOwn/commit/ef55e8a1a378543600e48d9e59c342a923ac601a))
+* document TLS/secure-context requirement and sync quirk ([4095425](https://github.com/Pavliin/MyOwn/commit/40954258286f15f90e70de922fec1296671e6de4))
+* document Vaultwarden/Authentik SSO integration ([a819477](https://github.com/Pavliin/MyOwn/commit/a819477b1749d1af2c990bca31f8078266f8eb6e))
+* full writeup of the Vaultwarden/Authentik SSO debugging session ([2676f64](https://github.com/Pavliin/MyOwn/commit/2676f64a11234a88f5676c1e6499e06c3bde03bc))
+* record Restic backup pipeline as-built and update project state ([8227a54](https://github.com/Pavliin/MyOwn/commit/8227a54ca885bab7b5ec09ca1d428d7c7cc07b70))
+* turn CLAUDE.md's Current state into a session hand-off pointer ([d041571](https://github.com/Pavliin/MyOwn/commit/d041571860892fd37d987ee4994711d29fa664aa))
 ## 0.1.0 (2026-08-07)
 
 ### Fonctionnalités
