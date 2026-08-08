@@ -121,8 +121,8 @@ Un domicile résidentiel français est structurellement inadapté à l'envoi de 
 
 ## 10. Matériel cible
 
-- **Phase 1** : un mini PC (32-64 Go RAM, NVMe), single-node k3s. Budget : achat correct one-shot, coûts récurrents proches de zéro (hors VPS mail).
-- **Cible à terme** : plusieurs profils de dimensionnement matériel selon le nombre d'utilisateurs (ex. 1-6 / 7-15 / 15+), à définir une fois le profil de charge réel observé en phase 1.
+- **Déploiement initial** (roadmap Phase 4, bascule infra réelle) : un mini PC (32-64 Go RAM, NVMe), single-node k3s. Budget : achat correct one-shot, coûts récurrents proches de zéro (hors VPS mail).
+- **Cible à terme** : plusieurs profils de dimensionnement matériel selon le nombre d'utilisateurs (ex. 1-6 / 7-15 / 15+), à définir une fois le profil de charge réel observé en production réelle.
 
 ## 11. Limites connues et risques assumés
 
