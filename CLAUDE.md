@@ -18,7 +18,15 @@ A personal self-hosted cloud project (files, photos, passwords, messaging, mail 
 
 ## Current state
 
-Roadmap Phase 0 ("Socle") is underway, on a local k3d dev cluster (`myown-dev`) — no mini PC or domain yet, everything is reachable at `myown-<service>.local:8090` (add the host to `/etc/hosts`, HTTP not HTTPS, dev-only). ArgoCD is bootstrapped and watches `gitops/apps/` (app-of-apps pattern). Deployed so far: monitoring (kube-prometheus-stack + Uptime Kuma), Authentik (SSO). See `gitops/README.md` for the directory layout, `docs/notes-techniques.md` for what's actually running, and `git log` for the rest — don't assume a service exists in `gitops/apps/` until you've checked.
+**Read this section first in any new conversation** — it's the single pointer to where the project actually stands, kept current at each natural completion point (end of a phase, end of an integration) rather than after every commit. For the full detail behind any of this, see `docs/notes-techniques.md` (as-built) and `docs/roadmap.md` (phase plan) — don't re-derive from `git log` unless this section seems stale.
+
+Local k3d dev cluster (`myown-dev`) only — no mini PC or domain yet. Two access patterns: most services on `myown-<service>.local:8090` (HTTP), Vaultwarden specifically on `:8453` (HTTPS, mkcert — needed for the browser's Subtle Crypto API). ArgoCD (`gitops/apps/`, app-of-apps) manages everything except the bootstrap layer itself (`gitops/bootstrap/`: ArgoCD, KSOPS, internal DNS/Traefik-mirror — see `manuel-installation.md`).
+
+- **Roadmap Phase 0 ("Socle")**: complete. k3s(dev)/ArgoCD/monitoring/Authentik/secrets(SOPS+KSOPS) all working.
+- **Roadmap Phase 1 ("Vaultwarden")**: mostly done — Vaultwarden deployed and SSO-integrated with Authentik (via an Authentik blueprint, not the admin UI; took 4 real bugs to get a login to actually succeed, all in `notes-techniques.md`). Still open: Restic backup pipeline (not started), Android app validation (blocked — needs real internet exposure, which needs the mini PC + domain from a later phase).
+- **Not yet touched**: any service beyond monitoring/Authentik/Vaultwarden. Don't assume Nextcloud/Mailcow/etc. exist.
+
+**Next step**: either the Restic backup pipeline (doable now, against local/temporary storage even without the real "nœud ami"), or pause Phase 1 here and let it get real daily use before continuing — both discussed with the user, no decision forced yet. Ask before assuming which.
 
 ## Repository conventions (decided, not yet all implemented)
 
