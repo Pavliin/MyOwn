@@ -15,6 +15,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | Authentik | chart/app 2026.5.6 |
 | PostgreSQL (Authentik, via sous-chart Bitnami) | 17.10-bookworm |
 | Vaultwarden (chart `guerzon/vaultwarden`) | chart 0.46.0, app 1.37.1 |
+| Restic (image `restic/restic`) | 0.19.1 |
 | SOPS | 3.10.2 |
 | KSOPS | v4.5.1 |
 
@@ -97,6 +98,20 @@ Ce n'est pas qu'un détail pour le SSO : sans ça, le document de découverte OI
 **Méthode qui a permis de résoudre les quatre** : à chaque échec, aller lire le log d'accès complet côté Authentik (`kubectl logs deploy/authentik-server`) plutôt que de se fier au message d'erreur, générique et tardif, affiché côté Vaultwarden — Authentik loggue le `redirect_uri` complet et la raison précise du rejet sur chaque requête `/application/o/authorize/`.
 
 **Découverte automatique des blueprints montés** : fonctionne (le mécanisme est réel, testé), mais pas instantanément — après le montage ou la modification du Secret, il faut souvent déclencher manuellement `ak apply_blueprint <chemin>` (ou la tâche `blueprints_discovery`) pour que le changement s'applique tout de suite, plutôt que d'attendre son prochain passage périodique. Piège additionnel rencontré : le **volume monté lui-même** met aussi un peu de temps (kubelet) à refléter un Secret mis à jour — vérifier le contenu du fichier monté avant de conclure que l'application du blueprint a échoué.
+
+## Sauvegarde Restic (Vaultwarden)
+
+Premier pipeline de sauvegarde du projet (roadmap Phase 1), pensé pour être copié tel quel sur les prochains services (Nextcloud, Immich, ...). Reste dans l'`Application` ArgoCD `vaultwarden` existante (un 3ᵉ `source` pointant vers `gitops/manifests/vaultwarden-backup/`, manifests bruts sans chart Helm) plutôt qu'une `Application` séparée — cohérent avec "une Application par service".
+
+**Cible temporaire** : le nœud ami n'existe pas encore, donc le dépôt Restic vit sur une PVC `local-path` dédiée (`vaultwarden-restic-repo`) dans le même cluster que les données qu'elle sauvegarde — ce n'est pas une vraie protection 3-2-1 tant que ce n'est pas déplacé, juste la mise en place de la mécanique. Migration future vers le nœud ami : changement de `RESTIC_REPOSITORY` uniquement (ex. `sftp:...` ou `rest:...`), aucune réécriture du CronJob.
+
+CronJob quotidien (`0 3 * * *`), image officielle `restic/restic:0.19.1`, mot de passe du dépôt dans le Secret SOPS existant `vaultwarden-secrets` (clé `RESTIC_PASSWORD`, ajoutée par `sops --set` — pas de nouveau dossier de secret, même modèle qu'`ADMIN_TOKEN`/`SSO_CLIENT_*`). Auto-initialisation idempotente du dépôt (`restic snapshots || restic init`) plutôt qu'un Job d'init séparé hors GitOps. Rétention `keep-daily 7 / keep-weekly 4 / keep-monthly 3` + `prune`, appliquée juste après chaque backup dans le même CronJob.
+
+Monte la PVC de données Vaultwarden (`data-vaultwarden-0`) en lecture seule à côté de la PVC du dépôt — fonctionne parce que le cluster est mono-nœud (vrai en dev k3d comme sur la future prod mini PC) : RWO restreint l'attachement à un seul *nœud*, pas à un seul pod ; deux pods sur le même nœud peuvent donc monter la même PVC `local-path` simultanément. **À revoir si la Phase 6 passe en topologie multi-nœuds** (le pod de backup pourrait alors être ordonnancé sur un nœud différent de celui qui tient la PVC).
+
+**Incident rencontré lors du test de restauration** : un pod de test montait la PVC du dépôt en lecture seule (cohérent avec l'intention de ne pas risquer de corrompre le dépôt lors d'une simple restauration) — mais `restic restore`/`snapshots` échouent quand même à l'écriture, même en lecture, car restic pose systématiquement un verrou (`/repo/locks/...`) avant toute opération, y compris en lecture. Résolu en montant le dépôt en lecture-écriture pour toute opération restic (backup **et** restauration) ; seule la PVC de données source (`/data`) a réellement besoin d'être montée en lecture seule.
+
+**Validé en conditions réelles** : run manuel du CronJob (snapshot créé, ~400 KiB, politique de rétention appliquée), puis restauration complète dans un pod jetable avec `diff -rq` contre les données live — contenu restauré strictement identique.
 
 ## Git / CI / signature de commits
 
