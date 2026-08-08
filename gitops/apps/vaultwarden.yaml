@@ -27,13 +27,11 @@ spec:
             tlsSecret: vaultwarden-tls
             nginxIngressAnnotations: false
             hostname: myown-vaultwarden.local
-          logging:
-            logLevel: "debug"
           sso:
             enabled: true
-            debugTokens: true
             authority: "http://myown-authentik.local:8090/application/o/vaultwarden/"
             scopes: "openid email profile"
+            ignoreEmailVerification: true
             existingSecret: vaultwarden-secrets
             clientId:
               existingSecretKey: SSO_CLIENT_ID
