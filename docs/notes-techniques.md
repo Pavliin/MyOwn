@@ -16,6 +16,8 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | PostgreSQL (Authentik, via sous-chart Bitnami) | 17.10-bookworm |
 | Vaultwarden (chart `guerzon/vaultwarden`) | chart 0.46.0, app 1.37.1 |
 | Restic (image `restic/restic`) | 0.19.1 |
+| Nextcloud (chart officiel `nextcloud/helm`) | chart 9.2.5, app 34.0.2 |
+| PostgreSQL (Nextcloud, via sous-chart Bitnami) | 17.5.0 |
 | SOPS | 3.10.2 |
 | KSOPS | v4.5.1 |
 
@@ -112,6 +114,18 @@ Monte la PVC de données Vaultwarden (`data-vaultwarden-0`) en lecture seule à 
 **Incident rencontré lors du test de restauration** : un pod de test montait la PVC du dépôt en lecture seule (cohérent avec l'intention de ne pas risquer de corrompre le dépôt lors d'une simple restauration) — mais `restic restore`/`snapshots` échouent quand même à l'écriture, même en lecture, car restic pose systématiquement un verrou (`/repo/locks/...`) avant toute opération, y compris en lecture. Résolu en montant le dépôt en lecture-écriture pour toute opération restic (backup **et** restauration) ; seule la PVC de données source (`/data`) a réellement besoin d'être montée en lecture seule.
 
 **Validé en conditions réelles** : run manuel du CronJob (snapshot créé, ~400 KiB, politique de rétention appliquée), puis restauration complète dans un pod jetable avec `diff -rq` contre les données live — contenu restauré strictement identique.
+
+## Nextcloud (fichiers)
+
+Premier service de la Phase 2. Chart **officiel** (`nextcloud/helm`, dépôt GitHub `nextcloud/helm`, pas un fork communautaire comme pour Vaultwarden/Uptime Kuma). Déploiement nu volontaire pour cette PR — pas de SSO, pas de Restic, pas d'app Android (cf. `roadmap.md` Phase 2), pour reproduire le déroulé incrémental déjà suivi pour Vaultwarden en Phase 1.
+
+**Postgres plutôt que MariaDB** (le chart supporte les deux sous-charts Bitnami au choix) : cohérent avec Authentik qui utilise déjà Postgres dans ce cluster, un seul moteur de DB à opérer. **Redis activé** (`redis.architecture: standalone`, une seule instance — pas de replica, léger, cohérent avec l'acceptation du mono-nœud comme SPOF documentée dans `architecture.md`) : Nextcloud le recommande fortement pour le verrouillage transactionnel des fichiers dès qu'il y a plus d'un utilisateur concurrent, pertinent dès la Phase 2 (test prévu avec 2-3 utilisateurs famille).
+
+**Incident évité avant déploiement, en lisant le code source du chart (pas seulement son rendu)** : au-delà de la leçon déjà documentée pour Authentik ("toujours rendre le chart sans `existingSecret` pour voir la forme complète du secret par défaut avant de le remplacer"), ce chart a un piège plus profond, invisible au simple rendu comparatif. Le template `templates/db-secret.yaml` du chart Nextcloud génère un Secret `<release>-db` dont le champ `db-password` est lu **en clair, au moment du rendu Helm**, directement depuis `.Values.postgresql.global.postgresql.auth.password` — un champ de *valeur*, pas une lecture au runtime via `secretKeyRef`. Configurer `postgresql.global.postgresql.auth.existingSecret` (pour éviter un mot de passe en clair dans les *values*) ne change donc rien à ce template précis : il continue de lire le champ `password` vide/par défaut ("changeme"), produisant un Secret `<release>-db` avec un mot de passe qui ne correspond plus à celui réellement configuré sur Postgres.
+
+Repéré en inspectant directement `templates/_helpers.tpl` (macro `nextcloud.env.database`) **avant** d'écrire le moindre manifest définitif : quand `postgresql.enabled: true` (sous-chart embarqué, notre cas), les variables d'environnement `POSTGRES_USER`/`POSTGRES_PASSWORD` réellement injectées dans le pod ne viennent **pas** du Secret `<release>-db`, mais toujours d'un `secretKeyRef` vers `externalDatabase.existingSecret.secretName`/`usernameKey`/`passwordKey` — un nom de champ trompeur ("external") qui s'applique en réalité aussi au cas "sous-chart embarqué". Résolu en pointant `externalDatabase.existingSecret` (avec `enabled: true`, pour supprimer complètement la génération du Secret `<release>-db` devenu inutile) vers le même Secret SOPS `nextcloud-secrets` que le sous-chart Postgres, en réutilisant directement la clé `password` déjà définie pour l'utilisateur applicatif Postgres — une seule valeur, référencée par les deux consommateurs, pas de duplication.
+
+**Méthode qui a permis de l'éviter** : `helm pull --untar` pour lire les templates sources (`_helpers.tpl`, `db-secret.yaml`) plutôt que de se fier uniquement à `helm show values`/`helm template` — nécessaire ici parce que le bug se manifeste seulement à l'usage (mot de passe DB incohérent au démarrage du pod), pas au rendu ni au `dry-run` schema-only. `kubectl apply --dry-run=client` sur le rendu complet a ensuite confirmé qu'aucune ressource ne référence plus le Secret `<release>-db` (absent du rendu une fois `externalDatabase.existingSecret.enabled: true`).
 
 ## Git / CI / signature de commits
 

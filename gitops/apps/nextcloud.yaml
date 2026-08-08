@@ -1,0 +1,77 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nextcloud
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://nextcloud.github.io/helm
+      chart: nextcloud
+      targetRevision: 9.2.5
+      helm:
+        valuesObject:
+          nextcloud:
+            host: myown-nextcloud.local
+            trustedDomains:
+              - myown-nextcloud.local
+            existingSecret:
+              enabled: true
+              secretName: nextcloud-secrets
+              usernameKey: NEXTCLOUD_USERNAME
+              passwordKey: NEXTCLOUD_PASSWORD
+          internalDatabase:
+            enabled: false
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  username: nextcloud
+                  database: nextcloud
+                  existingSecret: nextcloud-secrets
+            primary:
+              persistence:
+                enabled: true
+                storageClass: local-path
+                size: 4Gi
+          # Used even with the bundled postgresql subchart above: this is what
+          # Nextcloud's own container actually reads its DB credentials from
+          # (see notes-techniques.md — the chart's auto-generated "-db" secret
+          # bakes postgresql.global.postgresql.auth.password in as plaintext
+          # at template time, bypassing existingSecret entirely).
+          externalDatabase:
+            existingSecret:
+              enabled: true
+              secretName: nextcloud-secrets
+              usernameKey: DB_USERNAME
+              passwordKey: password
+          redis:
+            enabled: true
+            architecture: standalone
+            auth:
+              existingSecret: nextcloud-secrets
+              existingSecretPasswordKey: REDIS_PASSWORD
+            master:
+              persistence:
+                enabled: false
+          persistence:
+            enabled: true
+            storageClass: local-path
+            size: 5Gi
+          ingress:
+            enabled: true
+            className: traefik
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/nextcloud
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nextcloud
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
