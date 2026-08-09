@@ -97,16 +97,20 @@ kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
 
 ## 8. TLS local (mkcert) — nécessaire pour certains services
 
-Certains services (Vaultwarden, et probablement Nextcloud/tout ce qui chiffre côté client plus tard) utilisent l'API Subtle Crypto du navigateur, indisponible en HTTP sur un nom d'hôte personnalisé — même si celui-ci pointe vers `127.0.0.1` (seuls `localhost`/`127.0.0.1` littéraux ou HTTPS comptent comme "contexte sécurisé"). Ces services sont donc exposés en HTTPS sur le port 8453 plutôt qu'en HTTP sur 8090.
+Certains services exigent HTTPS pour des raisons différentes selon le cas — Vaultwarden a besoin de l'API Subtle Crypto du navigateur, indisponible en HTTP sur un nom d'hôte personnalisé même pointé vers `127.0.0.1` (seuls `localhost`/`127.0.0.1` littéraux ou HTTPS comptent comme "contexte sécurisé") ; Nextcloud, lui, n'a pas cette contrainte pour son usage normal, mais son app SSO `user_oidc` refuse tout simplement de fonctionner en HTTP, quel que soit le navigateur. Ces services sont donc exposés en HTTPS sur le port 8453 plutôt qu'en HTTP sur 8090.
 
 ```bash
 mkcert -install   # une fois par machine — installe une CA locale de confiance
 mkcert -cert-file myown-vaultwarden.local.pem -key-file myown-vaultwarden.local-key.pem myown-vaultwarden.local
 kubectl create secret tls vaultwarden-tls -n vaultwarden \
   --cert=myown-vaultwarden.local.pem --key=myown-vaultwarden.local-key.pem
+
+mkcert -cert-file myown-nextcloud.local.pem -key-file myown-nextcloud.local-key.pem myown-nextcloud.local
+kubectl create secret tls nextcloud-tls -n nextcloud \
+  --cert=myown-nextcloud.local.pem --key=myown-nextcloud.local-key.pem
 ```
 
-Ce secret est volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
+Ces secrets sont volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
 
 **Si le navigateur affiche quand même "non sécurisé" après `mkcert -install`** (vécu avec Chromium/Firefox installés en snap — cas fréquent sur Ubuntu) :
 

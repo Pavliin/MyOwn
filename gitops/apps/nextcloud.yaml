@@ -45,6 +45,14 @@ spec:
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
                   --discoveryuri="http://myown-authentik.local:8090/application/o/nextcloud/.well-known/openid-configuration"
+          # user_oidc refuses to run OIDC login unless Nextcloud believes the
+          # request came in over HTTPS. Traefik terminates TLS at the ingress
+          # and forwards plain HTTP internally, so without this Nextcloud
+          # still sees an HTTP request and rejects OIDC regardless of the
+          # ingress TLS block below.
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
           internalDatabase:
             enabled: false
           postgresql:
@@ -87,6 +95,10 @@ spec:
           ingress:
             enabled: true
             className: traefik
+            tls:
+              - secretName: nextcloud-tls
+                hosts:
+                  - myown-nextcloud.local
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/nextcloud
