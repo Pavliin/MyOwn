@@ -67,7 +67,8 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 **À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers (à terme aussi contacts et calendrier). Pas encore de sauvegarde Restic ni d'app Android à ce stade (cf. `roadmap.md`).
 
-- **URL** : <http://myown-nextcloud.local:8090>
+- **URL** : <https://myown-nextcloud.local:8453> (⚠️ HTTPS et port 8453, pas 8090 — comme Vaultwarden, mais pour une raison différente ici : l'app SSO `user_oidc` refuse purement et simplement de fonctionner en HTTP, indépendamment de toute question de navigateur)
+- **Premier accès** : certificat signé par la CA locale mkcert déjà approuvée sur cette machine — pas d'avertissement attendu. Sur une autre machine, voir `manuel-installation.md`.
 - **Identifiants (compte admin local)** : utilisateur `admin`, mot de passe :
 
   ```bash
