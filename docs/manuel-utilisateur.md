@@ -65,16 +65,17 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 ## Nextcloud — fichiers, contacts, calendrier
 
-**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers (à terme aussi contacts et calendrier). Déploiement nu pour l'instant (Phase 2, sans SSO ni sauvegarde Restic ni app Android — cf. `roadmap.md`).
+**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers (à terme aussi contacts et calendrier). Pas encore de sauvegarde Restic ni d'app Android à ce stade (cf. `roadmap.md`).
 
 - **URL** : <http://myown-nextcloud.local:8090>
-- **Identifiants** : utilisateur `admin`, mot de passe :
+- **Identifiants (compte admin local)** : utilisateur `admin`, mot de passe :
 
   ```bash
   kubectl -n nextcloud get secret nextcloud-secrets -o jsonpath="{.data.NEXTCLOUD_PASSWORD}" | base64 -d
   ```
 
-- **Usage** : interface web classique Nextcloud, glisser-déposer pour envoyer des fichiers. Pas encore de SSO Authentik ni d'app mobile à ce stade — connexion par mot de passe uniquement.
+- **Usage** : interface web classique Nextcloud, glisser-déposer pour envoyer des fichiers.
+- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via authentik" (ou équivalent) redirige vers Authentik — un seul compte, comme pour Vaultwarden. La connexion classique par mot de passe local reste disponible (utile notamment pour le compte `admin` ci-dessus, qui n'existe pas dans Authentik).
 
 ## À venir
 

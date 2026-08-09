@@ -20,6 +20,26 @@ spec:
               secretName: nextcloud-secrets
               usernameKey: NEXTCLOUD_USERNAME
               passwordKey: NEXTCLOUD_PASSWORD
+            extraEnv:
+              - name: OIDC_CLIENT_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: nextcloud-secrets
+                    key: OIDC_CLIENT_ID
+              - name: OIDC_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: nextcloud-secrets
+                    key: OIDC_CLIENT_SECRET
+            hooks:
+              post-installation: |
+                #!/bin/sh
+                set -e
+                occ app:install user_oidc || occ app:enable user_oidc
+                occ user_oidc:provider authentik \
+                  --clientid="$OIDC_CLIENT_ID" \
+                  --clientsecret="$OIDC_CLIENT_SECRET" \
+                  --discoveryuri="http://myown-authentik.local:8090/application/o/nextcloud/.well-known/openid-configuration"
           internalDatabase:
             enabled: false
           postgresql:

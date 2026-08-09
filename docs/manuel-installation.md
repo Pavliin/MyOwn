@@ -124,6 +124,7 @@ Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.y
 127.0.0.1 myown-uptime.local
 127.0.0.1 myown-authentik.local
 127.0.0.1 myown-vaultwarden.local
+127.0.0.1 myown-nextcloud.local
 ```
 
 ## 10. Vérification
