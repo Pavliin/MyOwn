@@ -31,6 +31,12 @@ spec:
             persistence:
               library:
                 existingClaim: immich-library
+            # Partial config file — merged with schema defaults (verified
+            # in the server source before relying on it, docs don't say so
+            # explicitly), so this only sets OAuth and leaves everything
+            # else (ML, quotas, storage template) untouched.
+            existingConfiguration: immich-oauth-config
+            configurationKind: Secret
           valkey:
             enabled: true
           server:

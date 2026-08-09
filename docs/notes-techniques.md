@@ -185,6 +185,16 @@ Dernier service de la Phase 2. Chart officiel (`immich/immich`, dépôt GitHub `
 
 **Validé en conditions réelles** (API plutôt que navigateur — même niveau de rigueur que les tests WebDAV faits pour Nextcloud) : création du compte admin (`POST /api/auth/admin-sign-up`), connexion (`POST /api/auth/login`), upload d'une image de test (`POST /api/assets`), confirmé à la fois récupérable via l'API et physiquement présent sur la PVC bibliothèque (`/data/upload/<user>/...`) dans le pod `immich-server`.
 
+## Immich ↔ Authentik (SSO)
+
+Différence importante avec Nextcloud : Immich a un **support OAuth/OIDC natif** (comme Vaultwarden), pas d'app tierce à installer. Mais à la différence de Vaultwarden (SSO configuré directement par variables d'env du chart), la config OAuth d'Immich vit dans son fichier de configuration système, normalement éditable via **Administration → Settings** dans l'UI — ce qui aurait demandé une étape manuelle unique à l'utilisateur.
+
+**Choix fait après discussion avec l'utilisateur** : éviter toute configuration manuelle, y compris ponctuelle, cohérent avec l'objectif du projet ("Accessible aux non-techos", `architecture.md` §2). Immich supporte un fichier de config statique (`IMMICH_CONFIG_FILE`) — **vérifié dans les résultats de recherche sur le code source du serveur avant de s'y fier** (la doc officielle ne le précise pas explicitement) : ce fichier est fusionné avec la config par défaut au démarrage, tous les champs sont optionnels. Fournir uniquement la section `oauth:` ne touche donc à rien d'autre (réglages ML, quotas, template de stockage) — pas besoin de reproduire le schéma complet par défaut.
+
+Monté via `immich.existingConfiguration: immich-oauth-config` + `immich.configurationKind: Secret` (Secret SOPS `gitops/secrets/immich/immich-oauth-config.sops.yaml`) plutôt que `immich.configuration` en clair dans les *values* — même logique que partout ailleurs dans ce projet (le secret ne doit jamais apparaître en clair dans un fichier commité). Nom de clé (`immich-config.yaml`) et chemin de montage (`/config/immich-config.yaml`, pointé par `IMMICH_CONFIG_FILE`) vérifiés directement dans `templates/immich-config.yml`/`server.yaml` du chart avant d'écrire le manifest.
+
+Blueprint Authentik (`gitops/secrets/authentik-blueprints/immich-sso.sops.yaml`) : même mapping de scope partagé `Vaultwarden: email (verified)` que Nextcloud, `sub_mode: user_uuid`. Trois `redirect_uris` déclarées d'un coup (`http://myown-immich.local:8090/auth/login`, `.../user-settings`, et `app.immich:///oauth-callback` pour l'app mobile — posée dès maintenant même si l'app Android est différée en Phase 4, coût nul de les grouper). Pas de contrainte HTTPS connue côté Immich pour l'OAuth, contrairement à `user_oidc` de Nextcloud — reste en HTTP sur `:8090`.
+
 **Désactivation de l'app Photos de Nextcloud** une fois Immich validé (décision actée avec l'utilisateur, cf. plus haut) : `php occ app:disable photos` ajouté au hook `before-starting` déjà en place (idempotent — `exit 0` que l'app soit déjà désactivée ou non, vérifié avant d'écrire le manifest).
 
 ## Git / CI / signature de commits
