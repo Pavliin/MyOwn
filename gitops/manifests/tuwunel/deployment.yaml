@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tuwunel
+spec:
+  replicas: 1
+  strategy:
+    # RocksDB locks its data directory exclusively — a second pod starting
+    # before the first terminates (rolling update default) would fail to
+    # open the database. Matches the single-writer assumption also used
+    # for Vaultwarden (SQLite).
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tuwunel
+  template:
+    metadata:
+      labels:
+        app: tuwunel
+    spec:
+      # Kubernetes auto-injects Docker-links-style env vars for every
+      # Service in the namespace, named "<SVC>_..." uppercased — since the
+      # Service here is itself named "tuwunel", that collides with the
+      # app's own TUWUNEL_* config env var namespace (e.g. TUWUNEL_PORT,
+      # TUWUNEL_SERVICE_HOST). tuwunel logs a warning for each unrecognized
+      # one rather than erroring, but disable the mechanism entirely
+      # instead of relying on explicit env vars always winning the
+      # precedence race.
+      enableServiceLinks: false
+      containers:
+        - name: tuwunel
+          image: ghcr.io/matrix-construct/tuwunel:v1.8.3
+          env:
+            - name: TUWUNEL_SERVER_NAME
+              value: myown-tuwunel.local
+            - name: TUWUNEL_DATABASE_PATH
+              value: /var/lib/tuwunel
+            # Default example config binds to 127.0.0.1/::1 only, which
+            # would be unreachable from the Kubernetes Service — set
+            # explicitly rather than relying on the default. Confirmed via
+            # live test: pod logs "Listening on tcp:0.0.0.0:8008".
+            - name: TUWUNEL_ADDRESS
+              value: "0.0.0.0"
+            - name: TUWUNEL_ALLOW_REGISTRATION
+              value: "true"
+            - name: TUWUNEL_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: tuwunel-secrets
+                  key: REGISTRATION_TOKEN
+          ports:
+            - containerPort: 8008
+              name: client-server
+          readinessProbe:
+            httpGet:
+              path: /_matrix/client/versions
+              port: 8008
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /_matrix/client/versions
+              port: 8008
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/tuwunel
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: tuwunel-data
