@@ -93,8 +93,8 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 **À quoi ça sert** : serveur Matrix (texte + à terme appels vidéo de groupe via LiveKit), remplace Conduwuit prévu initialement (archivé en amont, voir `notes-techniques.md`). **Étape de validation d'infrastructure uniquement à ce stade** : pas encore de client utilisable (Element X, l'app prévue, est différée à la Phase 4 pour les mêmes raisons de résolution DNS locale que les autres apps Android) — rien à utiliser ici pour le moment, cette section sera complétée une fois un client réel branché.
 
-- **URL (API uniquement)** : <http://myown-tuwunel.local:8090> — répond au protocole client-serveur Matrix, pas une interface web.
-- **Statut** : déploiement nu validé via l'API (inscription de compte, droits admin automatiques pour le premier compte, envoi de message) — pas de SSO, pas de sauvegarde Restic, pas de LiveKit à ce stade.
+- **URL (API uniquement)** : <https://myown-tuwunel.local:8453> — répond au protocole client-serveur Matrix, pas une interface web. HTTPS (pas `:8090`) à cause du cookie de session SSO, marqué `Secure` par Tuwunel — voir `notes-techniques.md`.
+- **Statut** : déploiement nu validé via l'API (inscription de compte, droits admin automatiques pour le premier compte, envoi de message). SSO via Authentik câblé, validation en conditions réelles (navigateur) en cours. Pas encore de sauvegarde Restic ni de LiveKit à ce stade.
 
 ## À venir
 

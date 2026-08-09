@@ -97,7 +97,7 @@ kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
 
 ## 8. TLS local (mkcert) — nécessaire pour certains services
 
-Certains services exigent HTTPS pour des raisons différentes selon le cas — Vaultwarden a besoin de l'API Subtle Crypto du navigateur, indisponible en HTTP sur un nom d'hôte personnalisé même pointé vers `127.0.0.1` (seuls `localhost`/`127.0.0.1` littéraux ou HTTPS comptent comme "contexte sécurisé") ; Nextcloud, lui, n'a pas cette contrainte pour son usage normal, mais son app SSO `user_oidc` refuse tout simplement de fonctionner en HTTP, quel que soit le navigateur. Ces services sont donc exposés en HTTPS sur le port 8453 plutôt qu'en HTTP sur 8090.
+Certains services exigent HTTPS pour des raisons différentes selon le cas — Vaultwarden a besoin de l'API Subtle Crypto du navigateur, indisponible en HTTP sur un nom d'hôte personnalisé même pointé vers `127.0.0.1` (seuls `localhost`/`127.0.0.1` littéraux ou HTTPS comptent comme "contexte sécurisé") ; Nextcloud, lui, n'a pas cette contrainte pour son usage normal, mais son app SSO `user_oidc` refuse tout simplement de fonctionner en HTTP, quel que soit le navigateur ; Tuwunel, lui, fonctionne très bien en HTTP nu, mais le cookie de session que sa brique SSO pose pendant l'échange avec Authentik (`tuwunel_grant_session`) est marqué `Secure` — un navigateur le rejette silencieusement en HTTP, cassant la connexion (`"Missing cookie"` au retour de callback, constaté lors d'un test de connexion réel). Trois raisons différentes, même conséquence : ces services sont exposés en HTTPS sur le port 8453 plutôt qu'en HTTP sur 8090.
 
 ```bash
 mkcert -install   # une fois par machine — installe une CA locale de confiance
@@ -108,6 +108,10 @@ kubectl create secret tls vaultwarden-tls -n vaultwarden \
 mkcert -cert-file myown-nextcloud.local.pem -key-file myown-nextcloud.local-key.pem myown-nextcloud.local
 kubectl create secret tls nextcloud-tls -n nextcloud \
   --cert=myown-nextcloud.local.pem --key=myown-nextcloud.local-key.pem
+
+mkcert -cert-file myown-tuwunel.local.pem -key-file myown-tuwunel.local-key.pem myown-tuwunel.local
+kubectl create secret tls tuwunel-tls -n tuwunel \
+  --cert=myown-tuwunel.local.pem --key=myown-tuwunel.local-key.pem
 ```
 
 Ces secrets sont volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
@@ -130,6 +134,7 @@ Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.y
 127.0.0.1 myown-vaultwarden.local
 127.0.0.1 myown-nextcloud.local
 127.0.0.1 myown-immich.local
+127.0.0.1 myown-tuwunel.local
 ```
 
 ## 10. Vérification
