@@ -4,6 +4,16 @@ metadata:
   name: tuwunel
 spec:
   ingressClassName: traefik
+  # HTTPS required, not just preferred: the SSO grant-session cookie
+  # (tuwunel_grant_session, set during the Authentik login flow) is
+  # Secure-flagged — browsers silently drop it over plain HTTP, breaking
+  # login with "Missing cookie" at the callback step. Same category of
+  # issue as Vaultwarden (Subtle Crypto) and Nextcloud (user_oidc), a
+  # third distinct reason landing on the same fix.
+  tls:
+    - hosts:
+        - myown-tuwunel.local
+      secretName: tuwunel-tls
   rules:
     - host: myown-tuwunel.local
       http:
