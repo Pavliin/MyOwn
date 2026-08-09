@@ -65,7 +65,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 ## Nextcloud — fichiers, contacts, calendrier
 
-**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers (à terme aussi contacts et calendrier). Pas encore de sauvegarde Restic ni d'app Android à ce stade (cf. `roadmap.md`).
+**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers, plus contacts (CardDAV) et calendrier (CalDAV). Pas encore de sauvegarde Restic ni d'app Android à ce stade (cf. `roadmap.md`).
 
 - **URL** : <https://myown-nextcloud.local:8453> (⚠️ HTTPS et port 8453, pas 8090 — comme Vaultwarden, mais pour une raison différente ici : l'app SSO `user_oidc` refuse purement et simplement de fonctionner en HTTP, indépendamment de toute question de navigateur)
 - **Premier accès** : certificat signé par la CA locale mkcert déjà approuvée sur cette machine — pas d'avertissement attendu. Sur une autre machine, voir `manuel-installation.md`.
@@ -77,6 +77,8 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 - **Usage** : interface web classique Nextcloud, glisser-déposer pour envoyer des fichiers.
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via authentik" (ou équivalent) redirige vers Authentik — un seul compte, comme pour Vaultwarden. La connexion classique par mot de passe local reste disponible (utile notamment pour le compte `admin` ci-dessus, qui n'existe pas dans Authentik).
+- **Contacts et calendrier** : apps installées et activées, utilisables directement depuis l'interface web ou via un client CalDAV/CardDAV externe (Thunderbird, l'app calendrier d'un téléphone, etc.) — pas besoin d'attendre l'app mobile dédiée, différée en Phase 4.
+- **Photos** : l'app Photos native de Nextcloud (activée par défaut) reste utilisable pour l'instant, mais sera désactivée le jour où Immich sera déployé (Phase 2, pas encore fait) — l'architecture prévoit volontairement Immich comme seule app photo, pour éviter une double bibliothèque déroutante.
 
 ## À venir
 

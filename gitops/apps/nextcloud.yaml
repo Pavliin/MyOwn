@@ -52,6 +52,8 @@ spec:
               before-starting: |
                 #!/bin/sh
                 set -e
+                php occ app:install calendar || php occ app:enable calendar
+                php occ app:install contacts || php occ app:enable contacts
                 php occ app:install user_oidc || php occ app:enable user_oidc
                 php occ user_oidc:provider authentik \
                   --clientid="$OIDC_CLIENT_ID" \
