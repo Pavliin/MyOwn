@@ -1,0 +1,78 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-restic-backup
+spec:
+  # Staggered after Vaultwarden (03:00) and Nextcloud (03:15) so the three
+  # backup jobs don't all hit disk at once on this single-node cluster.
+  schedule: "30 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # People/albums/face-recognition metadata and shared links live in
+          # Postgres, not as files — a files-only backup would miss them,
+          # same reasoning as the Nextcloud backup. pg_dump gives a
+          # transactionally consistent snapshot without any downtime.
+          # Plain postgres:14-alpine (not the immich-app vector-extension
+          # image) is enough for pg_dump: dumping doesn't need the
+          # extension binaries loaded, only restoring into one would.
+          initContainers:
+            - name: pg-dump
+              image: postgres:14-alpine
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-secrets
+                      key: DB_PASSWORD
+              command:
+                - sh
+                - -c
+                - pg_dump -h immich-postgres -U immich -d immich -f /dump/immich.sql
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+          containers:
+            - name: restic-backup
+              image: restic/restic:0.19.1
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: /repo
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-secrets
+                      key: RESTIC_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  restic snapshots >/dev/null 2>&1 || restic init
+                  restic backup /data /dump --tag immich
+                  restic forget --tag immich --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: dump
+                  mountPath: /dump
+                  readOnly: true
+                - name: repo
+                  mountPath: /repo
+          volumes:
+            # Photo/video library only — the machine-learning cache PVC is
+            # just downloaded model weights, fully reproducible, not backed up.
+            - name: data
+              persistentVolumeClaim:
+                claimName: immich-library
+            - name: dump
+              emptyDir: {}
+            - name: repo
+              persistentVolumeClaim:
+                claimName: immich-restic-repo

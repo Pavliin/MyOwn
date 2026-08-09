@@ -65,6 +65,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/immich-postgres
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/immich-backup
   destination:
     server: https://kubernetes.default.svc
     namespace: immich
