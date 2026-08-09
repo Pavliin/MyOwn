@@ -127,6 +127,19 @@ Repéré en inspectant directement `templates/_helpers.tpl` (macro `nextcloud.en
 
 **Méthode qui a permis de l'éviter** : `helm pull --untar` pour lire les templates sources (`_helpers.tpl`, `db-secret.yaml`) plutôt que de se fier uniquement à `helm show values`/`helm template` — nécessaire ici parce que le bug se manifeste seulement à l'usage (mot de passe DB incohérent au démarrage du pod), pas au rendu ni au `dry-run` schema-only. `kubectl apply --dry-run=client` sur le rendu complet a ensuite confirmé qu'aucune ressource ne référence plus le Secret `<release>-db` (absent du rendu une fois `externalDatabase.existingSecret.enabled: true`).
 
+## Nextcloud ↔ Authentik (SSO)
+
+Même méthode que Vaultwarden : blueprint Authentik déclaratif (`gitops/secrets/authentik-blueprints/nextcloud-sso.sops.yaml`), pas l'UI admin. Différence structurelle : le chart Nextcloud n'a pas de support OIDC natif (contrairement aux variables d'env `sso.*` de Vaultwarden) — ça passe par l'app officielle **user_oidc** (Nextcloud GmbH), installée et enregistrée via `occ` au premier démarrage grâce au mécanisme `nextcloud.hooks.post-installation` du chart (mappé sur `/docker-entrypoint-hooks.d/post-installation/` de l'image Docker officielle, exécuté une seule fois après la création de `config.php` — pas de Job séparé hors GitOps). Identifiants OAuth2 (`OIDC_CLIENT_ID`/`OIDC_CLIENT_SECRET`) injectés au pod via `nextcloud.extraEnv` depuis le Secret SOPS existant `nextcloud-secrets`. Confirmé après coup : le répertoire `/var/www/html` complet (donc `custom_apps/`, pas seulement les données utilisateur) est sur la PVC persistante du chart — l'app installée survit bien aux redémarrages du pod, une seule installation suffit.
+
+**Redirect URI plus simple que Vaultwarden** : `http://myown-nextcloud.local:8090/apps/user_oidc/code`, chemin fixe sans identifiant de provider (confirmé via la doc officielle Nextcloud et le guide d'intégration officiel d'Authentik) — pas le genre d'ambiguïté sur le port/format qui avait coûté un aller-retour avec Vaultwarden.
+
+**Mapping de scope email réutilisé plutôt que dupliqué** : le blueprint référence directement le mapping `Vaultwarden: email (verified)` créé pour Vaultwarden (`!Find` par son `name`, pas son `scope_name` — les mappings de scope ne sont pas propres à un provider dans Authentik, un `!Find` d'un blueprint peut référencer un objet créé par un autre blueprint déjà appliqué). Un seul mapping `email_verified: true` partagé par tous les services qu'on opère, plutôt qu'une copie par service.
+
+**Deux champs de schéma vérifiés en direct avant d'écrire le blueprint** (`ak shell` sur le pod Authentik réel, méthode déjà utilisée pour Vaultwarden plutôt que deviner depuis la doc) :
+
+- `sub_mode: user_uuid` (`OAuth2Provider._meta.get_field('sub_mode').choices` — valeur "Based on the User's UUID", recommandée par le guide Authentik pour un `sub` stable dans le temps, par opposition au défaut `hashed_user_id`)
+- `redirect_uri_type: logout` pour la redirect URI de déconnexion (`authentik.providers.oauth2.models.RedirectURIType` — seulement deux valeurs possibles, `authorization` et `logout`, aucune ambiguïté une fois vérifié)
+
 ## Git / CI / signature de commits
 
 Voir `CLAUDE.md` pour le détail (workflow trunk-based, conventional commits, versioning). Un point notable : GitHub refuse le merge "Rebase and merge" dès que les commits signés sont obligatoires sur la branche (il ne peut auto-signer que les commits qu'il crée lui-même) — `"Create a merge commit"` est la seule méthode compatible.

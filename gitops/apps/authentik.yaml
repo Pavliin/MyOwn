@@ -27,6 +27,7 @@ spec:
           blueprints:
             secrets:
               - authentik-blueprint-vaultwarden-sso
+              - authentik-blueprint-nextcloud-sso
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/authentik
