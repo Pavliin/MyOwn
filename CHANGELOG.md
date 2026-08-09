@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.2](https://github.com/Pavliin/MyOwn/compare/v0.1.1...v0.1.2) (2026-08-09)
+
+### Fonctionnalités
+
+* **immich:** deploy bare Immich (Phase 2) ([25b4264](https://github.com/Pavliin/MyOwn/commit/25b4264ace5be32acf0380c1720c3f8f0ab8b425))
+* **immich:** extend Restic backup pipeline ([c9c857f](https://github.com/Pavliin/MyOwn/commit/c9c857f4fa846ba9a3a55db530058d2ffe6677a9))
+* **immich:** integrate SSO with Authentik, zero manual config ([9fea77b](https://github.com/Pavliin/MyOwn/commit/9fea77bd672ee6125661bc63038f2e675ca062cc))
+* **nextcloud:** deploy bare Nextcloud (Phase 2) ([c092200](https://github.com/Pavliin/MyOwn/commit/c0922003963d1bf9d6f5a52adda2383b39dc153d))
+* **nextcloud:** disable native Photos app now that Immich exists ([924b205](https://github.com/Pavliin/MyOwn/commit/924b20583c64f5815a5624d0efe19bf45bb94dd0))
+* **nextcloud:** extend Restic backup pipeline ([495f992](https://github.com/Pavliin/MyOwn/commit/495f99226d0b79654db51ad50317f3b28d6527da))
+* **nextcloud:** install Calendar and Contacts apps ([8191736](https://github.com/Pavliin/MyOwn/commit/819173630a55fd5e2a35a0a20cfef3bc15099e7f))
+* **nextcloud:** integrate SSO with Authentik ([a17a2ca](https://github.com/Pavliin/MyOwn/commit/a17a2cad4f6248a1d6af9ddb70a74a4e2a5d9a36))
+
+### Correctifs
+
+* **ci:** exclude generated CHANGELOG.md from markdownlint ([88119d7](https://github.com/Pavliin/MyOwn/commit/88119d7a17463b51354b1e705612e29d26e3cb88))
+* **nextcloud:** allow OIDC discovery call, fix Redis session auth ([b0db8cc](https://github.com/Pavliin/MyOwn/commit/b0db8ccde4c3e7ad70d1cc06947859f3a87465e5))
+* **nextcloud:** move to HTTPS — user_oidc refuses plain HTTP ([58f224a](https://github.com/Pavliin/MyOwn/commit/58f224ace3dd955fd6d59ec15c6702704a734577))
+* **nextcloud:** run OIDC provider registration on every start, not just install ([7e456a5](https://github.com/Pavliin/MyOwn/commit/7e456a5d427deacd119f800d85c21e4958e5fefb))
+
+### Documentation
+
+* record Immich Restic backup as validated, Phase 2 complete ([ceda206](https://github.com/Pavliin/MyOwn/commit/ceda206d3d35c5ae6107973189d1e8901d88c163))
+* record Immich SSO as validated end-to-end ([0edb9ff](https://github.com/Pavliin/MyOwn/commit/0edb9ff0f06cbe1bc75d0d90a74abf77cc3becb3))
+* record Nextcloud Restic backup as validated end-to-end ([5b44f45](https://github.com/Pavliin/MyOwn/commit/5b44f45bc831713899b9e507544de0f4110ff60c))
+* record Nextcloud SSO as validated end-to-end ([0a37e51](https://github.com/Pavliin/MyOwn/commit/0a37e5142111db31c14bc40adb83a53fb758f15c))
+* **roadmap:** defer every mini-PC/domain-only item into Phase 4 ([0fa8403](https://github.com/Pavliin/MyOwn/commit/0fa8403d72525be5008c2aafd3ca540dc6c8867e))
 ## [0.1.1](https://github.com/Pavliin/MyOwn/compare/v0.1.0...v0.1.1) (2026-08-08)
 
 ### Fonctionnalités
