@@ -15,6 +15,18 @@ spec:
             host: myown-nextcloud.local
             trustedDomains:
               - myown-nextcloud.local
+            configs:
+              # Nextcloud's SSRF guard (preventLocalAddress) blocks outbound
+              # requests to hosts resolving to private/cluster IPs by default
+              # — which is exactly what myown-authentik.local does from
+              # inside the cluster. Without this, user_oidc's OIDC discovery
+              # call fails with "violates local access rules" even though
+              # the request itself succeeds (confirmed via curl from the pod).
+              allow-local-remote-servers.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'allow_local_remote_servers' => true,
+                );
             existingSecret:
               enabled: true
               secretName: nextcloud-secrets
