@@ -20,6 +20,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | PostgreSQL (Nextcloud, via sous-chart Bitnami) | 17.5.0 |
 | Immich (chart officiel `immich/immich`) | chart 0.12.0, app v2.6.3 |
 | PostgreSQL (Immich, image officielle `ghcr.io/immich-app/postgres`, StatefulSet maison) | 14-vectorchord0.4.3-pgvectors0.2.0 |
+| Tuwunel (image officielle `ghcr.io/matrix-construct/tuwunel`, manifests maison) | v1.8.3 |
 | SOPS | 3.10.2 |
 | KSOPS | v4.5.1 |
 
@@ -202,6 +203,22 @@ Blueprint Authentik (`gitops/secrets/authentik-blueprints/immich-sso.sops.yaml`)
 **Validé en conditions réelles**, en deux temps — d'abord côté serveur sans identifiants (`oauthButtonText` renvoyé par `GET /api/server/config` confirme la config lue ; `POST /api/oauth/authorize` renvoie une URL Authentik complète et correcte, `client_id`/`redirect_uri`/PKCE inclus), puis clic réel de l'utilisateur dans le navigateur (redirection, authentification Authentik, retour connecté sur Immich) — succès du premier coup, aucune configuration manuelle nécessaire.
 
 **Désactivation de l'app Photos de Nextcloud** une fois Immich validé (décision actée avec l'utilisateur, cf. plus haut) : `php occ app:disable photos` ajouté au hook `before-starting` déjà en place (idempotent — `exit 0` que l'app soit déjà désactivée ou non, vérifié avant d'écrire le manifest).
+
+## Tuwunel (messagerie)
+
+Premier service de la Phase 3. **Conduwuit, le choix documenté initialement dans `architecture.md`, s'est révélé archivé et non maintenu en amont** en préparant ce déploiement — écarté avant tout déploiement réel plutôt que constaté après coup. Deux successeurs actifs identifiés : Continuwuity (continuation communautaire directe, pas de SSO natif confirmé) et **Tuwunel** (successeur officiel, adopté à l'échelle gouvernementale — Suisse —, staffé à temps plein, support OIDC natif déjà mergé) — Tuwunel retenu, cohérent avec le "tout par Authentik" déjà en place partout ailleurs dans ce projet (SSO pas encore branché à ce stade, cf. plus bas).
+
+**Aucun chart Helm** à jour pour aucun des deux successeurs (le seul chart "conduwuit" trouvé sur Artifact Hub pointe vers le projet archivé) — déployé en manifests bruts (`gitops/manifests/tuwunel/`), même esprit que `gitops/manifests/immich-postgres/`. Stockage **RocksDB embarqué** (pas de Postgres séparé, comme Vaultwarden) — une seule PVC (`local-path`, 5Gi) montée sur `/var/lib/tuwunel`, pas d'étape d'init séparée : la base est créée automatiquement au premier démarrage (`Created new RocksDB database with version 17` dans les logs du premier boot), puis rechargée aux démarrages suivants sans perte.
+
+**Configuration entièrement par variables d'env** `TUWUNEL_*` (`TUWUNEL_SERVER_NAME`, `TUWUNEL_DATABASE_PATH`, `TUWUNEL_ALLOW_REGISTRATION`, `TUWUNEL_REGISTRATION_TOKEN`) — pas de fichier de config à monter, plus simple que le cas Immich.
+
+**Piège rencontré et corrigé avant merge** : Kubernetes injecte automatiquement, pour tout pod, des variables d'environnement "Docker links" par `Service` visible dans le namespace, nommées `<NOM_SERVICE>_...` en majuscules (`<SVC>_SERVICE_HOST`, `<SVC>_PORT`, `<SVC>_PORT_<PORT>_TCP`, etc.). Le `Service` s'appelant `tuwunel` — même nom que le préfixe de config de l'application elle-même —, ces variables auto-injectées (`TUWUNEL_PORT`, `TUWUNEL_SERVICE_HOST`, `TUWUNEL_PORT_8008_TCP_ADDR`, ...) entrent en collision avec l'espace de noms `TUWUNEL_*` attendu par l'application. Tuwunel ignore silencieusement (juste un `WARN` en log) les clés qu'il ne reconnaît pas plutôt que d'échouer, mais s'appuyer sur le fait qu'une variable déclarée explicitement dans le pod l'emporte sur l'injection automatique aurait été fragile. Corrigé en désactivant le mécanisme entièrement (`enableServiceLinks: false` sur le pod) plutôt que de compter sur cet ordre de priorité — pattern à réutiliser si un futur service porte le même nom que son propre préfixe de variables d'env.
+
+**Point resté incertain dans le plan initial, tranché au déploiement réel** : la configuration d'exemple par défaut de Tuwunel lie le service à `127.0.0.1`/`::1` uniquement — potentiellement inutilisable depuis le `Service` Kubernetes. Fixé explicitement via `TUWUNEL_ADDRESS=0.0.0.0`, confirmé par les logs (`Listening on ["tcp:0.0.0.0:8008"]`) et par un `curl` réel réussi vers `tuwunel.tuwunel.svc.cluster.local:8008` depuis un pod éphémère dans le cluster.
+
+**Premier compte inscrit devient automatiquement admin**, confirmé en conditions réelles plutôt que supposé hérité de la lignée Conduit : inscription via le flow UIAA standard (`POST /_matrix/client/v3/register` sans `auth` → session retournée → nouveau `POST` avec `m.login.registration_token` et cette session), puis vérifié que le compte a bien rejoint automatiquement une room `"<server_name> Admin Room"` (visible dans `GET /_matrix/client/v3/joined_rooms`) en plus de toute room créée manuellement. Message de test envoyé avec succès dans une room créée via l'API (`POST /createRoom` puis `PUT .../send/m.room.message/<txn>`), confirmant le fonctionnement du service de bout en bout côté client-serveur.
+
+**Portée de ce premier déploiement** : nu uniquement (pas de SSO — bien que nativement supporté, comme Immich/Vaultwarden qui ont aussi commencé nus —, pas de Restic, pas d'app Android/Element X, pas de LiveKit), même déroulé incrémental que les autres services. Fédération (port `8448`) non exposée à ce stade, différée en Phase 4 (besoin de joignabilité publique réelle).
 
 ## Git / CI / signature de commits
 
