@@ -78,7 +78,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Usage** : interface web classique Nextcloud, glisser-déposer pour envoyer des fichiers.
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via authentik" (ou équivalent) redirige vers Authentik — un seul compte, comme pour Vaultwarden. La connexion classique par mot de passe local reste disponible (utile notamment pour le compte `admin` ci-dessus, qui n'existe pas dans Authentik).
 - **Contacts et calendrier** : apps installées et activées, utilisables directement depuis l'interface web ou via un client CalDAV/CardDAV externe (Thunderbird, l'app calendrier d'un téléphone, etc.) — pas besoin d'attendre l'app mobile dédiée, différée en Phase 4.
-- **Photos** : l'app Photos native de Nextcloud (activée par défaut) reste utilisable pour l'instant, mais sera désactivée le jour où Immich sera déployé (Phase 2, pas encore fait) — l'architecture prévoit volontairement Immich comme seule app photo, pour éviter une double bibliothèque déroutante.
+- **Photos** : l'app Photos native de Nextcloud est désactivée — Immich (section ci-dessous) est la seule app photo du projet, pour éviter une double bibliothèque déroutante.
 
 ## Immich — photos et vidéos
 

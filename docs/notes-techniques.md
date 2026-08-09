@@ -183,6 +183,10 @@ Dernier service de la Phase 2. Chart officiel (`immich/immich`, dépôt GitHub `
 
 **Annotation par défaut de l'Ingress inerte sur Traefik** : le chart pose `nginx.ingress.kubernetes.io/proxy-body-size: "0"` par défaut (pertinent seulement pour un ingress-nginx) ; tenter de l'effacer avec `annotations: {}` dans les *values* ne fonctionne pas (le merge Helm de deux maps ne vide pas une valeur par défaut avec une map vide côté utilisateur) — laissé tel quel, sans conséquence, Traefik ignore silencieusement une annotation qu'il ne reconnaît pas.
 
+**Validé en conditions réelles** (API plutôt que navigateur — même niveau de rigueur que les tests WebDAV faits pour Nextcloud) : création du compte admin (`POST /api/auth/admin-sign-up`), connexion (`POST /api/auth/login`), upload d'une image de test (`POST /api/assets`), confirmé à la fois récupérable via l'API et physiquement présent sur la PVC bibliothèque (`/data/upload/<user>/...`) dans le pod `immich-server`.
+
+**Désactivation de l'app Photos de Nextcloud** une fois Immich validé (décision actée avec l'utilisateur, cf. plus haut) : `php occ app:disable photos` ajouté au hook `before-starting` déjà en place (idempotent — `exit 0` que l'app soit déjà désactivée ou non, vérifié avant d'écrire le manifest).
+
 ## Git / CI / signature de commits
 
 Voir `CLAUDE.md` pour le détail (workflow trunk-based, conventional commits, versioning). Un point notable : GitHub refuse le merge "Rebase and merge" dès que les commits signés sont obligatoires sur la branche (il ne peut auto-signer que les commits qu'il crée lui-même) — `"Create a merge commit"` est la seule méthode compatible.

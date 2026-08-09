@@ -55,6 +55,10 @@ spec:
                 php occ app:install calendar || php occ app:enable calendar
                 php occ app:install contacts || php occ app:enable contacts
                 php occ app:install user_oidc || php occ app:enable user_oidc
+                # Immich is now deployed and is the project's single photo
+                # app (architecture.md §2, "one app per use case") — avoids
+                # two uncoordinated photo libraries. app:disable is idempotent.
+                php occ app:disable photos || true
                 php occ user_oidc:provider authentik \
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
