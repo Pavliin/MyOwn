@@ -195,6 +195,8 @@ Monté via `immich.existingConfiguration: immich-oauth-config` + `immich.configu
 
 Blueprint Authentik (`gitops/secrets/authentik-blueprints/immich-sso.sops.yaml`) : même mapping de scope partagé `Vaultwarden: email (verified)` que Nextcloud, `sub_mode: user_uuid`. Trois `redirect_uris` déclarées d'un coup (`http://myown-immich.local:8090/auth/login`, `.../user-settings`, et `app.immich:///oauth-callback` pour l'app mobile — posée dès maintenant même si l'app Android est différée en Phase 4, coût nul de les grouper). Pas de contrainte HTTPS connue côté Immich pour l'OAuth, contrairement à `user_oidc` de Nextcloud — reste en HTTP sur `:8090`.
 
+**Validé en conditions réelles**, en deux temps — d'abord côté serveur sans identifiants (`oauthButtonText` renvoyé par `GET /api/server/config` confirme la config lue ; `POST /api/oauth/authorize` renvoie une URL Authentik complète et correcte, `client_id`/`redirect_uri`/PKCE inclus), puis clic réel de l'utilisateur dans le navigateur (redirection, authentification Authentik, retour connecté sur Immich) — succès du premier coup, aucune configuration manuelle nécessaire.
+
 **Désactivation de l'app Photos de Nextcloud** une fois Immich validé (décision actée avec l'utilisateur, cf. plus haut) : `php occ app:disable photos` ajouté au hook `before-starting` déjà en place (idempotent — `exit 0` que l'app soit déjà désactivée ou non, vérifié avant d'écrire le manifest).
 
 ## Git / CI / signature de commits
