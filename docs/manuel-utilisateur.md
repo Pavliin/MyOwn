@@ -82,11 +82,12 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 ## Immich — photos et vidéos
 
-**À quoi ça sert** : remplace Google Photos — stockage, organisation, recherche sémantique et reconnaissance faciale sur les photos/vidéos, avec sauvegarde automatique depuis mobile (app Android/iOS officielle). Déploiement nu pour l'instant (pas de SSO, pas de Restic, pas d'app Android configurée — cf. `roadmap.md`).
+**À quoi ça sert** : remplace Google Photos — stockage, organisation, recherche sémantique et reconnaissance faciale sur les photos/vidéos, avec sauvegarde automatique depuis mobile (app Android/iOS officielle). Pas encore de sauvegarde Restic ni d'app Android configurée à ce stade — cf. `roadmap.md`.
 
 - **URL** : <http://myown-immich.local:8090>
 - **Premier accès** : aucun compte par défaut — un écran de création de compte administrateur apparaît à la première visite.
 - **Usage** : glisser-déposer des photos/vidéos depuis le navigateur pour tester. La reconnaissance faciale et la recherche sémantique tournent en local (service `machine-learning` du même déploiement, aucune donnée envoyée à l'extérieur) — les premières analyses peuvent prendre un moment le temps que les modèles se chargent.
+- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Configuré nativement dans Immich (pas d'app tierce comme pour Nextcloud), sans aucune manipulation à faire : la configuration OAuth est posée automatiquement au déploiement.
 
 ## À venir
 
