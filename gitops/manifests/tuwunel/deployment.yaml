@@ -30,24 +30,15 @@ spec:
       containers:
         - name: tuwunel
           image: ghcr.io/matrix-construct/tuwunel:v1.8.3
+          # Config lives entirely in a mounted file (gitops/secrets/tuwunel/)
+          # rather than individual TUWUNEL_* env vars — the [[global.identity_provider]]
+          # block needed for SSO can't be set via env vars at all (array-of-tables,
+          # broken upstream: matrix-construct/tuwunel#340), and consolidating
+          # everything into one file keeps a from-scratch install reproducible
+          # from a single source instead of split across manifest + secret.
           env:
-            - name: TUWUNEL_SERVER_NAME
-              value: myown-tuwunel.local
-            - name: TUWUNEL_DATABASE_PATH
-              value: /var/lib/tuwunel
-            # Default example config binds to 127.0.0.1/::1 only, which
-            # would be unreachable from the Kubernetes Service — set
-            # explicitly rather than relying on the default. Confirmed via
-            # live test: pod logs "Listening on tcp:0.0.0.0:8008".
-            - name: TUWUNEL_ADDRESS
-              value: "0.0.0.0"
-            - name: TUWUNEL_ALLOW_REGISTRATION
-              value: "true"
-            - name: TUWUNEL_REGISTRATION_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: tuwunel-secrets
-                  key: REGISTRATION_TOKEN
+            - name: TUWUNEL_CONFIG
+              value: /etc/tuwunel/tuwunel.toml
           ports:
             - containerPort: 8008
               name: client-server
@@ -66,7 +57,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/tuwunel
+            - name: config
+              mountPath: /etc/tuwunel
+              readOnly: true
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: tuwunel-data
+        - name: config
+          secret:
+            secretName: tuwunel-secrets
