@@ -123,6 +123,8 @@ Monte la PVC de données Vaultwarden (`data-vaultwarden-0`) en lecture seule à 
 
 **Extension à Immich** : même copie du pattern, `gitops/manifests/immich-backup/`. Même raisonnement `pg_dump` que Nextcloud — albums, visages reconnus, personnes, liens de partage et comptes vivent dans Postgres, pas dans la bibliothèque de fichiers. Différence : l'`initContainer` utilise `postgres:14-alpine` (image standard, pas l'image `ghcr.io/immich-app/postgres` avec les extensions vectorielles) — `pg_dump` n'a pas besoin des binaires d'extension pour exporter, seule une restauration dans une nouvelle instance en aurait besoin. La PVC de cache du service `machine-learning` (modèles ML téléchargés) n'est volontairement pas sauvegardée : entièrement reproductible, pas une donnée utilisateur. Planifié à `03:30` (après Vaultwarden `03:00` et Nextcloud `03:15`) pour étaler les trois jobs.
 
+**Validé en conditions réelles** : run manuel du CronJob (7 fichiers, ~43 Mo, dump SQL de 45 Mo, snapshot unique), puis restauration complète dans un pod jetable — dump SQL présent et `diff -rq` contre la bibliothèque live sans aucune différence.
+
 ## Nextcloud (fichiers)
 
 Premier service de la Phase 2. Chart **officiel** (`nextcloud/helm`, dépôt GitHub `nextcloud/helm`, pas un fork communautaire comme pour Vaultwarden/Uptime Kuma). Déploiement nu volontaire pour cette PR — pas de SSO, pas de Restic, pas d'app Android (cf. `roadmap.md` Phase 2), pour reproduire le déroulé incrémental déjà suivi pour Vaultwarden en Phase 1.
