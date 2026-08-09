@@ -30,7 +30,7 @@ La plupart des projets d'auto-hébergement personnel s'essoufflent sur l'exploit
 | Mots de passe | Vaultwarden |
 | Fichiers, contacts, calendrier | Nextcloud |
 | Photos / vidéos | Immich |
-| Messagerie (groupes, appels vidéo, fédération) | Conduwuit + Element X + LiveKit |
+| Messagerie (groupes, appels vidéo, fédération) | Tuwunel + Element X + LiveKit |
 | Mail | Mailcow + façade VPS dédiée |
 | IA locale | Ollama |
 | Orchestration | k3s + ArgoCD (GitOps) + Traefik |
@@ -46,7 +46,7 @@ MVP démontrable visé à 3-6 mois (mots de passe + fichiers/photos + messagerie
 1. **Socle** — k3s, ArgoCD, Traefik, SSO, monitoring
 2. **Mots de passe** (Vaultwarden) — premier service en usage réel
 3. **Fichiers & photos** (Nextcloud + Immich)
-4. **Messagerie** (Conduwuit + Element X + LiveKit) — *point de démo MVP*
+4. **Messagerie** (Tuwunel + Element X + LiveKit) — *point de démo MVP*
 5. **Bascule infra réelle & Mail** (mini PC + domaine, façade VPS + Mailcow)
 6. **IA locale** (Ollama)
 7. **Montée en échelle** — profils de dimensionnement matériel, multi-nœuds, ouverture à d'autres serveurs fédérés

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tuwunel
+spec:
+  selector:
+    app: tuwunel
+  ports:
+    - port: 8008
+      targetPort: 8008
+      name: client-server

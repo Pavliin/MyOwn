@@ -89,6 +89,13 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Usage** : glisser-déposer des photos/vidéos depuis le navigateur pour tester. La reconnaissance faciale et la recherche sémantique tournent en local (service `machine-learning` du même déploiement, aucune donnée envoyée à l'extérieur) — les premières analyses peuvent prendre un moment le temps que les modèles se chargent.
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Configuré nativement dans Immich (pas d'app tierce comme pour Nextcloud), sans aucune manipulation à faire : la configuration OAuth est posée automatiquement au déploiement.
 
+## Tuwunel — messagerie (serveur, pas encore d'app cliente)
+
+**À quoi ça sert** : serveur Matrix (texte + à terme appels vidéo de groupe via LiveKit), remplace Conduwuit prévu initialement (archivé en amont, voir `notes-techniques.md`). **Étape de validation d'infrastructure uniquement à ce stade** : pas encore de client utilisable (Element X, l'app prévue, est différée à la Phase 4 pour les mêmes raisons de résolution DNS locale que les autres apps Android) — rien à utiliser ici pour le moment, cette section sera complétée une fois un client réel branché.
+
+- **URL (API uniquement)** : <http://myown-tuwunel.local:8090> — répond au protocole client-serveur Matrix, pas une interface web.
+- **Statut** : déploiement nu validé via l'API (inscription de compte, droits admin automatiques pour le premier compte, envoi de message) — pas de SSO, pas de sauvegarde Restic, pas de LiveKit à ce stade.
+
 ## À venir
 
 Chaque nouveau service applicatif aura sa propre section ici : URL, identifiants, prise en main de base, et pour les services destinés à la famille/aux amis, des instructions pensées pour un public non technique.

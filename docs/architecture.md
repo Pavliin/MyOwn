@@ -41,7 +41,7 @@ Le projet n'est pas une réécriture des briques critiques (mot de passe, mail, 
                 └──────────────► Domicile (mini PC, k3s) ◄──┘
                                      │
         ┌───────────┬───────────┬───────────┬───────────┬───────────┐
-        │ Authentik  │ Vaultwarden│ Nextcloud │  Immich   │ Conduwuit │
+        │ Authentik  │ Vaultwarden│ Nextcloud │  Immich   │  Tuwunel  │
         │   (SSO)    │   (mdp)   │ (fichiers)│ (photos)  │(messagerie)│
         └───────────┴───────────┴───────────┴───────────┴───────────┘
                 │                                          │
@@ -72,9 +72,9 @@ Suite complète plutôt qu'un empilement de services séparés (fichiers + Radic
 
 Remplace Google Photos. ML local embarqué (reconnaissance faciale, recherche sémantique), backup automatique depuis Android très proche en UX de l'original. Pas de développement custom nécessaire ici.
 
-### 5.5 Messagerie — Conduwuit + Element X + LiveKit
+### 5.5 Messagerie — Tuwunel + Element X + LiveKit
 
-- **Conduwuit** (fork actif de Conduit, Rust) : serveur Matrix léger, adapté à un petit serveur personnel/familial, sans base Postgres séparée.
+- **Tuwunel** (serveur Matrix, Rust) : successeur officiel de Conduwuit — **Conduwuit lui-même est archivé et n'est plus maintenu en amont**, découvert en préparant le déploiement de la Phase 3, donc écarté avant tout déploiement réel. Deux successeurs actifs existaient : Continuwuity (continuation communautaire, pas de SSO natif confirmé) et Tuwunel (adopté à l'échelle gouvernementale — Suisse —, staffé à temps plein, support OIDC natif déjà mergé, cohérent avec le "tout par Authentik" du reste de ce projet) ; Tuwunel retenu. Léger, adapté à un petit serveur personnel/familial, sans base Postgres séparée (RocksDB embarqué).
 - **Fédération native** : condition du besoin exprimé de "discovery" avec d'autres serveurs personnels tiers (comme l'email), impossible avec WhatsApp/Signal.
 - **Spaces** : équivalent Matrix des "communautés" WhatsApp.
 - **LiveKit** : SFU léger pour les appels vidéo de groupe (3-4 personnes) via Element Call.

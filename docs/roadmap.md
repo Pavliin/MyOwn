@@ -41,11 +41,11 @@ Objectif : couvrir le cas d'usage le plus visible pour convaincre (remplacement 
 
 **Critère de sortie** : migration effective des photos/fichiers d'au moins un membre de la famille.
 
-## Phase 3 — Messagerie (Conduwuit + Element X + LiveKit)
+## Phase 3 — Messagerie (Tuwunel + Element X + LiveKit)
 
 Objectif : couvrir l'usage courant (groupes, appels vidéo à 3-4) avec un candidat crédible au remplacement de WhatsApp pour le cercle du projet.
 
-- Déploiement Conduwuit
+- Déploiement Tuwunel (remplace Conduwuit, archivé/mort en amont — voir `docs/architecture.md` §5.5 et `docs/notes-techniques.md`)
 - Déploiement LiveKit (appels vidéo de groupe)
 - Test des appels vidéo de groupe en conditions réelles (3-4 participants, en LAN)
 
