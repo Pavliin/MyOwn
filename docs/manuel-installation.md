@@ -86,7 +86,16 @@ kubectl patch deployment argocd-repo-server -n argocd --type strategic \
   --patch-file gitops/bootstrap/argocd-repo-server-ksops-patch.yaml
 ```
 
-## 7. Bootstrap GitOps
+## 7. Health check ArgoCD pour Prometheus Operator
+
+ArgoCD ne fournit aucun health check intégré pour les CRDs de Prometheus Operator (`Prometheus`, `Alertmanager`, `ServiceMonitor`, `PrometheusRule`...) — sans ça, la ressource `Prometheus` de l'`Application` `monitoring` reste affichée "Unknown" (gris) dans l'UI même quand tout va bien en dessous, faute d'avis d'ArgoCD sur cette ressource.
+
+```bash
+kubectl patch configmap argocd-cm -n argocd --type merge \
+  --patch-file gitops/bootstrap/argocd-cm-health-checks-patch.yaml
+```
+
+## 8. Bootstrap GitOps
 
 ```bash
 kubectl apply -f gitops/bootstrap/root-app.yaml
@@ -95,7 +104,7 @@ kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
 
 À partir de là, tout le reste (monitoring, Authentik, futurs services) se synchronise automatiquement depuis `gitops/apps/` — plus aucune commande manuelle nécessaire pour les services eux-mêmes.
 
-## 8. TLS local (mkcert) — nécessaire pour certains services
+## 9. TLS local (mkcert) — nécessaire pour certains services
 
 Certains services exigent HTTPS pour des raisons différentes selon le cas — Vaultwarden a besoin de l'API Subtle Crypto du navigateur, indisponible en HTTP sur un nom d'hôte personnalisé même pointé vers `127.0.0.1` (seuls `localhost`/`127.0.0.1` littéraux ou HTTPS comptent comme "contexte sécurisé") ; Nextcloud, lui, n'a pas cette contrainte pour son usage normal, mais son app SSO `user_oidc` refuse tout simplement de fonctionner en HTTP, quel que soit le navigateur ; Tuwunel, lui, fonctionne très bien en HTTP nu, mais le cookie de session que sa brique SSO pose pendant l'échange avec Authentik (`tuwunel_grant_session`) est marqué `Secure` — un navigateur le rejette silencieusement en HTTP, cassant la connexion (`"Missing cookie"` au retour de callback, constaté lors d'un test de connexion réel). Trois raisons différentes, même conséquence : ces services sont exposés en HTTPS sur le port 8453 plutôt qu'en HTTP sur 8090.
 
@@ -122,7 +131,7 @@ Ces secrets sont volontairement **hors GitOps** (comme `sops-age`) : un certific
 - Même avec cette entrée correcte, les versions récentes de Chrome/Chromium (Chrome Root Store) peuvent ignorer le magasin NSS système pour la validation TLS. Solution fiable : `chrome://certificate-manager` → **Personnalisé (installé par vous)** → **Certificats approuvés** → importer directement `$(mkcert -CAROOT)/rootCA.pem`. La section "Linux" du même écran peut lister le certificat mkcert en tant qu'« intermédiaire » sans qu'il serve réellement d'ancre de confiance — l'import manuel dans "Certificats approuvés" est ce qui a résolu le problème.
 - Toujours quitter le navigateur **complètement** (vérifier qu'aucun processus ne reste : `ps aux | grep -i chromium`) avant de retester — fermer la fenêtre ne suffit pas, le profil réel n'est relu qu'au prochain vrai démarrage.
 
-## 9. Accès local
+## 10. Accès local
 
 Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.yaml` pour la liste à jour) :
 
@@ -137,7 +146,7 @@ Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.y
 127.0.0.1 myown-tuwunel.local
 ```
 
-## 10. Vérification
+## 11. Vérification
 
 ```bash
 kubectl get application -n argocd

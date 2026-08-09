@@ -1,0 +1,29 @@
+# ArgoCD ships no built-in health check for Prometheus Operator's CRDs
+# (Prometheus, Alertmanager, ServiceMonitor, PrometheusRule...) — without one,
+# the "monitoring" Application shows the Prometheus resource as "Unknown"
+# (grey) in the UI even when it's genuinely healthy underneath, purely
+# because ArgoCD has no opinion on it. Not applied by ArgoCD itself — same
+# one-time cluster bootstrap status as the KSOPS patch below it. Apply with:
+#   kubectl patch configmap argocd-cm -n argocd --type merge \
+#     --patch-file gitops/bootstrap/argocd-cm-health-checks-patch.yaml
+data:
+  resource.customizations.health.monitoring.coreos.com_Prometheus: |
+    hs = {}
+    if obj.status ~= nil and obj.status.conditions ~= nil then
+      for i, condition in ipairs(obj.status.conditions) do
+        if condition.type == "Available" then
+          if condition.status == "True" then
+            hs.status = "Healthy"
+            hs.message = "Prometheus is available"
+            return hs
+          else
+            hs.status = "Degraded"
+            hs.message = condition.message
+            return hs
+          end
+        end
+      end
+    end
+    hs.status = "Progressing"
+    hs.message = "Waiting for Prometheus to report status"
+    return hs
