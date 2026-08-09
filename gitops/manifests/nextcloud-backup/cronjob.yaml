@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nextcloud-restic-backup
+spec:
+  # Staggered 15min after Vaultwarden's backup (03:00) to avoid both jobs
+  # hitting disk I/O on this single-node cluster at the exact same time.
+  schedule: "15 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # Calendar/contacts/shares/users all live in Postgres, not as
+          # files — a raw copy of the files PVC alone would miss them.
+          # pg_dump takes a transactionally consistent snapshot without
+          # needing to pause Nextcloud, unlike copying live PGDATA files.
+          initContainers:
+            - name: pg-dump
+              image: postgres:17-alpine
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: nextcloud-secrets
+                      key: password
+              command:
+                - sh
+                - -c
+                - pg_dump -h nextcloud-postgresql -U nextcloud -d nextcloud -f /dump/nextcloud.sql
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+          containers:
+            - name: restic-backup
+              image: restic/restic:0.19.1
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: /repo
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: nextcloud-secrets
+                      key: RESTIC_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  restic snapshots >/dev/null 2>&1 || restic init
+                  restic backup /data /dump --tag nextcloud
+                  restic forget --tag nextcloud --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: dump
+                  mountPath: /dump
+                  readOnly: true
+                - name: repo
+                  mountPath: /repo
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: nextcloud-nextcloud
+            - name: dump
+              emptyDir: {}
+            - name: repo
+              persistentVolumeClaim:
+                claimName: nextcloud-restic-repo
