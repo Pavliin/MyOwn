@@ -12,6 +12,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/tuwunel
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/tuwunel-backup
   destination:
     server: https://kubernetes.default.svc
     namespace: tuwunel

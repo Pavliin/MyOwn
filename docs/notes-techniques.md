@@ -126,6 +126,12 @@ Monte la PVC de données Vaultwarden (`data-vaultwarden-0`) en lecture seule à 
 
 **Validé en conditions réelles** : run manuel du CronJob (7 fichiers, ~43 Mo, dump SQL de 45 Mo, snapshot unique), puis restauration complète dans un pod jetable — dump SQL présent et `diff -rq` contre la bibliothèque live sans aucune différence.
 
+**Extension à Tuwunel** : copie exacte du pattern Vaultwarden (`gitops/manifests/tuwunel-backup/`, 3ᵉ `source` de l'`Application` `tuwunel`, mot de passe `RESTIC_PASSWORD` ajouté par `sops --set` dans le secret `tuwunel-secrets` existant) — pas de `pg_dump` nécessaire, RocksDB est embarqué comme SQLite pour Vaultwarden, une seule PVC à copier. Planifié à `03:45` (après Immich `03:30`).
+
+**Nuance RocksDB découverte en validant la restauration** : le `diff -rq` contre les données live signale systématiquement le fichier WAL actif (`NNNNNN.log`) comme différent, même en relançant backup puis restauration immédiatement l'un après l'autre sans action utilisateur entre les deux. Pas une corruption — confirmé en comparant taille et date de modification des deux fichiers : le live a simplement continué à grossir de quelques centaines d'octets entre l'instant du snapshot et celui du diff, parce que le service tourne et écrit en continu. Le format WAL de RocksDB est conçu justement pour tolérer une copie à chaud (même garantie de cohérence qu'un redémarrage après crash) — les 72 autres fichiers (SST déjà flush, MANIFEST, CURRENT) correspondent exactement à chaque test.
+
+**Validé en conditions réelles** : run manuel du CronJob (70 fichiers, ~1,7 Mio, snapshot unique), puis restauration complète dans un pod jetable — 72/73 fichiers strictement identiques à `diff -rq`, le seul écart (WAL actif) expliqué ci-dessus plutôt qu'ignoré.
+
 ## Nextcloud (fichiers)
 
 Premier service de la Phase 2. Chart **officiel** (`nextcloud/helm`, dépôt GitHub `nextcloud/helm`, pas un fork communautaire comme pour Vaultwarden/Uptime Kuma). Déploiement nu volontaire pour cette PR — pas de SSO, pas de Restic, pas d'app Android (cf. `roadmap.md` Phase 2), pour reproduire le déroulé incrémental déjà suivi pour Vaultwarden en Phase 1.
