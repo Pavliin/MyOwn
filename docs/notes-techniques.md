@@ -18,6 +18,8 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | Restic (image `restic/restic`) | 0.19.1 |
 | Nextcloud (chart officiel `nextcloud/helm`) | chart 9.2.5, app 34.0.2 |
 | PostgreSQL (Nextcloud, via sous-chart Bitnami) | 17.5.0 |
+| Immich (chart officiel `immich/immich`) | chart 0.12.0, app v2.6.3 |
+| PostgreSQL (Immich, image officielle `ghcr.io/immich-app/postgres`, StatefulSet maison) | 14-vectorchord0.4.3-pgvectors0.2.0 |
 | SOPS | 3.10.2 |
 | KSOPS | v4.5.1 |
 
@@ -164,6 +166,22 @@ Bascule vers HTTPS sur le port 8453 (même mkcert + PVC de certificat que Vaultw
 
 - `sub_mode: user_uuid` (`OAuth2Provider._meta.get_field('sub_mode').choices` — valeur "Based on the User's UUID", recommandée par le guide Authentik pour un `sub` stable dans le temps, par opposition au défaut `hashed_user_id`)
 - `redirect_uri_type: logout` pour la redirect URI de déconnexion (`authentik.providers.oauth2.models.RedirectURIType` — seulement deux valeurs possibles, `authorization` et `logout`, aucune ambiguïté une fois vérifié)
+
+## Immich (photos)
+
+Dernier service de la Phase 2. Chart officiel (`immich/immich`, dépôt GitHub `immich-app/immich-charts`). Différence structurelle majeure avec Authentik/Nextcloud : **ce chart n'embarque aucun sous-chart Postgres** — il attend une instance fournie séparément, avec l'extension vectorielle dont Immich a besoin pour la reconnaissance faciale et la recherche sémantique.
+
+**Postgres maison, pas Bitnami** : Immich a migré vers l'extension **VectorChord** (repli sur `pgvector` si absent) — c'est le choix par défaut du projet lui-même (son image Postgres officielle et son propre `docker-compose.yml`), pas une extension tierce risquée. L'image officielle `ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0` est une image Postgres standard (variables d'env `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`, entrypoint `docker-entrypoint.sh` classique) — **incompatible avec le chart Postgres Bitnami** déjà utilisé pour Authentik/Nextcloud, dont les scripts d'entrypoint n'existent que dans les images Bitnami elles-mêmes ; échanger juste l'image casserait le pod. Déployé en `StatefulSet` écrit à la main (`gitops/manifests/immich-postgres/`), même esprit que les manifests de backup Restic déjà écrits en dehors de tout chart. Détails repris du `docker-compose.yml` officiel du projet plutôt qu'improvisés : `PGDATA` sur un sous-répertoire du volume (`/var/lib/postgresql/data/pgdata`, pas la racine — évite les soucis classiques de fichiers parasites créés par certains provisioners), `POSTGRES_INITDB_ARGS: --data-checksums`, `/dev/shm` en `emptyDir` `Medium: Memory` 128Mi (Postgres peut dépasser les 64 Mo par défaut sous charge).
+
+**Redis/Valkey en revanche est bundled** (`valkey.enabled: true`, sous-chart du chart Immich) — contrairement à Postgres, pas de déploiement séparé nécessaire.
+
+**Variables d'environnement DB partagées au niveau racine** (`controllers.main.containers.main.env`), pas dans `server:`/`machine-learning:` séparément : repéré en lisant `values.yaml` du chart (commentaire explicite "These entries are shared between all the Immich components") et confirmé au rendu — les mêmes `DB_HOSTNAME`/`DB_USERNAME`/`DB_PASSWORD` se retrouvent injectées dans les trois déploiements (`server`, `machine-learning`, et même `valkey` qui n'en a pourtant pas besoin, sans conséquence) exactement comme le fait déjà `REDIS_HOSTNAME` par défaut dans le chart. Syntaxe `env.<NOM>.valueFrom.secretKeyRef` vérifiée directement dans le template source du chart "common" bjw-s sous-jacent (`_env.tpl`) avant d'écrire le manifest, pas devinée.
+
+**PVC bibliothèque non auto-créée** : le chart le dit explicitement dans son `values.yaml` ("Automatically creating the library volume is not supported by this chart") — PVC créée à la main dans le même dossier de manifests que Postgres, référencée via `immich.persistence.library.existingClaim`.
+
+**Cache du service de reconnaissance faciale/recherche sémantique** : `emptyDir` par défaut dans le chart, donc les modèles ML (plusieurs centaines de Mo à quelques Go) seraient retéléchargés à chaque redémarrage de pod. Basculé vers `persistentVolumeClaim` (5Gi) pour éviter ce gaspillage de bande passante/temps sur un cluster de dev redémarré fréquemment.
+
+**Annotation par défaut de l'Ingress inerte sur Traefik** : le chart pose `nginx.ingress.kubernetes.io/proxy-body-size: "0"` par défaut (pertinent seulement pour un ingress-nginx) ; tenter de l'effacer avec `annotations: {}` dans les *values* ne fonctionne pas (le merge Helm de deux maps ne vide pas une valeur par défaut avec une map vide côté utilisateur) — laissé tel quel, sans conséquence, Traefik ignore silencieusement une annotation qu'il ne reconnaît pas.
 
 ## Git / CI / signature de commits
 

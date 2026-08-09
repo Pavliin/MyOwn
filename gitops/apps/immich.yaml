@@ -1,0 +1,71 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: immich
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://immich-app.github.io/immich-charts
+      chart: immich
+      targetRevision: 0.12.0
+      helm:
+        valuesObject:
+          # Shared across every Immich component (server, machine-learning,
+          # ...) per the chart's own convention — same block that already
+          # carries REDIS_HOSTNAME/IMMICH_MACHINE_LEARNING_URL by default.
+          controllers:
+            main:
+              containers:
+                main:
+                  env:
+                    DB_HOSTNAME: immich-postgres
+                    DB_USERNAME: immich
+                    DB_DATABASE_NAME: immich
+                    DB_PASSWORD:
+                      valueFrom:
+                        secretKeyRef:
+                          name: immich-secrets
+                          key: DB_PASSWORD
+          immich:
+            persistence:
+              library:
+                existingClaim: immich-library
+          valkey:
+            enabled: true
+          server:
+            ingress:
+              main:
+                enabled: true
+                className: traefik
+                # The chart's default nginx.ingress.kubernetes.io/proxy-body-size
+                # annotation stays (Helm map-merge doesn't let `annotations: {}`
+                # clear a populated default) — harmless no-op on Traefik.
+                hosts:
+                  - host: myown-immich.local
+                    paths:
+                      - path: "/"
+                        service:
+                          identifier: main
+          machine-learning:
+            persistence:
+              cache:
+                type: persistentVolumeClaim
+                size: 5Gi
+                accessMode: ReadWriteOnce
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/immich
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/immich-postgres
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: immich
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

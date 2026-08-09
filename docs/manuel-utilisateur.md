@@ -80,6 +80,14 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Contacts et calendrier** : apps installées et activées, utilisables directement depuis l'interface web ou via un client CalDAV/CardDAV externe (Thunderbird, l'app calendrier d'un téléphone, etc.) — pas besoin d'attendre l'app mobile dédiée, différée en Phase 4.
 - **Photos** : l'app Photos native de Nextcloud (activée par défaut) reste utilisable pour l'instant, mais sera désactivée le jour où Immich sera déployé (Phase 2, pas encore fait) — l'architecture prévoit volontairement Immich comme seule app photo, pour éviter une double bibliothèque déroutante.
 
+## Immich — photos et vidéos
+
+**À quoi ça sert** : remplace Google Photos — stockage, organisation, recherche sémantique et reconnaissance faciale sur les photos/vidéos, avec sauvegarde automatique depuis mobile (app Android/iOS officielle). Déploiement nu pour l'instant (pas de SSO, pas de Restic, pas d'app Android configurée — cf. `roadmap.md`).
+
+- **URL** : <http://myown-immich.local:8090>
+- **Premier accès** : aucun compte par défaut — un écran de création de compte administrateur apparaît à la première visite.
+- **Usage** : glisser-déposer des photos/vidéos depuis le navigateur pour tester. La reconnaissance faciale et la recherche sémantique tournent en local (service `machine-learning` du même déploiement, aucune donnée envoyée à l'extérieur) — les premières analyses peuvent prendre un moment le temps que les modèles se chargent.
+
 ## À venir
 
 Chaque nouveau service applicatif aura sa propre section ici : URL, identifiants, prise en main de base, et pour les services destinés à la famille/aux amis, des instructions pensées pour un public non technique.
