@@ -32,11 +32,16 @@ spec:
                     name: nextcloud-secrets
                     key: OIDC_CLIENT_SECRET
             hooks:
-              post-installation: |
+              # before-starting (not post-installation): the latter only fires
+              # on a brand-new install (no config.php yet) — useless here since
+              # Nextcloud was already installed before this SSO integration was
+              # added. before-starting runs on every container start instead,
+              # which is safe since both occ calls below are idempotent.
+              before-starting: |
                 #!/bin/sh
                 set -e
-                occ app:install user_oidc || occ app:enable user_oidc
-                occ user_oidc:provider authentik \
+                php occ app:install user_oidc || php occ app:enable user_oidc
+                php occ user_oidc:provider authentik \
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
                   --discoveryuri="http://myown-authentik.local:8090/application/o/nextcloud/.well-known/openid-configuration"
