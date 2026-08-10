@@ -89,12 +89,14 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Usage** : glisser-déposer des photos/vidéos depuis le navigateur pour tester. La reconnaissance faciale et la recherche sémantique tournent en local (service `machine-learning` du même déploiement, aucune donnée envoyée à l'extérieur) — les premières analyses peuvent prendre un moment le temps que les modèles se chargent.
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Configuré nativement dans Immich (pas d'app tierce comme pour Nextcloud), sans aucune manipulation à faire : la configuration OAuth est posée automatiquement au déploiement.
 
-## Tuwunel — messagerie (serveur, pas encore d'app cliente)
+## Tuwunel — messagerie (texte + appels vidéo de groupe)
 
-**À quoi ça sert** : serveur Matrix (texte + à terme appels vidéo de groupe via LiveKit), remplace Conduwuit prévu initialement (archivé en amont, voir `notes-techniques.md`). **Étape de validation d'infrastructure uniquement à ce stade** : pas encore de client utilisable (Element X, l'app prévue, est différée à la Phase 4 pour les mêmes raisons de résolution DNS locale que les autres apps Android) — rien à utiliser ici pour le moment, cette section sera complétée une fois un client réel branché.
+**À quoi ça sert** : serveur Matrix (texte, et maintenant appels vidéo de groupe via LiveKit), remplace Conduwuit prévu initialement (archivé en amont, voir `notes-techniques.md`). Pas de client mobile dédié pour l'instant — Element X, l'app prévue, est différée à la Phase 4 pour les mêmes raisons de résolution DNS locale que les autres apps Android — mais **Element Web, hébergé sur app.element.io, fonctionne dès maintenant** comme client complet (texte et appels), pointé vers notre serveur.
 
-- **URL (API uniquement)** : <https://myown-tuwunel.local:8453> — répond au protocole client-serveur Matrix, pas une interface web. HTTPS (pas `:8090`) à cause du cookie de session SSO, marqué `Secure` par Tuwunel — voir `notes-techniques.md`.
-- **Statut** : déploiement nu validé via l'API (inscription de compte, droits admin automatiques pour le premier compte, envoi de message). Connexion SSO via Authentik validée en conditions réelles (navigateur, échange complet du jeton de connexion pour une session Matrix réelle). Pas encore de sauvegarde Restic ni de LiveKit à ce stade.
+- **URL (API, pas d'interface web ici)** : <https://myown-tuwunel.local:8453> — répond au protocole client-serveur Matrix. HTTPS (pas `:8090`) à cause du cookie de session SSO, marqué `Secure` par Tuwunel — voir `notes-techniques.md`.
+- **Se connecter via Element Web** : aller sur <https://app.element.io>, à l'écran de connexion choisir **Modifier** en face du serveur proposé par défaut, saisir `myown-tuwunel.local:8453`, puis se connecter (compte créé via l'API, ou SSO Authentik).
+- **Appels vidéo de groupe** : dans une room, bouton d'appel — rejoint automatiquement un appel Element Call, média géré par LiveKit. Fonctionne pour 3-4 participants d'après l'architecture ciblée ; validé à ce stade avec un compte réel en navigateur (audio, réactions), pas encore avec plusieurs appareils simultanés sur le LAN.
+- **Statut** : déploiement nu, SSO Authentik et sauvegarde Restic quotidienne tous validés en conditions réelles. LiveKit validé de bout en bout (découverte MatrixRTC, connexion média réelle, réactions).
 
 ## À venir
 

@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: livekit
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://helm.livekit.io
+      chart: livekit-server
+      targetRevision: 1.9.0
+      helm:
+        valuesObject:
+          # Chart default app version (1.9.0, protocol 16) predates the
+          # `/rtc/v1` WebSocket signaling path that the livekit-client JS
+          # SDK bundled by Element Call (app.element.io, 2.20.0, protocol
+          # 17) tries first on every (re)connect. Real bug found via an
+          # actual Element Call session, not curl: browser console showed
+          # a 404 on `/rtc/v1/validate` ("v1 RTC path not found. Consider
+          # upgrading your LiveKit server version"), falling back to the
+          # legacy `/rtc` path — which worked, but a later
+          # `NegotiationError: negotiation timed out` forced a full
+          # reconnect, which retried `/rtc/v1` again, looping every ~15s.
+          # Pinning to the current stable server image (independent of the
+          # chart version, which lags behind actual livekit-server
+          # releases) fixes the mismatch.
+          image:
+            tag: v1.13.5
+          # Not just "livekit" — Kubernetes auto-injects Docker-links env
+          # vars per Service (<SVC>_PORT etc.), and a Service named exactly
+          # "livekit" collides with LiveKit's own LIVEKIT_PORT env binding
+          # (confirmed live: CrashLoopBackOff, "could not parse
+          # tcp://...:80 as uint value... for flag port"). Same class of
+          # bug as Tuwunel's enableServiceLinks gotcha, but this chart has
+          # no such toggle — renaming the Service is the fix here instead.
+          fullnameOverride: livekit-sfu
+          livekit:
+            port: 7880
+            # Relative, no leading slash — Kubernetes rejects an absolute
+            # subPath, and this chart reuses key_file for both the
+            # mountPath and the subPath into the keys Secret. Verified
+            # locally: LiveKit itself resolves it fine (relative to its
+            # own root), file lands at /keys.yaml in the container.
+            key_file: keys.yaml
+            rtc:
+              tcp_port: 7881
+              # Single-port mode, not the usual 50000-60000 range — one
+              # instance on one node (this cluster), and a wide UDP range
+              # would mean mapping thousands of k3d ports instead of one.
+              udp_port: 7882
+              port_range_start: null
+              port_range_end: null
+              # podHostNetwork (chart default, left as-is) puts the pod on
+              # the real host network namespace, so STUN-based external-IP
+              # detection correctly finds the host's actual LAN/public IP
+              # instead of an internal Docker address — confirmed via a
+              # local test render + live pod before writing this.
+              use_external_ip: true
+          storeKeysInSecret:
+            enabled: true
+            existingSecret: livekit-secrets
+          loadBalancer:
+            # No cloud LB here — the chart skips creating an Ingress
+            # entirely when disabled, so the WS port is exposed via our
+            # own raw Ingress (gitops/manifests/livekit-ingress/) instead.
+            type: disable
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/livekit
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/livekit-ingress
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/lk-jwt-service
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: livekit
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

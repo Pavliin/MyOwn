@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lk-jwt-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lk-jwt-service
+  template:
+    metadata:
+      labels:
+        app: lk-jwt-service
+    spec:
+      containers:
+        - name: lk-jwt-service
+          image: ghcr.io/element-hq/lk-jwt-service:latest
+          env:
+            # The public-facing URL, not the in-cluster Service DNS name —
+            # this is echoed back to the browser client as where to open
+            # the actual WebSocket connection for media signaling, so it
+            # must be something the browser itself can reach. wss:// (not
+            # ws://) for the same mixed-content reason as the Ingress TLS
+            # below. Real bug found via an actual Element Call join:
+            # "ServerUnreachable" — curl/API tests never exercised this
+            # value since they only cover the JWT-issuing side, not what
+            # gets handed back to a real browser.
+            - name: LIVEKIT_URL
+              value: wss://myown-livekit.local:8453
+            - name: LIVEKIT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: livekit-secrets
+                  key: LIVEKIT_KEY
+            - name: LIVEKIT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: livekit-secrets
+                  key: LIVEKIT_SECRET
+            # Grants Tuwunel-authenticated users full access (can create
+            # new LiveKit rooms, not just join existing ones) — the only
+            # homeserver this deployment serves.
+            - name: LIVEKIT_FULL_ACCESS_HOMESERVERS
+              value: myown-tuwunel.local
+            # Dev cluster only, both entries below — needed because the
+            # container's default CA trust store doesn't include our
+            # mkcert dev CA (only the host machine has it, via
+            # `mkcert -install`). Real bug found via an actual Element
+            # Call join, not curl (curl's -k flag masked it in every
+            # earlier check): the federation client's .well-known/matrix/
+            # server lookup failed its TLS handshake and silently fell
+            # back to SRV lookup (nothing) then the hardcoded default
+            # port 8448 — timing out since nothing listens there. Setting
+            # LIVEKIT_INSECURE_SKIP_VERIFY_TLS alone did NOT fix this —
+            # traced into gomatrixserverlib/fclient's source: that flag
+            # only skips verification on the actual federation request
+            # transport, but LookupWellKnown() uses its own separate,
+            # hardcoded http.Client with no such override. SSL_CERT_FILE
+            # (Go's standard override for the system cert pool) is what
+            # actually fixes the well-known lookup itself. Must be
+            # removed once Phase 4 moves to real Let's Encrypt certs.
+            - name: LIVEKIT_INSECURE_SKIP_VERIFY_TLS
+              value: "YES_I_KNOW_WHAT_I_AM_DOING"
+            - name: SSL_CERT_FILE
+              value: /etc/ssl/mkcert/ca.pem
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: mkcert-ca
+              mountPath: /etc/ssl/mkcert
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: mkcert-ca
+          configMap:
+            name: mkcert-ca

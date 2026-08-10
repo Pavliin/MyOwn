@@ -21,3 +21,14 @@ spec:
     - name: websecure-8453
       port: 8453
       targetPort: websecure
+    # Added for LiveKit/MatrixRTC federation discovery: Matrix's standard
+    # server-discovery algorithm fetches .well-known/matrix/server from the
+    # bare server_name domain on the standard port 443 (not whatever custom
+    # port a client happened to be configured with) — real bug found via an
+    # actual Element Call join, not curl (curl from the host machine went
+    # through the k3d loadbalancer's own 443 mapping, which already existed;
+    # this Service is the *in-cluster* mirror of it, and hadn't been
+    # updated when 443 was added to the k3d cluster's port mappings).
+    - name: websecure-443
+      port: 443
+      targetPort: websecure
