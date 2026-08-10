@@ -48,11 +48,14 @@ Remplacer la clé publique dans `.sops.yaml` par celle affichée, committer.
 ## 4. Créer le cluster
 
 ```bash
-k3d cluster create myown-dev -p "8090:80@loadbalancer" -p "8453:443@loadbalancer" --wait
+k3d cluster create myown-dev \
+  -p "8090:80@loadbalancer" -p "8453:443@loadbalancer" -p "443:443@loadbalancer" \
+  -p "7880:7880@loadbalancer" -p "7881:7881@loadbalancer" -p "7882:7882/udp@loadbalancer" \
+  --wait
 kubectl config use-context k3d-myown-dev
 ```
 
-Le mapping de ports doit être fait **à la création** — impossible à ajouter après coup sans recréer le cluster.
+Le mapping de ports doit être fait **à la création** — impossible à ajouter après coup sans recréer le cluster. Le port `443` littéral (en plus de `8453:443`) est nécessaire pour LiveKit/MatrixRTC : la découverte Matrix (`.well-known/matrix/client` et `/matrix/server`) est fetchée sur le port standard 443, implicite dans le nom de domaine, indépendamment du port `8453` utilisé partout ailleurs dans ce projet. Les trois ports `78xx` sont pour le SFU LiveKit (signalisation WebSocket, repli ICE TCP, média UDP — cf. section LiveKit de `notes-techniques.md`).
 
 ## 5. Installer ArgoCD
 
@@ -121,9 +124,23 @@ kubectl create secret tls nextcloud-tls -n nextcloud \
 mkcert -cert-file myown-tuwunel.local.pem -key-file myown-tuwunel.local-key.pem myown-tuwunel.local
 kubectl create secret tls tuwunel-tls -n tuwunel \
   --cert=myown-tuwunel.local.pem --key=myown-tuwunel.local-key.pem
+
+mkcert -cert-file myown-livekit.local.pem -key-file myown-livekit.local-key.pem myown-livekit.local
+kubectl create secret tls livekit-tls -n livekit \
+  --cert=myown-livekit.local.pem --key=myown-livekit.local-key.pem
+
+mkcert -cert-file myown-livekit-jwt.local.pem -key-file myown-livekit-jwt.local-key.pem myown-livekit-jwt.local
+kubectl create secret tls livekit-jwt-tls -n livekit \
+  --cert=myown-livekit-jwt.local.pem --key=myown-livekit-jwt.local-key.pem
 ```
 
 Ces secrets sont volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
+
+`lk-jwt-service` a en plus besoin de faire confiance à ce même CA mkcert pour ses propres requêtes sortantes vers Tuwunel (vérification du jeton OpenID, découverte `.well-known`) — le conteneur ne fait pas confiance au magasin de certs de l'hôte par défaut. Un `ConfigMap` (pas un `Secret`, le CA est public) monté dans le pod via `SSL_CERT_FILE` :
+
+```bash
+kubectl create configmap mkcert-ca -n livekit --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem"
+```
 
 **Si le navigateur affiche quand même "non sécurisé" après `mkcert -install`** (vécu avec Chromium/Firefox installés en snap — cas fréquent sur Ubuntu) :
 
@@ -144,6 +161,8 @@ Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.y
 127.0.0.1 myown-nextcloud.local
 127.0.0.1 myown-immich.local
 127.0.0.1 myown-tuwunel.local
+127.0.0.1 myown-livekit.local
+127.0.0.1 myown-livekit-jwt.local
 ```
 
 ## 11. Vérification
