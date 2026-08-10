@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: livekit
+spec:
+  # Only the WS/HTTP signaling port (7880) goes through the normal Traefik
+  # ingress — the raw RTC media ports (TCP 7881, UDP 7882) bypass it
+  # entirely via hostPort on the pod, matching LiveKit's own guidance that
+  # those ports "cannot be behind a load balancer or TLS".
+  #
+  # HTTPS (not plain :8090): lk-jwt-service returns this URL to the browser
+  # for the actual WebSocket connection to LiveKit — a plain ws:// URL gets
+  # blocked as mixed content from an https:// page (Element Call, hosted on
+  # app.element.io). Same category of fix as Tuwunel/lk-jwt-service, found
+  # the same way: a real browser join, not curl.
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - myown-livekit.local
+      secretName: livekit-tls
+  rules:
+    - host: myown-livekit.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: livekit-sfu
+                port:
+                  number: 80

@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lk-jwt-service
+spec:
+  ingressClassName: traefik
+  # HTTPS: the rtc_foci discovery URL is fetched client-side by Element
+  # Call — if it's ever loaded from a page served over HTTPS (e.g. the
+  # hosted app.element.io), a plain http:// fetch would be blocked as
+  # mixed content. Same reasoning as Tuwunel's own move to :8453, applied
+  # proactively here instead of found the hard way.
+  tls:
+    - hosts:
+        - myown-livekit-jwt.local
+      secretName: livekit-jwt-tls
+  rules:
+    - host: myown-livekit-jwt.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lk-jwt-service
+                port:
+                  number: 80
