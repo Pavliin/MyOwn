@@ -18,3 +18,8 @@ data:
     rewrite name exact myown-uptime.local traefik-internal.kube-system.svc.cluster.local
     rewrite name exact myown-authentik.local traefik-internal.kube-system.svc.cluster.local
     rewrite name exact myown-vaultwarden.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-nextcloud.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-immich.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-tuwunel.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-livekit.local traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact myown-livekit-jwt.local traefik-internal.kube-system.svc.cluster.local
