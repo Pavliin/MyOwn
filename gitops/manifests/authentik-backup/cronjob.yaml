@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: authentik-restic-backup
+spec:
+  # Staggered after the other four (Vaultwarden 03:00, Nextcloud 03:15,
+  # Immich 03:30, Tuwunel 03:45) to avoid disk I/O contention on this
+  # single-node cluster.
+  schedule: "0 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # Unlike every other service backed up so far, Authentik's own
+          # server/worker pods have no persistent volume of their own
+          # (confirmed live: only the Postgres StatefulSet's PVC exists in
+          # this namespace) — users, flows, providers, applications and
+          # the blueprint-applied state all live in Postgres. Blueprints
+          # themselves are already reproducible from git (SOPS secrets),
+          # not runtime state. So this backup is pg_dump only, no /data
+          # PVC to mount alongside it, unlike Nextcloud/Immich.
+          initContainers:
+            - name: pg-dump
+              image: postgres:17-alpine
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-secrets
+                      key: password
+              command:
+                - sh
+                - -c
+                - pg_dump -h authentik-postgresql -U authentik -d authentik -f /dump/authentik.sql
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+          containers:
+            - name: restic-backup
+              image: restic/restic:0.19.1
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: /repo
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-secrets
+                      key: RESTIC_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  restic snapshots >/dev/null 2>&1 || restic init
+                  restic backup /dump --tag authentik
+                  restic forget --tag authentik --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+                  readOnly: true
+                - name: repo
+                  mountPath: /repo
+          volumes:
+            - name: dump
+              emptyDir: {}
+            - name: repo
+              persistentVolumeClaim:
+                claimName: authentik-restic-repo
