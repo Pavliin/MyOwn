@@ -61,6 +61,9 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
 
 - Achat et mise en service du mini PC, migration du cluster GitOps du dev (k3d) vers le mini PC (mêmes manifests, changement de cible uniquement)
 - Acquisition du nom de domaine, bascule Traefik vers Let's Encrypt réel (remplace les certificats mkcert du dev)
+- **Accès distant admin** : VPN WireGuard auto-hébergé (pas de dépendance tierce type Tailscale, cohérent avec `architecture.md` §1) — aucun outil d'administration (ArgoCD, `kubectl`, SSH) exposé directement sur internet, tout passe par le VPN. Mitige le risque déjà assumé d'indisponibilité de l'admin (`architecture.md` §11) : déblocage à distance via le VPN, ou guidage téléphonique de quelqu'un sur place en cas de panne matérielle complète.
+- **Monitoring famille** : configuration des moniteurs Uptime Kuma pour tous les services réels + publication d'une page de statut publique, intégrée au dashboard familial (Phase 6, cf. `installation-utilisateur.md`) — pas de Grafana pour la famille, réservé à l'admin.
+- **Alerting admin** : bot Tuwunel dédié, salon Matrix partagé "État du système" (public/abonnable par qui veut dans le foyer, une seule occurrence de l'info) — Uptime Kuma y notifie les pannes. Réutilisé tel quel en Phase 5 pour les propositions Ollama, mais en DM privé strictement séparé de ce salon partagé (propositions personnelles, jamais dans un canal commun).
 - Validation des items différés, désormais débloqués par l'exposition internet réelle :
   - App Android Vaultwarden (Phase 1)
   - Apps Android Nextcloud + Immich, backup automatique photos/vidéos en conditions réelles (Phase 2)
@@ -74,10 +77,13 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
 
 ## Phase 5 — Intelligence locale (Ollama)
 
-Objectif : premier cas d'usage concret de la couche d'intégration IA, une fois le mail stable.
+Objectif : premier cas d'usage concret de la couche d'intégration IA, une fois le mail stable. Assistant en tâche de fond, pas de chat — dans l'esprit des fonctionnalités d'assistant ambiant type Apple Intelligence. Principe appliqué à toute action qui modifie une donnée : **l'IA propose, l'utilisateur valide**, jamais d'écriture automatique silencieuse.
 
-- Déploiement Ollama + choix du modèle selon RAM disponible
+- Déploiement Ollama + choix du modèle selon RAM disponible (nom exact à trancher au moment de l'implémentation — le paysage des petits modèles open évolue vite, pas figé aujourd'hui)
 - Connecteur IMAP → tri/résumé automatique des mails
+- Extraction d'événements/tâches depuis les mails → proposition d'ajout au Calendrier/Tasks Nextcloud (CalDAV), écriture uniquement après validation explicite
+- Rappels basés sur les événements du calendrier
+- Canal de proposition/validation pour ces deux derniers points : réutilise le bot Tuwunel mis en place en Phase 4 pour l'alerting admin, mais en DM privé à chaque utilisateur — strictement séparé du salon partagé "État du système", propositions personnelles jamais visibles des autres
 - Évaluation de l'extension à d'autres automatisations (classement de documents Nextcloud, etc.)
 
 **Critère de sortie** : tri automatique des mails opérationnel et jugé utile par l'auteur en usage réel.
@@ -88,7 +94,7 @@ Objectif : passer d'un projet personnel à une plateforme accueillant durablemen
 
 - Retour d'expérience de charge réelle → définition des profils de dimensionnement matériel (ex. 1-6 / 7-15 / 15+ utilisateurs)
 - Évaluation du passage à une topologie k3s multi-nœuds (HA)
-- Onboarding simplifié pour utilisateurs non-techos (documentation, assistant d'installation mobile)
+- **Installeur pour utilisateurs non-techos** : script unique (pas un ISO — s'appuie sur l'installeur graphique standard d'Ubuntu pour l'OS) qui rejoue l'installation aujourd'hui manuelle (`manuel-installation.md`). Inclut un modèle de gestion des comptes admin où Authentik reste la seule source de vérité d'identité et tous les secrets générés (y compris d'infrastructure) sont remis à l'utilisateur via son propre coffre Vaultwarden — aucun accès résiduel conservé par l'opérateur. Dashboard familial (premier point d'entrée + guide de première utilisation) fusionné avec ce chantier. Conception détaillée : [`installation-utilisateur.md`](installation-utilisateur.md).
 - Ouverture à des amis souhaitant héberger leur propre nœud fédéré (messagerie, à terme mail)
 
 ## Suivi

@@ -86,7 +86,7 @@ Le composant le plus risqué techniquement (cf. §7). Mailcow (Postfix/Dovecot/R
 
 ### 5.7 IA locale — Ollama
 
-Modèle local (Llama 3.1 8B ou Mistral 7B selon RAM disponible) pour tri/résumé de mails dans un premier temps. Aucune donnée ne sort du réseau local. Extension possible à d'autres automatisations une fois le socle stable.
+Modèle local (Llama 3.1 8B ou Mistral 7B selon RAM disponible — nom exact à retrancher au moment de l'implémentation) pour tri/résumé de mails et extraction d'événements/tâches vers le Calendrier/Tasks Nextcloud, dans un premier temps. Aucune donnée ne sort du réseau local. Assistant en tâche de fond, pas de chat — principe appliqué à toute action qui modifie une donnée : l'IA propose, l'utilisateur valide (canal : bot Tuwunel), jamais d'écriture automatique silencieuse. Extension possible à d'autres automatisations une fois le socle stable.
 
 ## 6. Infrastructure & orchestration
 
@@ -95,6 +95,7 @@ Modèle local (Llama 3.1 8B ou Mistral 7B selon RAM disponible) pour tri/résum�
 - **GitOps via ArgoCD** : déploiement piloté par ce dépôt Git, cohérent avec la pratique professionnelle de l'auteur.
 - **Traefik** comme reverse proxy / ingress, gestion automatique TLS via Let's Encrypt.
 - **Helm charts** communautaires réutilisés quand ils existent (Nextcloud, Immich, Vaultwarden) plutôt que des manifests réécrits from scratch.
+- **Accès administrateur distant** : VPN WireGuard auto-hébergé (Phase 4) — aucune dépendance tierce (écarté volontairement : Tailscale, plus simple à poser mais qui ajoute un service de coordination propriétaire externe), aucun outil d'administration exposé directement sur internet.
 
 ## 7. Mail : risques et mitigation
 
@@ -123,10 +124,11 @@ Un domicile résidentiel français est structurellement inadapté à l'envoi de 
 
 - **Déploiement initial** (roadmap Phase 4, bascule infra réelle) : un mini PC (32-64 Go RAM, NVMe), single-node k3s. Budget : achat correct one-shot, coûts récurrents proches de zéro (hors VPS mail).
 - **Cible à terme** : plusieurs profils de dimensionnement matériel selon le nombre d'utilisateurs (ex. 1-6 / 7-15 / 15+), à définir une fois le profil de charge réel observé en production réelle.
+- **Décision détaillée (2026-08-13)** : achat en deux étapes plutôt qu'un seul — une machine minimale d'occasion pour boucler la Phase 4 sans attendre, puis la cible long terme une fois Phase 5/6 réelles (raisonnement complet, chiffrage, pistes d'achat concrètes : voir [`materiel.md`](materiel.md)).
 
 ## 11. Limites connues et risques assumés
 
 - **Point de défaillance unique** en mono-nœud (phase 1) : accepté comme compromis de démarrage, la topologie k3s permet une évolution vers du multi-nœud sans réécriture.
 - **Dépendance à la disponibilité du nœud de sauvegarde chez l'ami** : à documenter comme risque, pas de solution de repli en phase 1.
-- **Responsabilité informelle** d'opérateur de service pour la famille/les amis (disponibilité, support, sécurité de leurs données) : à clarifier avec les participants dès l'onboarding, hors périmètre technique de ce document.
+- **Responsabilité informelle** d'opérateur de service pour la famille/les amis (disponibilité, support, sécurité de leurs données) : risque assumé plutôt que traité par une procédure de continuité formelle, cohérent avec l'échelle POC (cercle proche). Mitigation : accès distant admin via VPN (voir §6) en priorité, déblocage téléphonique guidé de quelqu'un sur place en dernier recours (panne matérielle complète). À communiquer clairement à la famille/aux amis, pas seulement assumé en interne.
 - **Délivrabilité mail** : la façade VPS mitige mais n'élimine pas complètement le risque de classement en spam par les gros acteurs, en particulier au démarrage d'un nouveau domaine.
