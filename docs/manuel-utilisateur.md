@@ -36,6 +36,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 - **URL** : <http://myown-uptime.local:8090> — identifiants admin dans `gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml` (compte local à Uptime Kuma, sans lien avec Authentik).
 - **Page de statut publique** (pensée pour toute la famille, pas seulement l'admin) : <http://myown-uptime.local:8090/status/etat-du-systeme> — six services suivis (Authentik, Vaultwarden, Nextcloud, Immich, Tuwunel, LiveKit), configurés via `scripts/uptime-kuma-setup.py` plutôt qu'à la main dans l'UI (reproductible après une recréation du cluster — détails et vrais bugs rencontrés dans `notes-techniques.md`).
+- **Alertes en cas de panne** : salon Matrix `#etat-du-systeme:myown-tuwunel.local`, ouvert à quiconque dans le foyer veut le rejoindre (depuis Element Web par exemple — rechercher/rejoindre l'alias directement). Le bot `@alertbot` y publie automatiquement les changements d'état (panne/rétablissement) — une seule fois, visible par tous, pas besoin de solliciter l'admin pour savoir "c'est en panne pour tout le monde ou juste chez moi ?".
 
 ## Authentik — identité et authentification (SSO)
 

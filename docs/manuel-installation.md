@@ -142,6 +142,12 @@ Ces secrets sont volontairement **hors GitOps** (comme `sops-age`) : un certific
 kubectl create configmap mkcert-ca -n livekit --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem"
 ```
 
+Même besoin pour Uptime Kuma (Phase 3.5, notification Matrix vers Tuwunel) — un `ConfigMap` séparé, un par namespace :
+
+```bash
+kubectl create configmap mkcert-ca -n monitoring --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem"
+```
+
 **Si le navigateur affiche quand même "non sécurisé" après `mkcert -install`** (vécu avec Chromium/Firefox installés en snap — cas fréquent sur Ubuntu) :
 
 - `mkcert -install` peut répondre "already installed" sans avoir réellement rien fait : les navigateurs snap utilisent leur propre profil isolé (`~/snap/firefox/common/.mozilla/...`, `~/snap/chromium/<revision>/.local/share/pki/nssdb`), pas les emplacements standards. Vérifier avec `certutil -L -d sql:<chemin du profil>` que `mkcert development CA` y figure bien avec les droits `CT,C,C`.
