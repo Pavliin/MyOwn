@@ -14,6 +14,16 @@ Usage:
     # admin account is created and printed once; save it (e.g. into the
     # gitops/secrets/uptime-kuma/ SOPS file) and re-export it for reruns.
 
+    # Optional: also wire up the shared Matrix alert room (run
+    # tuwunel-alertbot-setup.py first to get these two values):
+    #   TUWUNEL_ALERTBOT_TOKEN=... TUWUNEL_ALERT_ROOM_ID=... python3 uptime-kuma-setup.py
+    # Requires the uptime-kuma pod to trust the mkcert dev CA for its own
+    # outbound HTTPS call to Tuwunel — Node.js bundles its own CA store,
+    # separate from the OS one `mkcert -install` configures, so this
+    # doesn't work without NODE_EXTRA_CA_CERTS (see gitops/apps/uptime-kuma.yaml).
+    # Real bug found via an actual Matrix notification test (silent
+    # "unable to verify the first certificate" failure), not a dry-run.
+
 uptime-kuma-api 1.2.1 (latest on PyPI at the time of writing) predates
 several Uptime Kuma 2.x schema changes and needs three workarounds below,
 found by hitting each error live rather than guessed in advance:
@@ -39,12 +49,17 @@ import string
 import sys
 
 import requests
-from uptime_kuma_api import Event, MonitorType, UptimeKumaApi
+from uptime_kuma_api import Event, MonitorType, NotificationType, UptimeKumaApi
 from uptime_kuma_api.api import _check_arguments_monitor, _convert_monitor_input
 
 URL = "http://myown-uptime.local:8090"
 ADMIN_USER = os.environ.get("UPTIME_KUMA_USERNAME", "admin")
 ADMIN_PASS = os.environ.get("UPTIME_KUMA_PASSWORD")
+
+# From tuwunel-alertbot-setup.py — the shared "État du système" room,
+# strictly separate from Ollama's private per-user DMs (Phase 5).
+ALERTBOT_TOKEN = os.environ.get("TUWUNEL_ALERTBOT_TOKEN")
+ALERT_ROOM_ID = os.environ.get("TUWUNEL_ALERT_ROOM_ID")
 
 # Family-facing services only — ArgoCD/Grafana stay admin-only, never on
 # this page (cf. installation-utilisateur.md, roadmap.md Phase 4).
@@ -138,6 +153,25 @@ def main():
             ],
         )
         print(f"Status page published: {URL}/status/{STATUS_PAGE_SLUG}")
+
+        if ALERTBOT_TOKEN and ALERT_ROOM_ID:
+            notif_name = "Tuwunel État du système"
+            existing_notifs = {n["name"] for n in api.get_notifications()}
+            if notif_name not in existing_notifs:
+                api.add_notification(
+                    name=notif_name,
+                    type=NotificationType.MATRIX,
+                    isDefault=True,
+                    applyExisting=True,
+                    homeserverUrl="https://myown-tuwunel.local:8453",
+                    internalRoomId=ALERT_ROOM_ID,
+                    accessToken=ALERTBOT_TOKEN,
+                )
+                print(f"Notification configured: {notif_name}")
+            else:
+                print(f"Notification already exists: {notif_name}")
+        else:
+            print("TUWUNEL_ALERTBOT_TOKEN/TUWUNEL_ALERT_ROOM_ID not set — skipping Matrix notification setup.", file=sys.stderr)
 
     finally:
         api.disconnect()
