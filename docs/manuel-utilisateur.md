@@ -34,9 +34,8 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 **À quoi ça sert** : vérifie régulièrement que chaque service répond, et affiche un statut simple (vert/rouge) avec historique. C'est la vue pensée pour être lisible même par quelqu'un de non technique, à terme.
 
-- **URL** : <http://myown-uptime.local:8090>
-- **Identifiants** : aucun compte créé automatiquement — un écran de création de compte admin apparaît au premier accès (email/mot de passe au choix, stockés localement dans Uptime Kuma, sans lien avec Authentik).
-- **Usage** : actuellement vide (aucun moniteur configuré) — à ajouter vous-même. Pour ajouter un moniteur : **+ Add New Monitor**, choisir un type (HTTP(s), TCP, DNS...), renseigner l'URL/hôte à vérifier (par exemple Vaultwarden ci-dessous) et l'intervalle de check.
+- **URL** : <http://myown-uptime.local:8090> — identifiants admin dans `gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml` (compte local à Uptime Kuma, sans lien avec Authentik).
+- **Page de statut publique** (pensée pour toute la famille, pas seulement l'admin) : <http://myown-uptime.local:8090/status/etat-du-systeme> — six services suivis (Authentik, Vaultwarden, Nextcloud, Immich, Tuwunel, LiveKit), configurés via `scripts/uptime-kuma-setup.py` plutôt qu'à la main dans l'UI (reproductible après une recréation du cluster — détails et vrais bugs rencontrés dans `notes-techniques.md`).
 
 ## Authentik — identité et authentification (SSO)
 

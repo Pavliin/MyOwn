@@ -15,6 +15,11 @@ charts/**/charts/
 # Node (tooling de versioning uniquement, pas un projet JS)
 node_modules/
 
+# Python (scripts opérationnels, pas un projet Python)
+__pycache__/
+*.pyc
+.venv/
+
 # OS / éditeurs
 .DS_Store
 Thumbs.db
