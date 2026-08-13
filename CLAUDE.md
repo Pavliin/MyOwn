@@ -7,6 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A personal self-hosted cloud project (files, photos, passwords, messaging, mail — replacing GAFAM services), starting as a solo POC for the author's family/friends. Full context lives in `docs/`, read it before making architectural decisions:
 
 - [`docs/architecture.md`](docs/architecture.md) — chosen stack, infra, security, backup, known risks
+- [`docs/materiel.md`](docs/materiel.md) — mini PC sizing/purchase research and decisions (two-stage plan, real pricing, rejected options)
+- [`docs/installation-utilisateur.md`](docs/installation-utilisateur.md) — Phase 6 installer design: script approach, admin-account model (Authentik + Vaultwarden-as-vault, no residual operator access)
 - [`docs/roadmap.md`](docs/roadmap.md) — phased development plan with exit criteria per phase
 - [`docs/pitch.md`](docs/pitch.md) — technical presentation of the project
 - [`docs/vision-long-terme.md`](docs/vision-long-terme.md) — long-term directions to keep in mind, out of scope for the POC
