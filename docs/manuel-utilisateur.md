@@ -63,9 +63,9 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via SSO" (ou équivalent selon le client) redirige vers Authentik. La connexion classique par email/mot de passe reste aussi disponible — les deux ne sont pas exclusives à ce stade.
 - **Le mot de passe principal reste demandé après le SSO — c'est normal.** Le SSO prouve *qui* vous êtes (authentification) ; il ne peut pas fournir la clé qui déchiffre votre coffre (chiffrement), parce que cette clé est dérivée du mot de passe principal **côté navigateur uniquement** — le serveur ne le connaît jamais, même l'opérateur du serveur ne peut pas lire vos mots de passe sans lui. Les deux mécanismes sont volontairement séparés (zero-knowledge encryption) ; ce n'est pas une étape de connexion en trop.
 
-## Nextcloud — fichiers, contacts, calendrier
+## Nextcloud — fichiers, contacts, calendrier, notes, tâches
 
-**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers, plus contacts (CardDAV) et calendrier (CalDAV). Pas encore de sauvegarde Restic ni d'app Android à ce stade (cf. `roadmap.md`).
+**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers, plus contacts (CardDAV), calendrier (CalDAV), notes texte libre et listes de tâches. Pas encore de sauvegarde Restic ni d'app Android à ce stade (cf. `roadmap.md`).
 
 - **URL** : <https://myown-nextcloud.local:8453> (⚠️ HTTPS et port 8453, pas 8090 — comme Vaultwarden, mais pour une raison différente ici : l'app SSO `user_oidc` refuse purement et simplement de fonctionner en HTTP, indépendamment de toute question de navigateur)
 - **Premier accès** : certificat signé par la CA locale mkcert déjà approuvée sur cette machine — pas d'avertissement attendu. Sur une autre machine, voir `manuel-installation.md`.
@@ -78,6 +78,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Usage** : interface web classique Nextcloud, glisser-déposer pour envoyer des fichiers.
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via authentik" (ou équivalent) redirige vers Authentik — un seul compte, comme pour Vaultwarden. La connexion classique par mot de passe local reste disponible (utile notamment pour le compte `admin` ci-dessus, qui n'existe pas dans Authentik).
 - **Contacts et calendrier** : apps installées et activées, utilisables directement depuis l'interface web ou via un client CalDAV/CardDAV externe (Thunderbird, l'app calendrier d'un téléphone, etc.) — pas besoin d'attendre l'app mobile dédiée, différée en Phase 4.
+- **Notes et Tâches** : deux usages différents, pas redondants. **Notes** (app `notes`) pour du texte libre en markdown — personnel par défaut, partageable via le partage de fichiers/dossiers classique de Nextcloud (ex. une liste de cadeaux visible par toute la famille). **Tasks** (app `tasks`) pour des listes à cocher basées CalDAV, partageables en temps réel entre comptes (ex. une liste de courses synchronisée avec son/sa conjoint·e) ; une tâche avec date d'échéance apparaît aussi directement dans le Calendrier, cochable depuis cette vue.
 - **Photos** : l'app Photos native de Nextcloud est désactivée — Immich (section ci-dessous) est la seule app photo du projet, pour éviter une double bibliothèque déroutante.
 
 ## Immich — photos et vidéos
