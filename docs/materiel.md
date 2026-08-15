@@ -15,6 +15,8 @@ Raison de ce découpage : le marché mémoire (DDR5 notamment) traverse une pén
 
 **Budget réel constaté** (Back Market, France, août 2026) : 481-567 € selon le modèle exact — au-dessus de la cible initiale de 300-400 €, écart accepté volontairement pour garder 32 Go de RAM (voir raisonnement ci-dessous).
 
+**Achetée (2026-08-15)** : Dell OptiPlex 5060 SFF à 481 €, réception prévue sous ~1 semaine.
+
 **Pourquoi 32 Go et pas 16 Go** : avec 16 Go, la machine aurait pu couvrir les services déjà validés (Phases 1-3) + Mailcow allégé, mais pas Ollama — un test réel du pipeline tri/résumé mail (Phase 5) aurait dû attendre l'étape B. Calcul avec Ollama actif :
 
 | Poste | RAM |
@@ -80,6 +82,15 @@ Envisagé puis écarté. Raisons cumulées :
 - Compatibilité ARM non garantie sur tous les sous-composants (dépendances ML notamment) — travail de validation non fait
 - Force une bascule multi-nœuds anticipée, alors que `architecture.md` §6 la prévoit comme évolution ultérieure, pas comme point de départ
 - Une fois tous les à-côtés comptés (boîtier, refroidissement actif, stockage NVMe par nœud, alimentations, switch réseau), pas vraiment moins cher qu'un PC de bureau d'occasion pour une capacité par nœud inférieure
+
+## Piste écartée : ancien PC gamer déjà en stock
+
+Envisagé (matériel déjà possédé, coût marginal nul) puis écarté avant l'achat de l'OptiPlex ci-dessus. Config réelle vérifiée : carte mère Asus H87 Pro, CPU i5-4440 (2013, 4 cœurs sans HT), GPU GTX 650 OC2 (2012, Kepler, ~1-2 Go VRAM), 16 Go RAM DDR3 1600 MHz, pas de SSD. Raisons cumulées :
+
+- CPU cinq générations en retrait par rapport à la cible retenue (i5-8500, 2018, 6 cœurs) — écart réel, pas marginal, pénalise les services concurrents et l'inférence Ollama.
+- GPU trop ancien et sous-doté en VRAM pour accélérer Ollama : un modèle 7-8B quantifié Q4 a besoin d'environ 4-6 Go de VRAM, hors de portée d'une GTX 650, et le support CUDA/cuDNN de l'architecture Kepler est très limité dans les stacks d'inférence actuelles — le seul avantage espéré de cette machine (accélération GPU, absente du plan OptiPlex) ne se concrétise pas.
+- RAM (16 Go) en dessous du seuil déjà écarté plus haut pour la même raison (Ollama). Un upgrade à 32 Go en DDR3 aurait été probablement bon marché (non touché par la pénurie DDR4/DDR5 de mi-2026), mais n'aurait pas comblé l'écart CPU/GPU.
+- Pas de SSD à ajouter en plus, réduisant l'écart de coût réel avec l'OptiPlex (qui l'inclut déjà).
 
 ## Sources consultées
 
