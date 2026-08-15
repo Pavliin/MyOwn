@@ -99,7 +99,7 @@ Modèle local **Qwen3 8B**, retenu après un comparatif réel contre Mistral 7B 
 - **Canal d'annonce familial** : réutilise le salon Matrix partagé `#etat-du-systeme` déjà en place pour l'alerting (`gitops/apps/uptime-kuma.yaml`, `scripts/tuwunel-alertbot-setup.py`) plutôt que d'en créer un nouveau — les deux relèvent du même besoin ("que se passe-t-il avec notre système ?") du point de vue de la famille. `scripts/tuwunel-announce.py` permet de poster une annonce formatée avant un changement notable.
 - **Traefik** comme reverse proxy / ingress, gestion automatique TLS via Let's Encrypt.
 - **Helm charts** communautaires réutilisés quand ils existent (Nextcloud, Immich, Vaultwarden) plutôt que des manifests réécrits from scratch.
-- **Accès administrateur distant** : VPN WireGuard auto-hébergé (Phase 4) — aucune dépendance tierce (écarté volontairement : Tailscale, plus simple à poser mais qui ajoute un service de coordination propriétaire externe), aucun outil d'administration exposé directement sur internet.
+- **Accès administrateur distant** : VPN WireGuard auto-hébergé (Phase 4) — aucune dépendance tierce (écarté volontairement : Tailscale, plus simple à poser mais qui ajoute un service de coordination propriétaire externe), aucun outil d'administration exposé directement sur internet. Déployé en service systemd sur l'hôte, volontairement **hors GitOps** (pas de `Deployment` k8s) : ce VPN sert justement à accéder au cluster pour intervenir dessus, le placer dedans créerait une dépendance circulaire (cluster en panne → VPN censé permettre d'y remédier tombe avec lui). Détail dans `wireguard/README.md`.
 
 ## 7. Mail : risques et mitigation
 

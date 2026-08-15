@@ -65,7 +65,7 @@ Objectif : construire et valider sur le cluster de dev tout ce qui ne dépend ni
 - Extraction d'événements/tâches depuis les mails → Calendrier/Tasks Nextcloud, avec validation explicite par DM Tuwunel (fait — pipeline complet prototypé et validé de bout en bout : mail → extraction → proposition DM → confirmation humaine réelle → écriture CalDAV, `notes-techniques.md`)
 - Script installeur (développé et testé contre une VM jetable ou un nouveau cluster k3d, pas le mini PC réel) — rejoue `manuel-installation.md`
 - Prototype du modèle de comptes admin (fait — secrets poussés avec succès dans un coffre Vaultwarden de test via le CLI `bw`, chiffrement serveur vérifié directement par API, détail dans `installation-utilisateur.md`)
-- Manifests WireGuard déployés et validés structurellement en dev — le test réel "depuis l'extérieur du LAN" attend le mini PC (Phase 4)
+- WireGuard déployé et validé structurellement en dev (service systemd sur l'hôte, volontairement hors GitOps — voir `wireguard/README.md` : le placer dans le cluster qu'il est censé dépanner créerait une dépendance circulaire) — le test réel "depuis l'extérieur du LAN" attend le mini PC (Phase 4)
 
 **Critère de sortie** : tout ce qui précède fonctionne sur le cluster de dev. Au basculement vers le mini PC réel (Phase 4), il ne reste plus qu'à migrer une configuration déjà validée, pas à la développer from scratch.
 
