@@ -1,0 +1,71 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ollama
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://otwld.github.io/ollama-helm/
+    chart: ollama
+    targetRevision: 1.74.0
+    helm:
+      valuesObject:
+        ollama:
+          models:
+            # Chosen after a real comparative test (Phase 3.5) against
+            # Mistral 7B and Llama 3.1 8B on French/English/Russian mail
+            # summarization + structured event/deadline extraction —
+            # Qwen3 8B won clearly on the extraction task specifically
+            # (9/12 fields correct vs. 6/12 and 5/12), which is what
+            # Phase 5's actual calendar/task feature needs, not just a
+            # readable summary. Full methodology and results in
+            # notes-techniques.md. Chinese origin (Alibaba) accepted
+            # knowingly over the user's stated preference for a French
+            # model (Mistral), given the clear, measured gap.
+            pull:
+              - qwen3:8b
+        # Disk is the real constraint on this dev machine (~21Gi free at
+        # time of writing) — kept at 20Gi rather than shrunk now that
+        # only one model is pulled: PVCs can't shrink once provisioned
+        # (only expand), so a smaller value here would just fail against
+        # the already-created PVC.
+        persistentVolume:
+          enabled: true
+          size: 20Gi
+          storageClass: local-path
+        # Real bug hit live: without this, Ollama kept the previous
+        # model resident while loading the next one during the model
+        # comparison test — combined footprint exceeded the memory
+        # limit below and the pod was OOM-killed (exit 137, confirmed
+        # via `kubectl describe pod`). Also the right behavior for
+        # Phase 5 regardless of testing: models should stay transient,
+        # never multiple loaded together (cf. roadmap.md Phase 5).
+        extraEnv:
+          - name: OLLAMA_MAX_LOADED_MODELS
+            value: "1"
+        resources:
+          requests:
+            memory: 2Gi
+          limits:
+            # One model loaded at a time (~5-8Gi working set for an 8B
+            # Q4 model) — capped rather than left unbounded, this is a
+            # dev cluster shared with everything else already running.
+            memory: 10Gi
+        ingress:
+          enabled: true
+          className: traefik
+          hosts:
+            - host: myown-ollama.local
+              paths:
+                - path: /
+                  pathType: Prefix
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ollama
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

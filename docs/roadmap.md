@@ -61,7 +61,7 @@ Objectif : construire et valider sur le cluster de dev tout ce qui ne dépend ni
 
 - Monitoring famille : moniteurs Uptime Kuma pour les services existants + page de statut publique
 - Bot Tuwunel dédié : salon partagé "État du système" (alerting Uptime Kuma → Tuwunel) — mécanisme réutilisé tel quel par les propositions Ollama en Phase 5
-- Déploiement Ollama + connecteur IMAP de tri/résumé mail, prototypé contre une boîte mail existante (pas besoin de Mailcow réel pour valider le connecteur)
+- Déploiement Ollama (fait — modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B, `notes-techniques.md`) + connecteur IMAP de tri/résumé mail, prototypé contre une boîte mail jetable (pas besoin de Mailcow réel pour valider le connecteur)
 - Extraction d'événements/tâches depuis les mails → Calendrier/Tasks Nextcloud, avec validation explicite par DM Tuwunel
 - Script installeur (développé et testé contre une VM jetable ou un nouveau cluster k3d, pas le mini PC réel) — rejoue `manuel-installation.md`
 - Prototype du modèle de comptes admin (secrets poussés dans Vaultwarden après le premier login) contre l'Authentik/Vaultwarden du cluster de dev
@@ -93,7 +93,7 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
 
 Objectif : premier cas d'usage concret de la couche d'intégration IA, une fois le mail stable. Assistant en tâche de fond, pas de chat — dans l'esprit des fonctionnalités d'assistant ambiant type Apple Intelligence. Principe appliqué à toute action qui modifie une donnée : **l'IA propose, l'utilisateur valide**, jamais d'écriture automatique silencieuse.
 
-- Déploiement Ollama + choix du modèle selon RAM disponible (nom exact à trancher au moment de l'implémentation — le paysage des petits modèles open évolue vite, pas figé aujourd'hui)
+- Déploiement Ollama (fait en Phase 3.5, dev cluster) — modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B sur tri/résumé multilingue et extraction structurée, détail dans `notes-techniques.md`
 - Connecteur IMAP → tri/résumé automatique des mails
 - Extraction d'événements/tâches depuis les mails → proposition d'ajout au Calendrier/Tasks Nextcloud (CalDAV), écriture uniquement après validation explicite
 - Rappels basés sur les événements du calendrier

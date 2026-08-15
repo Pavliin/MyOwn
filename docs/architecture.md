@@ -86,7 +86,7 @@ Le composant le plus risqué techniquement (cf. §7). Mailcow (Postfix/Dovecot/R
 
 ### 5.7 IA locale — Ollama
 
-Modèle local (Llama 3.1 8B ou Mistral 7B selon RAM disponible — nom exact à retrancher au moment de l'implémentation) pour tri/résumé de mails et extraction d'événements/tâches vers le Calendrier/Tasks Nextcloud, dans un premier temps. Aucune donnée ne sort du réseau local. Assistant en tâche de fond, pas de chat — principe appliqué à toute action qui modifie une donnée : l'IA propose, l'utilisateur valide (canal : bot Tuwunel), jamais d'écriture automatique silencieuse. Extension possible à d'autres automatisations une fois le socle stable.
+Modèle local **Qwen3 8B**, retenu après un comparatif réel contre Mistral 7B et Llama 3.1 8B sur le tri/résumé multilingue (français/anglais/russe) et l'extraction structurée d'événements/échéances — net devant sur ce dernier point (le vrai besoin pour la création d'événements/tâches Calendrier/Tasks Nextcloud), chiffrage complet dans `notes-techniques.md`. Origine chinoise (Alibaba Cloud) acceptée en connaissance de cause malgré une préférence de départ pour une solution française, l'écart mesuré étant net. Aucune donnée ne sort du réseau local. Assistant en tâche de fond, pas de chat — principe appliqué à toute action qui modifie une donnée : l'IA propose, l'utilisateur valide (canal : bot Tuwunel), jamais d'écriture automatique silencieuse. Extension possible à d'autres automatisations une fois le socle stable.
 
 ## 6. Infrastructure & orchestration
 

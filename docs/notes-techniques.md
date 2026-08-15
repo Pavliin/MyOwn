@@ -23,6 +23,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | Tuwunel (image officielle `ghcr.io/matrix-construct/tuwunel`, manifests maison) | v1.8.3 |
 | LiveKit (chart officiel `livekit/livekit-server`) | chart 1.9.0, image `livekit/livekit-server:v1.13.5` (surchargée, cf. section LiveKit) |
 | lk-jwt-service (image `ghcr.io/element-hq/lk-jwt-service`, manifests maison) | `latest` (pas de tag versionné publié par le projet) |
+| Ollama (chart `otwld/ollama-helm`) | chart 1.74.0, app 0.32.9, modèle `qwen3:8b` |
 | SOPS | 3.10.2 |
 | KSOPS | v4.5.1 |
 
@@ -300,6 +301,34 @@ Dernière brique de la Phase 3. Architecture MatrixRTC/MSC4143 en trois parties 
 **Événements de call membership pollués par les tests répétés** : après le fix ci-dessus, les réactions Element Call échouaient dans la room utilisée pour tout le débogage (`Reaction target was not a membership event for ..., ignoring`) — une dizaine de cycles join/leave/reconnexion (dont la période de boucle avant le fix) avaient probablement laissé des événements d'état `org.matrix.msc3401.call.member` orphelins dans cette room précise. Confirmé en testant dans une room neuve : appel et réactions fonctionnent normalement — pollution de données de test, pas un vrai bug.
 
 **Validé en conditions réelles** : join complet Element Call depuis un vrai navigateur (audio publié, flux UDP réel confirmé côté serveur), réactions fonctionnelles, aucune boucle de reconnexion après le fix de version. Test multi-appareils LAN réel (deuxième machine, pas juste deux onglets) pas encore fait à ce stade.
+
+## Ollama (IA locale)
+
+Chantier Phase 3.5 : déployer Ollama sur le cluster de dev et choisir le modèle avant l'implémentation réelle du connecteur mail (Phase 5). Chart communautaire `otwld/ollama-helm` (le plus établi des charts Ollama disponibles) — `ollama.models.pull` liste les modèles à télécharger au démarrage, déclaratif comme le reste du projet.
+
+**Contrainte disque réelle sur cette machine de dev** : ~31 Gio libres au départ, retombés à ~13 Gio après le pull des 3 modèles de test (~14,5 Gio réels sur disque, chaque modèle pèse un peu plus que sa taille annoncée). PVC dimensionnée pour tenir plutôt que pour laisser de la marge, contrairement aux autres PVC du projet — écart à surveiller si d'autres modèles sont testés plus tard.
+
+### Comparatif Qwen3 8B / Mistral 7B / Llama 3.1 8B
+
+Besoin exprimé : tri/résumé de mail en français, anglais et russe, avec extraction de données structurées (date, heure, action requise, échéance) pour la fonctionnalité Phase 5 de création d'événements calendrier — pas juste un résumé en prose. Préférence de départ pour une solution française (Mistral), à confirmer ou infirmer par des tests réels plutôt que sur la seule base de fiches techniques.
+
+**Premier essai invalidé par un biais de méthode** : les trois modèles répondaient systématiquement en français quelle que soit la langue de l'email, alors même que la consigne demandait explicitement "dans la même langue que l'email" — parce que cette consigne elle-même était rédigée en français. Corrigé en rédigeant un prompt par langue cible (dans cette langue), éliminant l'ambiguïté. Une fois corrigé : 9/9 réponses dans la bonne langue, pour les trois modèles.
+
+**Qwen3 anormalement lent au premier test (37-131s par réponse)** : cause trouvée en testant une requête triviale ("dis bonjour en un mot") — Qwen3 génère par défaut un raisonnement interne complet avant de répondre (mode "thinking" activé par défaut), visible dans le champ `thinking` de la réponse API même pour une question sans aucune difficulté. Résolu avec `"think": false` dans le corps de la requête (paramètre supporté nativement par l'API Ollama depuis une version récente, ignoré sans erreur par les modèles qui ne le gèrent pas) — passe de plusieurs dizaines de secondes à <1s pour une requête triviale, et ramène Qwen3 à une vitesse comparable aux deux autres modèles sur les vrais tests.
+
+**Test d'extraction structurée, deuxième itération corrigée** : le premier essai ne fournissait pas la date du jour au modèle — impossible de calculer une date ISO à partir de "mardi 18 août" sans référence temporelle, ce qui pénalisait artificiellement les trois modèles sur les champs date/échéance. Corrigé en ajoutant "Today's date is 2026-08-14" au prompt.
+
+**Résultat final** (3 scénarios : rendez-vous médical, demande professionnelle avec échéance, newsletter sans action requise — champs `action_required`/`date`/`time`/`deadline` comparés à la valeur attendue) :
+
+| Modèle | Champs corrects | Erreurs notables |
+|---|---|---|
+| **Qwen3 8B** | **9/12** | Rendez-vous médical : 4/4. Les 3 erreurs restantes sont un défaut de schéma bénin (remplit `date` avec la date du jour plutôt que `null` en l'absence de date d'événement) — `action_required` et `deadline` corrects dans les 3 scénarios sans exception |
+| Mistral 7B | 6/12 | Erreurs plus dispersées, pas de motif clair |
+| Llama 3.1 8B | 5/12 | Vraie erreur de compréhension sur le rendez-vous médical : `action_required: false` alors que l'email demande explicitement de prévenir 24h à l'avance en cas d'empêchement |
+
+**Décision : Qwen3 8B retenu**, malgré la préférence initiale pour une solution française (Mistral) — écart net et mesuré sur données réelles, pas seulement sur fiche technique, notamment sur l'exactitude de l'extraction (le vrai besoin Phase 5, pas juste un résumé lisible). Origine chinoise (Alibaba Cloud) acceptée en connaissance de cause après discussion explicite avec l'utilisateur. Accessoirement, Llama 3.1 ne supporte même pas officiellement le russe dans sa liste de langues (8 langues officielles, le russe n'en fait pas partie) — un point qui l'aurait de toute façon écarté vu le besoin exprimé.
+
+**Config finale** : seul `qwen3:8b` dans `ollama.models.pull` (Mistral et Llama 3.1 supprimés du pod après le test, `ollama rm`, pour libérer le disque — ~9 Gio récupérés). `OLLAMA_MAX_LOADED_MODELS: "1"` — un vrai bug rencontré en testant : sans cette limite, Ollama garde le modèle précédent chargé en mémoire pendant le chargement du suivant, dépassant la limite mémoire du pod (`OOMKilled`, exit code 137, confirmé via `kubectl describe pod`) — comportement cohérent de toute façon avec le principe déjà posé pour la Phase 5 (modèle transitoire, jamais plusieurs chargés en même temps).
 
 ## Git / CI / signature de commits
 
