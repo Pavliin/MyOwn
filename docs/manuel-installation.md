@@ -178,3 +178,13 @@ kubectl get application -n argocd
 ```
 
 Toutes les `Application` doivent converger vers `Synced`/`Healthy` (quelques minutes le temps que les images se téléchargent). Détail de chaque service et de ses identifiants : [`manuel-utilisateur.md`](manuel-utilisateur.md).
+
+## 12. VPN d'accès admin (WireGuard, optionnel en dev)
+
+Pas requis pour utiliser le cluster de dev — pertinent surtout à partir du vrai déploiement (mini PC, Phase 4), où ArgoCD/`kubectl`/SSH ne doivent jamais être exposés directement sur internet (`architecture.md` §6/§11). Volontairement **hors GitOps** (service systemd sur l'hôte, pas un manifeste k8s — cf. [`wireguard/README.md`](../wireguard/README.md) pour le raisonnement).
+
+```bash
+scripts/wireguard-setup.sh
+```
+
+Nécessite `sudo` de façon interactive (installation du paquet, écriture dans `/etc/wireguard/`, activation du service) — à lancer directement dans votre terminal. Écrit la config serveur chiffrée dans `wireguard/wg0.conf.sops.yaml` et une config cliente locale (jamais commitée) à transférer à votre appareil. Relancer le même script avec `MYOWN_WG_PEER_NAME=<nom>` ajoute un nouveau pair sans toucher à la configuration existante.
