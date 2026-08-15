@@ -93,6 +93,7 @@ kubectl patch configmap argocd-cm -n argocd --type merge \
   -p '{"data":{"kustomize.buildOptions":"--enable-alpha-plugins --enable-exec"}}'
 kubectl patch deployment argocd-repo-server -n argocd --type strategic \
   --patch-file gitops/bootstrap/argocd-repo-server-ksops-patch.yaml
+kubectl rollout status deployment argocd-repo-server -n argocd --timeout=120s
 
 step "Health check ArgoCD pour Prometheus Operator"
 kubectl patch configmap argocd-cm -n argocd --type merge \
