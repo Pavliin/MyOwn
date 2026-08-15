@@ -330,6 +330,24 @@ Besoin exprimé : tri/résumé de mail en français, anglais et russe, avec extr
 
 **Config finale** : seul `qwen3:8b` dans `ollama.models.pull` (Mistral et Llama 3.1 supprimés du pod après le test, `ollama rm`, pour libérer le disque — ~9 Gio récupérés). `OLLAMA_MAX_LOADED_MODELS: "1"` — un vrai bug rencontré en testant : sans cette limite, Ollama garde le modèle précédent chargé en mémoire pendant le chargement du suivant, dépassant la limite mémoire du pod (`OOMKilled`, exit code 137, confirmé via `kubectl describe pod`) — comportement cohérent de toute façon avec le principe déjà posé pour la Phase 5 (modèle transitoire, jamais plusieurs chargés en même temps).
 
+### Pipeline complet prototypé de bout en bout : mail → extraction → proposition → confirmation → calendrier
+
+Dernier morceau de la Phase 3.5 sur ce chantier : valider que toute la chaîne prévue pour la Phase 5 tient réellement, pas seulement l'extraction Ollama isolée. Chaque maillon testé avec de vraies requêtes contre les vrais services (Tuwunel, Nextcloud) déjà déployés — seule la source du mail est simulée.
+
+**Boîte mail jetable, pas un vrai compte externe** : création d'un compte chez un fournisseur tiers étant hors de portée pour l'assistant (cf. `CLAUDE.md`, règles de sécurité), et l'utilisateur ayant explicitement préféré cette option à fournir sa vraie boîte. Choix initial (Mailpit) écarté après vérification : il ne supporte que SMTP + une UI web/API, **pas IMAP** — inutilisable pour tester un connecteur IMAP, alors que c'est justement le protocole à valider. Remplacé par **GreenMail** (`greenmail/standalone`), conçu spécifiquement pour ce cas d'usage (serveur de test SMTP+IMAP+POP3, aucune vraie remise de mail). Déployé en dehors du GitOps du projet (manifests bruts appliqués directement, `kubectl apply` hors ArgoCD) — c'est un outil de test jetable pour le développement du connecteur, pas un service destiné à rester, même logique que les scripts de comparaison de modèles restés hors dépôt.
+
+**Déroulé validé en conditions réelles, chaque étape vérifiée indépendamment plutôt que supposée fonctionnelle** :
+
+1. Trois mails de test injectés via SMTP dans GreenMail (mêmes scénarios que le comparatif de modèles : rendez-vous médical, demande professionnelle avec échéance, newsletter sans action).
+2. Connecteur prototype : connexion IMAP réelle (protocole `imaplib`, pas l'API REST d'un outil de test), récupération des mails, extraction structurée via Qwen3 — mêmes résultats que le comparatif initial (dates/échéances exactes sur les deux mails actionnables, aucune fausse alerte sur la newsletter).
+3. Proposition envoyée en DM Matrix depuis `@alertbot` (le même bot que l'alerting admin, réutilisé en mode DM privé plutôt que salon partagé — cf. `roadmap.md` Phase 4/5, séparation stricte déjà actée) vers un salon de conversation directe créé pour l'occasion (`createRoom` avec `is_direct: true`, `preset: trusted_private_chat`).
+4. Confirmation humaine réelle : l'utilisateur a rejoint le salon via un lien `matrix.to` direct (même pattern que pour le salon d'alerte, cf. section Uptime Kuma — la jointure par recherche d'alias ne fonctionnant toujours pas de façon fiable dans Element Web) et répondu "oui" depuis son propre client.
+5. Détection de la réponse par polling de l'historique du salon (`GET /messages`, prototype seulement — une vraie implémentation Phase 5 utiliserait `/sync` en long-polling, pas un polling actif).
+6. Écriture de l'événement dans le calendrier Nextcloud via CalDAV (`PUT` d'un `.ics` sur `/remote.php/dav/calendars/admin/personal/<uid>.ics`, calendrier par défaut confirmé via `PROPFIND` avant d'écrire plutôt que deviné) — **uniquement après la confirmation**, aucune écriture automatique silencieuse, conforme au principe "l'IA propose, l'utilisateur valide" déjà posé pour toute la Phase 5.
+7. Événement relu directement depuis Nextcloud (`GET` sur la même URL) pour confirmer une vraie persistance, pas juste un code `201` en apparence correct.
+
+**Ce qui reste pour la vraie implémentation Phase 5** (volontairement hors scope de ce prototype) : bascule sur la vraie boîte Mailcow une fois déployée (Phase 4), remplacement du polling par un vrai `/sync` Matrix, ordonnancement récurrent (cron/CronJob plutôt qu'un script lancé à la main), et gestion des cas d'erreur (mail déjà traité, réponse ambiguë, timeout de confirmation).
+
 ## Git / CI / signature de commits
 
 Voir `CLAUDE.md` pour le détail (workflow trunk-based, conventional commits, versioning). Un point notable : GitHub refuse le merge "Rebase and merge" dès que les commits signés sont obligatoires sur la branche (il ne peut auto-signer que les commits qu'il crée lui-même) — `"Create a merge commit"` est la seule méthode compatible.

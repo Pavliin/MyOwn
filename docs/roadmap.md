@@ -61,8 +61,8 @@ Objectif : construire et valider sur le cluster de dev tout ce qui ne dépend ni
 
 - Monitoring famille : moniteurs Uptime Kuma pour les services existants + page de statut publique
 - Bot Tuwunel dédié : salon partagé "État du système" (alerting Uptime Kuma → Tuwunel) — mécanisme réutilisé tel quel par les propositions Ollama en Phase 5
-- Déploiement Ollama (fait — modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B, `notes-techniques.md`) + connecteur IMAP de tri/résumé mail, prototypé contre une boîte mail jetable (pas besoin de Mailcow réel pour valider le connecteur)
-- Extraction d'événements/tâches depuis les mails → Calendrier/Tasks Nextcloud, avec validation explicite par DM Tuwunel
+- Déploiement Ollama (fait — modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B, `notes-techniques.md`) + connecteur IMAP de tri/résumé mail, prototypé contre une boîte mail jetable auto-hébergée (GreenMail — Mailpit écarté après vérification, ne supporte pas IMAP)
+- Extraction d'événements/tâches depuis les mails → Calendrier/Tasks Nextcloud, avec validation explicite par DM Tuwunel (fait — pipeline complet prototypé et validé de bout en bout : mail → extraction → proposition DM → confirmation humaine réelle → écriture CalDAV, `notes-techniques.md`)
 - Script installeur (développé et testé contre une VM jetable ou un nouveau cluster k3d, pas le mini PC réel) — rejoue `manuel-installation.md`
 - Prototype du modèle de comptes admin (secrets poussés dans Vaultwarden après le premier login) contre l'Authentik/Vaultwarden du cluster de dev
 - Manifests WireGuard déployés et validés structurellement en dev — le test réel "depuis l'extérieur du LAN" attend le mini PC (Phase 4)
