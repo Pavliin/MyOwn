@@ -34,6 +34,15 @@ Chaque utilisateur héberge sa propre page/nœud ; les nœuds s'interconnectent 
 
 Cohérent avec la philosophie déjà posée du projet (assembler des briques matures plutôt que réinventer), et avec un choix déjà fait dans le POC : Matrix, retenu pour la messagerie, fédère selon exactement la même logique — chacun chez soi, interconnecté. Une partie du chemin technique vers cette vision est donc déjà défrichée par le POC actuel.
 
+## Piste 3 — Diffusion publique en deux temps
+
+Décidé le principe, pas encore le calendrier ni les détails d'exécution :
+
+1. **Mise à disposition** : le dépôt GitHub public (déjà le cas aujourd'hui) reste le point d'entrée technique, complété par le bouche-à-oreille et, potentiellement, un site vitrine/une présence réseaux sociaux.
+2. **Évolutions d'accessibilisation grand public et de confort d'usage (QoL)**, une fois une première base d'utilisateurs réelle validée — recoupe naturellement l'installeur non-technique déjà prévu en Phase 6 (`installation-utilisateur.md`) et le dashboard familial.
+
+Le positionnement exact du site/réseaux sociaux (dans l'étape 1, ou plutôt entre les deux étapes) reste ouvert — dépend surtout du niveau de préparation du projet à absorber un afflux d'utilisateurs non accompagnés individuellement. Cohérent avec le principe déjà posé plus haut (§"Pourquoi documenter ça maintenant" — sérieux, traction) : ne pas sur-exposer avant que l'onboarding (Phase 6) soit prêt à recevoir des utilisateurs sans accompagnement individuel, sous peine de mauvaise première impression difficile à rattraper.
+
 ## À retenir pour les décisions du présent
 
-Rien dans ces deux pistes ne remet en cause les choix déjà faits pour le POC. Elles servent surtout de garde-fou : en cas de doute entre deux options techniques équivalentes pour le POC, préférer celle qui laisse ces portes ouvertes plutôt que celle qui les fermerait.
+Rien dans ces pistes ne remet en cause les choix déjà faits pour le POC. Elles servent surtout de garde-fou : en cas de doute entre deux options techniques équivalentes pour le POC, préférer celle qui laisse ces portes ouvertes plutôt que celle qui les fermerait.
