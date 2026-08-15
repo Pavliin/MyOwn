@@ -64,7 +64,7 @@ Objectif : construire et valider sur le cluster de dev tout ce qui ne dépend ni
 - Déploiement Ollama (fait — modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B, `notes-techniques.md`) + connecteur IMAP de tri/résumé mail, prototypé contre une boîte mail jetable auto-hébergée (GreenMail — Mailpit écarté après vérification, ne supporte pas IMAP)
 - Extraction d'événements/tâches depuis les mails → Calendrier/Tasks Nextcloud, avec validation explicite par DM Tuwunel (fait — pipeline complet prototypé et validé de bout en bout : mail → extraction → proposition DM → confirmation humaine réelle → écriture CalDAV, `notes-techniques.md`)
 - Script installeur (développé et testé contre une VM jetable ou un nouveau cluster k3d, pas le mini PC réel) — rejoue `manuel-installation.md`
-- Prototype du modèle de comptes admin (secrets poussés dans Vaultwarden après le premier login) contre l'Authentik/Vaultwarden du cluster de dev
+- Prototype du modèle de comptes admin (fait — secrets poussés avec succès dans un coffre Vaultwarden de test via le CLI `bw`, chiffrement serveur vérifié directement par API, détail dans `installation-utilisateur.md`)
 - Manifests WireGuard déployés et validés structurellement en dev — le test réel "depuis l'extérieur du LAN" attend le mini PC (Phase 4)
 
 **Critère de sortie** : tout ce qui précède fonctionne sur le cluster de dev. Au basculement vers le mini PC réel (Phase 4), il ne reste plus qu'à migrer une configuration déjà validée, pas à la développer from scratch.
@@ -98,7 +98,7 @@ Objectif : premier cas d'usage concret de la couche d'intégration IA, une fois 
 - Extraction d'événements/tâches depuis les mails → proposition d'ajout au Calendrier/Tasks Nextcloud (CalDAV), écriture uniquement après validation explicite
 - Rappels basés sur les événements du calendrier
 - Canal de proposition/validation pour ces deux derniers points : réutilise le bot Tuwunel mis en place en Phase 4 pour l'alerting admin, mais en DM privé à chaque utilisateur — strictement séparé du salon partagé "État du système", propositions personnelles jamais visibles des autres
-- Évaluation de l'extension à d'autres automatisations (classement de documents Nextcloud, etc.)
+- Évaluation de l'extension à d'autres automatisations (classement de documents Nextcloud, etc.) — piste concrète notée en testant le tri de mail : un mail "colis livré" pourrait devenir un événement calendrier et/ou une notification, voire une question de suivi proactive de l'IA ("dois-je te le rappeler quand tu seras chez toi ?", "à quelle heure ?") plutôt qu'une simple confirmation oui/non — un pattern différent de la validation binaire déjà posée, à explorer
 
 **Critère de sortie** : tri automatique des mails opérationnel et jugé utile par l'auteur en usage réel.
 
