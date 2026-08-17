@@ -39,12 +39,14 @@ Ce que ça ne couvre pas, et qui reste le vrai delta avec un réseau social : pa
 Deux familles de solutions étudiées pour un vrai réseau social auto-hébergé, avec des implications très différentes :
 
 **Fediverse/ActivityPub (Mastodon)** — modèle *push/réplication* : chaque nouveau post d'un compte suivi est livré et copié en local dans la base de l'abonné. Conséquences :
+
 - Croissance du stockage proportionnelle à ce qu'on suit, pas seulement à ce qu'on produit soi-même — nécessite un TTL de cache média pour la borner (paramètre en jours, pas en minutes ; ne purge que les médias, jamais le texte/les métadonnées, répliqués indéfiniment par le protocole de base).
 - Résilience forte : le contenu déjà livré reste visible même si le serveur d'origine tombe.
 - Découverte native : fils fédérés, hashtags, relais.
 - Maturité : logiciel prêt à déployer (Mastodon, Pixelfed, PeerTube, WriteFreely), cohérent avec le choix déjà fait pour Matrix (même logique de fédération pour la messagerie).
 
 **Solid (WebID + Pods, initié par Tim Berners-Lee)** — modèle *pull/consultation en direct* : un WebID identifie la personne et pointe vers son Pod (stockage personnel auto-hébergeable, multi-tenant comme Nextcloud/Immich — un seul serveur peut porter les Pods de toute la famille) ; le fil d'un utilisateur est reconstruit à la volée en interrogeant en direct les Pods des comptes suivis, sans réplication permanente ailleurs. Conséquences :
+
 - Stockage borné à ce qu'on partage réellement soi-même — pas d'accumulation du contenu des autres.
 - Contrôle d'accès fin par ressource (WAC/ACP : tel WebID précis pour tel post précis), plus granulaire que les 4 niveaux de visibilité de Mastodon.
 - Résilience plus faible : un post d'un compte suivi disparaît du fil si son Pod est temporairement hors ligne au moment de la consultation — dépendance à la disponibilité simultanée de tous les Pods suivis, contrairement au modèle push.
@@ -53,12 +55,14 @@ Deux familles de solutions étudiées pour un vrai réseau social auto-hébergé
 - Maturité : le serveur (Community Solid Server) est mature et déployable, mais **la couche applicative "réseau social" (fil, découverte) n'existe pas en brique prête à assembler** — contrairement à Mastodon, ce serait du développement, pas de l'assemblage.
 
 **Pourquoi Solid est la piste préférée malgré ce dernier point** :
+
 - Alignement philosophique encore plus poussé que le modèle Fediverse : aucune réplication forcée chez des tiers, contrôle d'accès nominatif par ressource plutôt que par niveau de visibilité générique, pas d'hypothèse d'opérateur central — cohérent avec le principe déjà posé en tête de ce document plutôt qu'un compromis.
 - Garde à chaque utilisateur la maîtrise de son propre espace disque (pas d'engagement de stockage ouvert dépendant du comportement d'autrui, contrairement à ActivityPub).
 - Cohérent avec l'ambition de garder le projet global abordable et accessible à un large public plutôt que de le complexifier — sans pour autant demander à un utilisateur lambda d'administrer activement son serveur pour l'espace disque (la contrepartie en disponibilité réseau ci-dessus reste à assumer).
 - Potentiel de différenciation ("produit d'appel") pour MyOwn spécifiquement, plutôt qu'une énième instance Mastodon parmi d'autres.
 
 **Ce qu'un vrai projet Solid impliquerait de construire**, pour situer l'ampleur réelle du chantier :
+
 - La logique d'agrégation de fil (parcours du graphe WebID, requêtes live vers les Pods suivis).
 - Un mécanisme de découverte (inexistant nativement, à concevoir).
 - Un rendu HTML public pour les visiteurs externes sans compte.
