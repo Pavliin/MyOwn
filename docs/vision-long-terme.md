@@ -43,6 +43,15 @@ Décidé le principe, pas encore le calendrier ni les détails d'exécution :
 
 Le positionnement exact du site/réseaux sociaux (dans l'étape 1, ou plutôt entre les deux étapes) reste ouvert — dépend surtout du niveau de préparation du projet à absorber un afflux d'utilisateurs non accompagnés individuellement. Cohérent avec le principe déjà posé plus haut (§"Pourquoi documenter ça maintenant" — sérieux, traction) : ne pas sur-exposer avant que l'onboarding (Phase 6) soit prêt à recevoir des utilisateurs sans accompagnement individuel, sous peine de mauvaise première impression difficile à rattraper.
 
+## Piste 4 — Assistant IA sensible à la localisation
+
+Détection de présence dans un lieu inconnu et suggestions de restaurants/lieux à visiter, dans l'esprit des autres fonctionnalités d'assistant ambiant envisagées pour Ollama (`architecture.md` §5.7) — mais structurellement différente des automatisations mail/calendrier de la Phase 5, donc gardée hors scope proche plutôt que d'y être mêlée :
+
+- **Casse le principe "aucune donnée ne sort du réseau local"** posé pour Ollama : une IA locale n'a aucune connaissance à jour des lieux réels sans source externe (API de lieux type OpenStreetMap Overpass, ou base géographique auto-hébergée à évaluer en volume).
+- **Nécessite un pipeline complet absent du projet aujourd'hui** : récupération de la position depuis le téléphone (app de tracking type OwnTracks/PhoneTrack vers un endpoint self-hosted), avec un enjeu de consentement plus sensible qu'un simple accès mail (position en continu, pas un événement ponctuel).
+
+À reprendre une fois le socle Ollama (Phase 5) stable, et seulement si l'usage réel des automatisations mail/calendrier confirme l'intérêt d'aller plus loin dans cette direction.
+
 ## À retenir pour les décisions du présent
 
 Rien dans ces pistes ne remet en cause les choix déjà faits pour le POC. Elles servent surtout de garde-fou : en cas de doute entre deux options techniques équivalentes pour le POC, préférer celle qui laisse ces portes ouvertes plutôt que celle qui les fermerait.
