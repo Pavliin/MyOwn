@@ -29,3 +29,6 @@ Thumbs.db
 
 # Claude Code — settings locaux, propres à la machine
 .claude/settings.local.json
+
+# Brouillons de travail hors périmètre de ce dépôt (futur projet séparé)
+docs/reseau-social-cahier-des-charges.md
