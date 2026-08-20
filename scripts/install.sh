@@ -107,9 +107,18 @@ if [ "$SKIP_MKCERT" != "1" ]; then
   step "Certificats TLS locaux (mkcert)"
   mkcert -install
   TMPDIR_CERTS="$(mktemp -d)"
-  for host in myown-vaultwarden.local myown-nextcloud.local myown-tuwunel.local myown-livekit.local myown-livekit-jwt.local; do
-    ns="${host#myown-}"; ns="${ns%.local}"
-    secret="${ns}-tls"
+  # host:namespace:secret-name — explicit rather than derived from the
+  # hostname, because myown-livekit-jwt.local's namespace is "livekit"
+  # (shared with myown-livekit.local, not its own "livekit-jwt" namespace
+  # as naive string-stripping would produce; found live on the mini PC
+  # bare-metal install, 2026-08-20 — see notes-techniques.md).
+  for entry in \
+    "myown-vaultwarden.local:vaultwarden:vaultwarden-tls" \
+    "myown-nextcloud.local:nextcloud:nextcloud-tls" \
+    "myown-tuwunel.local:tuwunel:tuwunel-tls" \
+    "myown-livekit.local:livekit:livekit-tls" \
+    "myown-livekit-jwt.local:livekit:livekit-jwt-tls"; do
+    host="${entry%%:*}"; rest="${entry#*:}"; ns="${rest%%:*}"; secret="${rest#*:}"
     mkcert -cert-file "$TMPDIR_CERTS/$host.pem" -key-file "$TMPDIR_CERTS/$host-key.pem" "$host"
     kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
     kubectl create secret tls "$secret" -n "$ns" \
