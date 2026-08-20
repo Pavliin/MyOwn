@@ -270,4 +270,32 @@ sudo chmod g+rwx /var/lib/rancher/k3s/storage/myown/nextcloud-data
 
 ### 14.5 Vérification
 
-Identique à la section 11 — en plus des `Application` ArgoCD, quelques CronJobs de backup Restic (Vaultwarden, Nextcloud, Immich, Tuwunel, Authentik, Jellyfin) restent affichés `Progressing` indéfiniment dans ArgoCD : limitation connue de l'évaluation de santé d'ArgoCD pour les `CronJob` (pas de notion claire de "Healthy" pour ce type de ressource), pas un vrai problème — vérifier plutôt directement les endpoints HTTP de chaque service (`manuel-utilisateur.md`).
+Identique à la section 11 — sur un cluster tout juste créé, les `Application` ArgoCD des services avec un `CronJob` de backup Restic (Vaultwarden, Nextcloud, Immich, Tuwunel, Authentik, Jellyfin) restent affichées `Progressing` jusqu'au lendemain matin : leur PVC de dépôt Restic reste `Pending` (`WaitForFirstConsumer`) tant que le `CronJob` n'a pas eu son tout premier passage planifié — pas un vrai problème, ça se résout tout seul (détail dans `notes-techniques.md`). Vérifier plutôt directement les endpoints HTTP de chaque service (`manuel-utilisateur.md`) en attendant.
+
+## 15. Nextcloud — dossier partagé familial (app Group Folders)
+
+Pour que plusieurs comptes personnels (SSO) puissent déposer dans un même dossier — au lieu d'un compte unique dédié — plutôt qu'une app tierce, Nextcloud a une app officielle faite pour ça (`groupfolders`). Utilisé notamment pour la médiathèque lue par Jellyfin (`gitops/apps/jellyfin.yaml`, `persistence.media.hostPath`).
+
+```bash
+php occ app:install groupfolders   # déjà dans le hook before-starting de nextcloud.yaml, idempotent
+php occ group:add famille
+php occ group:adduser famille <utilisateur>   # une fois par membre à ajouter
+php occ groupfolders:create Mediatheque
+php occ groupfolders:group <id-affiché> famille read write share delete
+```
+
+**Étape critique, sinon `403 Forbidden` sur tout dépôt de fichier** (voir `notes-techniques.md` pour le diagnostic complet) : ces commandes `occ`, lancées via `kubectl exec` (root par défaut), créent le dossier sur disque appartenant à `root:root` — inutilisable par les workers Apache réels, qui tournent en `www-data`. Corriger avant tout usage réel :
+
+```bash
+sudo chown -R www-data:www-data <hostPath Nextcloud>/data/__groupfolders
+```
+
+Le chemin réel sur disque (nécessaire si un autre service doit lire ce dossier, comme Jellyfin) : `<hostPath Nextcloud>/data/__groupfolders/<id>/files` — l'`id` est attribué à la création, pas prévisible à l'avance, à vérifier avec `php occ groupfolders:list --output=json` plutôt que deviné. Le `/files` final est nécessaire : un dossier de groupe a cette structure interne (`files/`, `trash/`, `versions/`), contrairement au dossier personnel classique d'un utilisateur.
+
+Bibliothèques Jellyfin correspondantes (pas de mécanisme déclaratif — même limitation que le reste de la première config Jellyfin, `scripts/jellyfin-sso-setup.py`) :
+
+```bash
+curl -X POST "http://<jellyfin>/Library/VirtualFolders?name=Films&collectionType=movies" \
+  -H "X-Emby-Authorization: ...Token=\"<token admin>\"" -H "Content-Type: application/json" \
+  -d '{"LibraryOptions":{"PathInfos":[{"Path":"/media/files/Films"}]}}'
+```
