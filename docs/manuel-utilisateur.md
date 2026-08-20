@@ -101,11 +101,12 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 ## Jellyfin — films et musique
 
-**À quoi ça sert** : bibliothèque de films/séries/musique (achetés) avec lecture en streaming — le complément de Nextcloud/Immich pour ce cas d'usage précis, pensé pour une famille dispersée géographiquement. Déploiement de base validé, mais **bibliothèque encore vide et pas de SSO Authentik pour l'instant** (pas de support natif, un plugin tiers reste à évaluer) — cf. `roadmap.md` et `notes-techniques.md`.
+**À quoi ça sert** : bibliothèque de films/séries/musique (achetés) avec lecture en streaming — le complément de Nextcloud/Immich pour ce cas d'usage précis, pensé pour une famille dispersée géographiquement. Déploiement, sauvegarde et SSO validés ; **bibliothèque encore vide** (pas de contenu réel chargé à ce stade).
 
 - **URL** : <http://myown-jellyfin.local:8090>
-- **Premier accès** : assistant de configuration initiale à la première visite (création du compte administrateur, ajout des premiers dossiers de bibliothèque).
-- **Statut** : déploiement nu validé (pod sain, répond correctement en HTTP). Pas encore de contenu, pas de SSO, pas de sauvegarde Restic.
+- **Connexion via Authentik (SSO)** : pas encore de bouton visuel sur la page de connexion (cosmétique, à faire) — aller directement sur <http://myown-jellyfin.local:8090/authentik/login>, redirige vers Authentik puis reconnecte automatiquement. Premier compte créé automatiquement à la première connexion.
+- **Compte admin local** (`admin`) : reste disponible en secours si Authentik est indisponible, mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`.
+- **Statut** : déploiement, sauvegarde Restic et SSO Authentik tous validés en conditions réelles (`notes-techniques.md`). Pas encore de contenu dans la bibliothèque.
 
 ## À venir
 
