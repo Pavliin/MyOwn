@@ -11,6 +11,18 @@ spec:
     targetRevision: 3.2.0
     helm:
       valuesObject:
+        # Real bug hit live: crash on startup with "System.IO.IOException:
+        # The configured user limit (128) on the number of inotify
+        # instances has been reached" (fs.inotify.max_user_instances on
+        # the host, shared across every process on the machine, not
+        # something to raise just for this one container). Fixed with the
+        # chart's own documented workaround instead of touching the host
+        # sysctl — makes Jellyfin poll for config file changes rather than
+        # use inotify watchers.
+        jellyfin:
+          env:
+            - name: DOTNET_USE_POLLING_FILE_WATCHER
+              value: "1"
         persistence:
           config:
             storageClass: local-path
