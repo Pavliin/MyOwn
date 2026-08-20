@@ -1,0 +1,26 @@
+# Service séparé (ne touche pas au Service `traefik` géré par Helm/k3s, pour
+# éviter qu'une reconciliation ne l'efface) exposant 8090/8453 sur l'interface
+# réseau réelle du nœud, en remplacement du mapping de ports Docker du load
+# balancer k3d (dev) — ici k3s route directement via son ServiceLB intégré
+# (klipper), pas de couche de conteneurisation supplémentaire à traverser.
+#
+# Le port 443 littéral (well-known Matrix pour LiveKit/MatrixRTC, cf.
+# manuel-installation.md) n'a pas besoin d'être dupliqué ici : le Service
+# `traefik` par défaut de k3s expose déjà nativement web/websecure sur 80/443.
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-external
+  namespace: kube-system
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-kube-system
+  ports:
+    - name: web-8090
+      port: 8090
+      targetPort: web
+    - name: websecure-8453
+      port: 8453
+      targetPort: websecure

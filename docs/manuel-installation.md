@@ -204,3 +204,59 @@ g.users.add(u)
 ```
 
 La synchronisation des droits se fait à la connexion, pas en direct sur une session déjà ouverte — se déconnecter/reconnecter côté Jellyfin après ce changement. Le compte local `admin` (mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`) reste utilisable en secours sans attendre cette étape.
+
+## 14. Installation en production (mini PC, k3s bare-metal)
+
+Tout ce qui précède (sections 2-13) décrit le cluster de dev (**k3d**, k3s conteneurisé dans Docker). Sur le vrai mini PC (Phase 4), la cible est un **k3s bare-metal mono-nœud** — `architecture.md` §6, jamais k3d. Validé de bout en bout le 2026-08-20 sur le premier mini PC (Dell OptiPlex). Différences réelles par rapport au parcours dev :
+
+### 14.1 Cluster
+
+Pas de Docker requis pour le cluster lui-même (k3s embarque son propre containerd) :
+
+```bash
+curl -sfL https://get.k3s.io | sh -
+mkdir -p ~/.kube
+sudo cat /etc/rancher/k3s/k3s.yaml | sed "s/127.0.0.1/<IP LAN du nœud>/" > ~/.kube/config
+chmod 600 ~/.kube/config
+export KUBECONFIG=~/.kube/config   # + ajouter à ~/.bashrc pour les sessions interactives
+kubectl get nodes   # Ready après quelques dizaines de secondes
+```
+
+`kubectl` de k3s (`/usr/local/bin/kubectl`, un symlink vers le binaire `k3s`) ne lit **pas** `~/.kube/config` par défaut comme un vrai `kubectl` — toujours passer par `$KUBECONFIG` explicitement (sinon il retombe sur `/etc/rancher/k3s/k3s.yaml`, illisible sans `sudo`).
+
+### 14.2 Traefik — pas à déployer, à reconfigurer
+
+k3s embarque Traefik par défaut (contrairement à k3d qui ne fournit qu'un load balancer nu) — inutile de le déployer via GitOps. Le Service Traefik généré par le Helm-controller de k3s écoute déjà nativement sur 80/443 (couvre le port 443 littéral requis par LiveKit/MatrixRTC, section 4 — rien à faire pour ça).
+
+Pour les ports 8090/8453 (remplace le mapping de ports Docker de k3d), un Service `LoadBalancer` séparé (ne touche pas au Service géré par Helm, pour survivre à une reconciliation) : `gitops/bootstrap/traefik-external-svc.yaml`. Comme `traefik-internal-svc.yaml`/`coredns-custom.yaml` déjà utilisés en dev (section 6), ces trois fichiers sont hors GitOps, à appliquer manuellement :
+
+```bash
+kubectl apply -f gitops/bootstrap/traefik-external-svc.yaml
+kubectl apply -f gitops/bootstrap/traefik-internal-svc.yaml
+kubectl apply -f gitops/bootstrap/coredns-custom.yaml
+kubectl rollout restart deployment coredns -n kube-system
+```
+
+Le nœud répond alors directement sur son IP LAN réelle (`k3s`'s ServiceLB/klipper) : `myown-*.local` doit résoudre vers cette IP (pas `127.0.0.1`) partout où ces services sont utilisés — `/etc/hosts` du/des poste(s) client(s) (section 10), pas seulement du serveur.
+
+LiveKit n'a besoin d'aucun ajustement : ses ports RTC (`podHostNetwork: true`) se bindent directement sur la vraie interface du nœud, sans la couche de port-mapping Docker qu'il fallait pour k3d.
+
+### 14.3 Étapes identiques
+
+Sections 5 (ArgoCD), 6 (KSOPS — la clé age doit être **restaurée** depuis sa sauvegarde sur cette nouvelle machine, jamais régénérée), 7 (health check Prometheus Operator), 8 (bootstrap GitOps), 9 (mkcert) s'appliquent telles quelles. `scripts/install.sh` automatise ce chemin **k3d** uniquement à ce stade — pas encore adapté pour créer un vrai cluster k3s bare-metal (section 14.1 ci-dessus), à faire à la main jusqu'à ce que le script soit étendu et testé sur ce chemin.
+
+### 14.4 Stockage `hostPath` — le dossier doit exister avec les bonnes permissions **avant** le premier démarrage
+
+Nextcloud (`gitops/apps/nextcloud.yaml`, `persistence.hostPath`) monte un `hostPath` de type `Directory` — n'est **jamais créé automatiquement**, contrairement à Immich (`DirectoryOrCreate`, se crée tout seul). Sur le cluster de dev, ce dossier existait déjà de longue date (créé pendant la migration de données, `notes-techniques.md`) — jamais rejoué sur une machine neuve avant ce premier déploiement bare-metal, où l'absence de ce dossier a fait échouer le pod (`FailedMount`).
+
+**Point critique trouvé en le faisant pour de vrai** : créer le dossier avec un simple `mkdir` ne suffit pas — il doit appartenir au groupe `www-data` (gid 33, celui du `fsGroup` du pod) avec droits d'écriture de groupe, **avant** le tout premier démarrage du conteneur. Sans ça, le tout premier `occ maintenance:install` automatique du conteneur échoue en écriture (`Cannot write into "config" directory!`), laisse un `config.php` vide, et plus aucune tentative d'auto-installation ne se redéclenche ensuite (l'entrypoint ne réinstalle jamais tant que ce fichier existe, même vide) — piège découvert après une bonne heure de diagnostic en aval (voir `notes-techniques.md`, section Nextcloud). Fait dès le départ, l'auto-installation standard du conteneur (pilotée par `NEXTCLOUD_ADMIN_USER`/`NEXTCLOUD_ADMIN_PASSWORD`, déjà câblés via `existingSecret`) se déroule normalement, sans intervention manuelle :
+
+```bash
+sudo mkdir -p /var/lib/rancher/k3s/storage/myown/nextcloud-data
+sudo chown root:33 /var/lib/rancher/k3s/storage/myown/nextcloud-data
+sudo chmod g+rwx /var/lib/rancher/k3s/storage/myown/nextcloud-data
+```
+
+### 14.5 Vérification
+
+Identique à la section 11 — en plus des `Application` ArgoCD, quelques CronJobs de backup Restic (Vaultwarden, Nextcloud, Immich, Tuwunel, Authentik, Jellyfin) restent affichés `Progressing` indéfiniment dans ArgoCD : limitation connue de l'évaluation de santé d'ArgoCD pour les `CronJob` (pas de notion claire de "Healthy" pour ce type de ressource), pas un vrai problème — vérifier plutôt directement les endpoints HTTP de chaque service (`manuel-utilisateur.md`).

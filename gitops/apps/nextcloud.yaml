@@ -49,9 +49,20 @@ spec:
               # Nextcloud was already installed before this SSO integration was
               # added. before-starting runs on every container start instead,
               # which is safe since both occ calls below are idempotent.
+              #
+              # Real gap found on a genuinely fresh install (mini PC bare-metal
+              # bootstrap, 2026-08-20): before-starting fires *before* the base
+              # image's own first-run install, so on container #1 ever, occ
+              # isn't functional yet — the first `||` pair fails both branches,
+              # `set -e` aborts the script, CrashLoopBackOff forever (Nextcloud
+              # never gets a chance to complete its own install either). Guard
+              # added below: skip entirely until Nextcloud reports installed,
+              # so the base image's normal install path can run uninterrupted;
+              # this hook picks up its job on the next container start.
               before-starting: |
                 #!/bin/sh
                 set -e
+                php occ status --output=json 2>/dev/null | grep -q '"installed":true' || exit 0
                 php occ app:install calendar || php occ app:enable calendar
                 php occ app:install contacts || php occ app:enable contacts
                 php occ app:install notes || php occ app:enable notes
