@@ -358,6 +358,16 @@ Dernier morceau de la Phase 3.5 sur ce chantier : valider que toute la chaîne p
 
 **Ce qui reste pour la vraie implémentation Phase 5** (volontairement hors scope de ce prototype) : bascule sur la vraie boîte Mailcow une fois déployée (Phase 4), remplacement du polling par un vrai `/sync` Matrix, ordonnancement récurrent (cron/CronJob plutôt qu'un script lancé à la main), gestion des cas d'erreur (mail déjà traité, réponse ambiguë, timeout de confirmation), et résolution propre du compte Nextcloud cible par utilisateur (cf. ci-dessus).
 
+## Jellyfin (bibliothèque films/musique)
+
+Ajouté hors périmètre initial du MVP — demandé directement par l'utilisateur après une discussion sur le meilleur moyen de partager des films/musiques achetés avec une famille dispersée sur plus de 800 km, un besoin que ni Nextcloud (stockage brut, pas de confort de lecture) ni Immich (pensé pellicule/photos, pas bibliothèque de films) ne couvrent. Déployé via le chart officiel `jellyfin/jellyfin-helm` (dépôt GitHub sous l'org `jellyfin`, vérifié activement maintenu avant de le retenir — dernier push et PR mergées le 2026-08-08, pas d'archive) plutôt qu'une des nombreuses alternatives communautaires trouvées en recherche (wrenix, TrueCharts, etc.).
+
+**PVC réduites par rapport aux défauts du chart** (`config` 5Gi, `media` 5Gi au lieu de 25Gi) : bibliothèque de test uniquement à ce stade (roadmap.md Phase 3.5), le disque de ce cluster de dev était déjà serré au moment du déploiement (~23Gi libres, cf. l'incident du 2026-08-20 plus haut) — la vraie taille sera reconsidérée avec `materiel.md` une fois le mini PC en place et un usage réel connu.
+
+**Premier déploiement en échec réel** : `CrashLoopBackOff` immédiat, confirmé dans les logs du pod — `System.IO.IOException: The configured user limit (128) on the number of inotify instances has been reached`. `fs.inotify.max_user_instances` est un réglage au niveau de l'hôte, partagé par tous les processus de la machine — pas question de l'augmenter juste pour ce conteneur. Corrigé avec le contournement documenté par le chart lui-même plutôt qu'un changement de sysctl hôte : `DOTNET_USE_POLLING_FILE_WATCHER=1`, qui fait basculer la surveillance de fichiers de Jellyfin sur du polling plutôt que sur `inotify`.
+
+**Validé en conditions réelles** après le fix : pod `Running`, Application ArgoCD `Synced`/`Healthy`, requête HTTP réelle contre `/System/Info/Public` confirmant un serveur qui répond correctement (`StartupWizardCompleted: false`, cohérent avec un tout premier déploiement). Pas encore de SSO Authentik (pas de support OIDC natif, passera par un plugin communautaire tiers à évaluer — cf. `roadmap.md`), pas encore de sauvegarde Restic, bibliothèque encore vide.
+
 ## Script installeur (`scripts/install.sh`)
 
 Validé par étapes sur des clusters k3d jetables (jamais contre `myown-dev` directement — voir plus bas pourquoi). Deux vrais problèmes trouvés en le testant contre un cluster neuf avec les ports par défaut réels (le premier essai, contre un cluster nommé différemment en parallèle de `myown-dev`, avait échoué pour une autre raison : contention CPU/mémoire des deux stacks k3d/containerd tournant simultanément, cluster de test jamais sorti de `Waiting for containerd startup` — pas un défaut du script).

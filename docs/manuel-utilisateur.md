@@ -99,6 +99,14 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Appels vidéo de groupe** : dans une room, bouton d'appel — rejoint automatiquement un appel Element Call, média géré par LiveKit. Fonctionne pour 3-4 participants d'après l'architecture ciblée ; validé à ce stade avec un compte réel en navigateur (audio, réactions), pas encore avec plusieurs appareils simultanés sur le LAN.
 - **Statut** : déploiement nu, SSO Authentik et sauvegarde Restic quotidienne tous validés en conditions réelles. LiveKit validé de bout en bout (découverte MatrixRTC, connexion média réelle, réactions).
 
+## Jellyfin — films et musique
+
+**À quoi ça sert** : bibliothèque de films/séries/musique (achetés) avec lecture en streaming — le complément de Nextcloud/Immich pour ce cas d'usage précis, pensé pour une famille dispersée géographiquement. Déploiement de base validé, mais **bibliothèque encore vide et pas de SSO Authentik pour l'instant** (pas de support natif, un plugin tiers reste à évaluer) — cf. `roadmap.md` et `notes-techniques.md`.
+
+- **URL** : <http://myown-jellyfin.local:8090>
+- **Premier accès** : assistant de configuration initiale à la première visite (création du compte administrateur, ajout des premiers dossiers de bibliothèque).
+- **Statut** : déploiement nu validé (pod sain, répond correctement en HTTP). Pas encore de contenu, pas de SSO, pas de sauvegarde Restic.
+
 ## À venir
 
 Chaque nouveau service applicatif aura sa propre section ici : URL, identifiants, prise en main de base, et pour les services destinés à la famille/aux amis, des instructions pensées pour un public non technique.
