@@ -38,14 +38,19 @@ spec:
             config:
               storageClass: local-path
               size: 5Gi
-            # Bibliothèque de test uniquement à ce stade (roadmap.md Phase
-            # 3.5) — taille réduite volontairement par rapport au défaut du
-            # chart (25Gi), le disque de ce cluster de dev est déjà serré
-            # (~23Gi libres au moment de l'écriture, cf. notes-techniques.md
-            # sur l'incident du 2026-08-20).
+            # Plus un PVC dédié : la famille dépose ses films/musiques dans
+            # Nextcloud (déjà su comme geste, cf. photos/fichiers), Jellyfin
+            # lit directement ce même dossier en lecture seule — une seule
+            # source de vérité plutôt que deux copies à synchroniser à la
+            # main. Chemin = le hostPath Nextcloud déjà en place
+            # (nextcloud.yaml), sous le compte "admin" pour l'instant (à
+            # revoir une fois plusieurs comptes familiaux réels en usage).
+            # readOnly: Jellyfin n'a jamais besoin d'écrire dans les fichiers
+            # eux-mêmes, seulement dans /config et /cache (montés à part).
             media:
-              storageClass: local-path
-              size: 5Gi
+              type: hostPath
+              hostPath: /var/lib/rancher/k3s/storage/myown/nextcloud-data/data/admin/files
+              readOnly: true
           ingress:
             enabled: true
             className: traefik
