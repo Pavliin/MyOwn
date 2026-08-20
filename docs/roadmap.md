@@ -66,6 +66,7 @@ Objectif : construire et valider sur le cluster de dev tout ce qui ne dépend ni
 - Script installeur (développé et testé contre une VM jetable ou un nouveau cluster k3d, pas le mini PC réel) — rejoue `manuel-installation.md`
 - Prototype du modèle de comptes admin (fait — secrets poussés avec succès dans un coffre Vaultwarden de test via le CLI `bw`, chiffrement serveur vérifié directement par API, détail dans `installation-utilisateur.md`)
 - WireGuard déployé et validé de bout en bout en LAN (service systemd sur l'hôte, volontairement hors GitOps — voir `wireguard/README.md` : le placer dans le cluster qu'il est censé dépanner créerait une dépendance circulaire), handshake réel confirmé avec un second appareil — le test réel "depuis l'extérieur du LAN" attend le mini PC (Phase 4)
+- **Jellyfin** (bibliothèque films/musique) : déploiement + intégration SSO Authentik (plugin communautaire tiers, même schéma d'intégration que le `user_oidc` de Nextcloud, à valider) + sauvegarde Restic (base + bibliothèque). Bibliothèque de test uniquement à ce stade — l'usage réel visé (partager des films/musiques achetés avec la famille, dispersée sur plus de 800 km) dépend d'une exposition internet réelle, différé en Phase 4
 
 **Critère de sortie** : tout ce qui précède fonctionne sur le cluster de dev. Au basculement vers le mini PC réel (Phase 4), il ne reste plus qu'à migrer une configuration déjà validée, pas à la développer from scratch.
 
@@ -85,6 +86,7 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
   - App Android Vaultwarden (Phase 1)
   - Apps Android Nextcloud + Immich, backup automatique photos/vidéos en conditions réelles (Phase 2)
   - App Android Element X, test de fédération Matrix avec un second serveur externe (Phase 3)
+  - Jellyfin : accès distant réel validé par un membre de la famille éloigné (800 km), avec vérification de la bande passante en lecture simultanée (Phase 3.5)
 - Provisionnement du VPS façade (Hetzner/OVH/Scaleway), configuration Postfix relay + SPF/DKIM/DMARC
 - Déploiement Mailcow à domicile, connexion au relais VPS
 - Migration progressive des correspondants (soi-même d'abord, en parallèle d'un compte existant le temps de valider la délivrabilité)
