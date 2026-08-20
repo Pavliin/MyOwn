@@ -101,12 +101,13 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 ## Jellyfin — films et musique
 
-**À quoi ça sert** : bibliothèque de films/séries/musique (achetés) avec lecture en streaming — le complément de Nextcloud/Immich pour ce cas d'usage précis, pensé pour une famille dispersée géographiquement. Déploiement, sauvegarde et SSO validés ; **bibliothèque encore vide** (pas de contenu réel chargé à ce stade).
+**À quoi ça sert** : bibliothèque de films/séries/musique (achetés) avec lecture en streaming — le complément de Nextcloud/Immich pour ce cas d'usage précis, pensé pour une famille dispersée géographiquement.
 
 - **URL** : <http://myown-jellyfin.local:8090>
-- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter avec Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Premier compte créé automatiquement à la première connexion.
+- **Ajouter du contenu** : pas d'upload direct dans Jellyfin — déposer le fichier dans le dossier `Films` ou `Musique` de **Nextcloud** (interface web, glisser-déposer, ou client de sync), comme pour n'importe quel autre fichier. Jellyfin lit ce même dossier en lecture seule, une seule copie. Puis relancer un scan pour qu'il apparaisse tout de suite : Dashboard → Bibliothèques → icône de rafraîchissement (sinon, scan périodique automatique).
+- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter avec Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Premier compte créé automatiquement à la première connexion, mais **sans droits admin par défaut** — voir `manuel-installation.md` étape 13 pour donner les droits admin à un compte.
 - **Compte admin local** (`admin`) : reste disponible en secours si Authentik est indisponible, mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`.
-- **Statut** : déploiement, sauvegarde Restic et SSO Authentik tous validés en conditions réelles (`notes-techniques.md`). Pas encore de contenu dans la bibliothèque.
+- **Statut** : déploiement, sauvegarde Restic, SSO Authentik et bibliothèque sourcée depuis Nextcloud tous validés en conditions réelles (`notes-techniques.md`).
 
 ## À venir
 
