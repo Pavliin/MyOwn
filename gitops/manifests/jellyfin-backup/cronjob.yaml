@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jellyfin-restic-backup
+spec:
+  # After Authentik (04:00) — staggered to avoid overlapping jobs on a
+  # single-node cluster.
+  schedule: "15 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: restic-backup
+              image: restic/restic:0.19.1
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: /repo
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: jellyfin-secrets
+                      key: RESTIC_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  restic snapshots >/dev/null 2>&1 || restic init
+                  restic backup /config /media --tag jellyfin
+                  restic forget --tag jellyfin --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                  readOnly: true
+                - name: media
+                  mountPath: /media
+                  readOnly: true
+                - name: repo
+                  mountPath: /repo
+          volumes:
+            - name: config
+              persistentVolumeClaim:
+                claimName: jellyfin-config
+            - name: media
+              persistentVolumeClaim:
+                claimName: jellyfin-media
+            - name: repo
+              persistentVolumeClaim:
+                claimName: jellyfin-restic-repo

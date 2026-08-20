@@ -5,44 +5,50 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://jellyfin.github.io/jellyfin-helm
-    chart: jellyfin
-    targetRevision: 3.2.0
-    helm:
-      valuesObject:
-        # Real bug hit live: crash on startup with "System.IO.IOException:
-        # The configured user limit (128) on the number of inotify
-        # instances has been reached" (fs.inotify.max_user_instances on
-        # the host, shared across every process on the machine, not
-        # something to raise just for this one container). Fixed with the
-        # chart's own documented workaround instead of touching the host
-        # sysctl — makes Jellyfin poll for config file changes rather than
-        # use inotify watchers.
-        jellyfin:
-          env:
-            - name: DOTNET_USE_POLLING_FILE_WATCHER
-              value: "1"
-        persistence:
-          config:
-            storageClass: local-path
-            size: 5Gi
-          # Bibliothèque de test uniquement à ce stade (roadmap.md Phase
-          # 3.5) — taille réduite volontairement par rapport au défaut du
-          # chart (25Gi), le disque de ce cluster de dev est déjà serré
-          # (~23Gi libres au moment de l'écriture, cf. notes-techniques.md
-          # sur l'incident du 2026-08-20).
-          media:
-            storageClass: local-path
-            size: 5Gi
-        ingress:
-          enabled: true
-          className: traefik
-          hosts:
-            - host: myown-jellyfin.local
-              paths:
-                - path: /
-                  pathType: Prefix
+  sources:
+    - repoURL: https://jellyfin.github.io/jellyfin-helm
+      chart: jellyfin
+      targetRevision: 3.2.0
+      helm:
+        valuesObject:
+          # Real bug hit live: crash on startup with "System.IO.IOException:
+          # The configured user limit (128) on the number of inotify
+          # instances has been reached" (fs.inotify.max_user_instances on
+          # the host, shared across every process on the machine, not
+          # something to raise just for this one container). Fixed with the
+          # chart's own documented workaround instead of touching the host
+          # sysctl — makes Jellyfin poll for config file changes rather than
+          # use inotify watchers.
+          jellyfin:
+            env:
+              - name: DOTNET_USE_POLLING_FILE_WATCHER
+                value: "1"
+          persistence:
+            config:
+              storageClass: local-path
+              size: 5Gi
+            # Bibliothèque de test uniquement à ce stade (roadmap.md Phase
+            # 3.5) — taille réduite volontairement par rapport au défaut du
+            # chart (25Gi), le disque de ce cluster de dev est déjà serré
+            # (~23Gi libres au moment de l'écriture, cf. notes-techniques.md
+            # sur l'incident du 2026-08-20).
+            media:
+              storageClass: local-path
+              size: 5Gi
+          ingress:
+            enabled: true
+            className: traefik
+            hosts:
+              - host: myown-jellyfin.local
+                paths:
+                  - path: /
+                    pathType: Prefix
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/jellyfin
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/jellyfin-backup
   destination:
     server: https://kubernetes.default.svc
     namespace: jellyfin
