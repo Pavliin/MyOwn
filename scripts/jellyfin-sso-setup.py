@@ -167,4 +167,28 @@ s.post(
     },
 ).raise_for_status()
 
-info(f"Done — SSO login available at {BASE}/authentik/login")
+info("Adding the login page button (no dedicated plugin hook — Jellyfin's"
+     " own branding config, POST /System/Configuration/Branding; note this"
+     " is a distinct route from the generic /System/Configuration/{key},"
+     " which silently accepts a body but doesn't persist it for this key)...")
+s.post(
+    f"{BASE}/System/Configuration/Branding",
+    json={
+        "LoginDisclaimer": (
+            '<form action="/authentik/login" class="sso-login-form">'
+            '<button type="submit" class="sso-login-btn">Se connecter avec Authentik</button>'
+            "</form>"
+        ),
+        "CustomCss": (
+            ".sso-login-form { margin-top: 1.5em; text-align: center; } "
+            ".sso-login-btn { display: inline-flex; align-items: center; justify-content: center; "
+            "padding: 0.75em 1.5em; width: 100%; max-width: 300px; background: #fd4b2d; color: #fff; "
+            "border: none; border-radius: 4px; font-size: 1em; font-weight: 500; cursor: pointer; "
+            "transition: background 0.2s; } "
+            ".sso-login-btn:hover { background: #e0432a; }"
+        ),
+        "SplashscreenEnabled": False,
+    },
+).raise_for_status()
+
+info(f"Done — SSO login available at {BASE}/authentik/login (button now on the login page too)")

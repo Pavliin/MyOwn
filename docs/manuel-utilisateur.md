@@ -104,7 +104,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 **À quoi ça sert** : bibliothèque de films/séries/musique (achetés) avec lecture en streaming — le complément de Nextcloud/Immich pour ce cas d'usage précis, pensé pour une famille dispersée géographiquement. Déploiement, sauvegarde et SSO validés ; **bibliothèque encore vide** (pas de contenu réel chargé à ce stade).
 
 - **URL** : <http://myown-jellyfin.local:8090>
-- **Connexion via Authentik (SSO)** : pas encore de bouton visuel sur la page de connexion (cosmétique, à faire) — aller directement sur <http://myown-jellyfin.local:8090/authentik/login>, redirige vers Authentik puis reconnecte automatiquement. Premier compte créé automatiquement à la première connexion.
+- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter avec Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Premier compte créé automatiquement à la première connexion.
 - **Compte admin local** (`admin`) : reste disponible en secours si Authentik est indisponible, mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`.
 - **Statut** : déploiement, sauvegarde Restic et SSO Authentik tous validés en conditions réelles (`notes-techniques.md`). Pas encore de contenu dans la bibliothèque.
 
