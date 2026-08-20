@@ -25,20 +25,22 @@ spec:
                     secretKeyRef:
                       name: jellyfin-secrets
                       key: RESTIC_PASSWORD
+              # /media dropped — no longer its own PVC (jellyfin.yaml,
+              # persistence.media.type: hostPath, sourced from Nextcloud's
+              # own files). Backing it up here would just duplicate what
+              # Nextcloud's own Restic job already covers for that same
+              # data.
               command:
                 - sh
                 - -c
                 - |
                   set -eu
                   restic snapshots >/dev/null 2>&1 || restic init
-                  restic backup /config /media --tag jellyfin
+                  restic backup /config --tag jellyfin
                   restic forget --tag jellyfin --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
               volumeMounts:
                 - name: config
                   mountPath: /config
-                  readOnly: true
-                - name: media
-                  mountPath: /media
                   readOnly: true
                 - name: repo
                   mountPath: /repo
@@ -46,9 +48,6 @@ spec:
             - name: config
               persistentVolumeClaim:
                 claimName: jellyfin-config
-            - name: media
-              persistentVolumeClaim:
-                claimName: jellyfin-media
             - name: repo
               persistentVolumeClaim:
                 claimName: jellyfin-restic-repo
