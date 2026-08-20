@@ -108,10 +108,17 @@ spec:
             master:
               persistence:
                 enabled: false
+          # hostPath fixe plutôt qu'un PVC à chemin auto-généré — pour que
+          # les fichiers restent inspectables/modifiables directement sans
+          # passer par kubectl, et survivent même cluster arrêté. Chemin
+          # choisi sous /var/lib/rancher/k3s/storage/ (déjà un volume Docker
+          # monté dans le conteneur k3d, donc persistant même si le
+          # conteneur est recréé — pas un chemin arbitraire de sa couche
+          # writable). Données migrées depuis l'ancien PVC avant bascule
+          # (copie vérifiée identique par `diff -rq`), voir notes-techniques.md.
           persistence:
             enabled: true
-            storageClass: local-path
-            size: 5Gi
+            hostPath: /var/lib/rancher/k3s/storage/myown/nextcloud-data
           ingress:
             enabled: true
             className: traefik
