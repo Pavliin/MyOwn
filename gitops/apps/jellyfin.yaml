@@ -11,6 +11,17 @@ spec:
       targetRevision: 3.2.0
       helm:
         valuesObject:
+          # Chart 3.2.0's default image tag (resolved from its own
+          # appVersion) pulls 10.11.8 — older than what the Authentik SSO
+          # plugin below is actually compiled against (10.11.11, confirmed
+          # via its .deps.json). Real bug hit live: plugin installed fine
+          # but failed to load ("Failed to load assembly ... This error
+          # occurs when a plugin references an incompatible version of one
+          # of the shared libraries"), server logs confirmed. Pinned
+          # explicitly rather than relying on the chart default, same
+          # pattern as LiveKit's image.tag pin.
+          image:
+            tag: "10.11.11"
           # Real bug hit live: crash on startup with "System.IO.IOException:
           # The configured user limit (128) on the number of inotify
           # instances has been reached" (fs.inotify.max_user_instances on
