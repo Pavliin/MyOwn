@@ -65,6 +65,14 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/immich-postgres
+    # Static hostPath-backed PV/PVC (immich-library), same name the chart
+    # already references. Also closes a real gap found live: this PVC
+    # previously existed only as an out-of-band, hand-created object —
+    # never declared in GitOps, so a fresh cluster would have failed to
+    # start Immich at all (existingClaim pointing at nothing).
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/immich-library
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/immich-backup

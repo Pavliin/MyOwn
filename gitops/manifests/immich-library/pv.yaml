@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-library-hostpath
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  # Retain, not the Delete default used by dynamically provisioned PVs —
+  # this data should never disappear just because the PVC referencing it
+  # gets deleted (e.g. during a future migration like this one).
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /var/lib/rancher/k3s/storage/myown/immich-library
+    type: DirectoryOrCreate
