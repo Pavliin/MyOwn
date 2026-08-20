@@ -189,3 +189,18 @@ scripts/wireguard-setup.sh
 ```
 
 Nécessite `sudo` de façon interactive (installation du paquet, écriture dans `/etc/wireguard/`, activation du service) — à lancer directement dans votre terminal. Écrit la config serveur chiffrée dans `wireguard/wg0.conf.sops.yaml` et une config cliente locale (jamais commitée) à transférer à votre appareil. Relancer le même script avec `MYOWN_WG_PEER_NAME=<nom>` ajoute un nouveau pair sans toucher à la configuration existante.
+
+## 13. Jellyfin — droits admin via Authentik
+
+Après `scripts/jellyfin-sso-setup.py` (installe/configure le plugin SSO, voir `notes-techniques.md`) : un compte connecté via Authentik est créé automatiquement au premier login, mais **sans les droits administrateur** tant qu'il n'appartient pas au groupe Authentik `jellyfin-admins` (nom par défaut attendu par le plugin) — sans ça, "Bibliothèques" et le reste du tableau de bord restent invisibles dans l'IHM, même une fois connecté.
+
+Ajouter le compte admin du foyer à ce groupe (`ak shell` sur le pod `authentik-server`, groupe créé automatiquement s'il n'existe pas encore) :
+
+```python
+from authentik.core.models import User, Group
+u = User.objects.get(username='<votre nom d’utilisateur Authentik>')
+g, _ = Group.objects.get_or_create(name='jellyfin-admins')
+g.users.add(u)
+```
+
+La synchronisation des droits se fait à la connexion, pas en direct sur une session déjà ouverte — se déconnecter/reconnecter côté Jellyfin après ce changement. Le compte local `admin` (mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`) reste utilisable en secours sans attendre cette étape.
