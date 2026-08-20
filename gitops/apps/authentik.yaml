@@ -30,6 +30,7 @@ spec:
               - authentik-blueprint-nextcloud-sso
               - authentik-blueprint-immich-sso
               - authentik-blueprint-tuwunel-sso
+              - authentik-blueprint-jellyfin-sso
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/authentik
