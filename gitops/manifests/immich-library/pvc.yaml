@@ -13,4 +13,4 @@ spec:
   volumeName: immich-library-hostpath
   resources:
     requests:
-      storage: 10Gi
+      storage: 300Gi
