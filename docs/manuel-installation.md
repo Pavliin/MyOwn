@@ -169,6 +169,7 @@ Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.y
 127.0.0.1 myown-tuwunel.local
 127.0.0.1 myown-livekit.local
 127.0.0.1 myown-livekit-jwt.local
+127.0.0.1 myown-jellyfin.local
 ```
 
 ## 11. Vérification

@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jellyfin
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://jellyfin.github.io/jellyfin-helm
+    chart: jellyfin
+    targetRevision: 3.2.0
+    helm:
+      valuesObject:
+        persistence:
+          config:
+            storageClass: local-path
+            size: 5Gi
+          # Bibliothèque de test uniquement à ce stade (roadmap.md Phase
+          # 3.5) — taille réduite volontairement par rapport au défaut du
+          # chart (25Gi), le disque de ce cluster de dev est déjà serré
+          # (~23Gi libres au moment de l'écriture, cf. notes-techniques.md
+          # sur l'incident du 2026-08-20).
+          media:
+            storageClass: local-path
+            size: 5Gi
+        ingress:
+          enabled: true
+          className: traefik
+          hosts:
+            - host: myown-jellyfin.local
+              paths:
+                - path: /
+                  pathType: Prefix
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jellyfin
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
