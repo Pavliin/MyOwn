@@ -42,14 +42,18 @@ spec:
             # Nextcloud (déjà su comme geste, cf. photos/fichiers), Jellyfin
             # lit directement ce même dossier en lecture seule — une seule
             # source de vérité plutôt que deux copies à synchroniser à la
-            # main. Chemin = le hostPath Nextcloud déjà en place
-            # (nextcloud.yaml), sous le compte "admin" pour l'instant (à
-            # revoir une fois plusieurs comptes familiaux réels en usage).
-            # readOnly: Jellyfin n'a jamais besoin d'écrire dans les fichiers
-            # eux-mêmes, seulement dans /config et /cache (montés à part).
+            # main. Chemin = le dossier de groupe Nextcloud "Mediatheque"
+            # (app groupfolders, groupe "famille") — plusieurs comptes
+            # personnels peuvent y déposer des fichiers avec leur propre
+            # identité, pas un compte unique dédié. Chemin réel confirmé en
+            # direct (id de dossier 1, cf. notes-techniques.md) plutôt que
+            # calculé — l'id n'est pas garanti stable si le dossier est
+            # recréé. readOnly: Jellyfin n'a jamais besoin d'écrire dans les
+            # fichiers eux-mêmes, seulement dans /config et /cache (montés
+            # à part).
             media:
               type: hostPath
-              hostPath: /var/lib/rancher/k3s/storage/myown/nextcloud-data/data/admin/files
+              hostPath: /var/lib/rancher/k3s/storage/myown/nextcloud-data/data/__groupfolders/1
               readOnly: true
           ingress:
             enabled: true

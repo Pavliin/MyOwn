@@ -67,6 +67,7 @@ spec:
                 php occ app:install contacts || php occ app:enable contacts
                 php occ app:install notes || php occ app:enable notes
                 php occ app:install tasks || php occ app:enable tasks
+                php occ app:install groupfolders || php occ app:enable groupfolders
                 php occ app:install user_oidc || php occ app:enable user_oidc
                 # Immich is now deployed and is the project's single photo
                 # app (architecture.md §2, "one app per use case") — avoids

@@ -4,7 +4,7 @@ metadata:
   name: immich-library-hostpath
 spec:
   capacity:
-    storage: 10Gi
+    storage: 300Gi
   accessModes:
     - ReadWriteOnce
   # Retain, not the Delete default used by dynamically provisioned PVs —
