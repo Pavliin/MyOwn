@@ -76,6 +76,17 @@ kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge \
 kubectl rollout restart deployment argocd-server -n argocd
 ```
 
+**Mot de passe admin stable** (recommandé, évite de reproduire le piège `akadmin` documenté dans `notes-techniques.md` — sans ça, ArgoCD génère un mot de passe aléatoire à chaque install, jamais persisté) : restaurer le hash bcrypt déjà chiffré dans le dépôt plutôt que de garder celui généré à l'installation.
+
+```bash
+BCRYPT=$(sops -d --extract '["ARGOCD_ADMIN_PASSWORD_BCRYPT"]' gitops/secrets/argocd/argocd.sops.yaml)
+kubectl patch secret argocd-secret -n argocd --type merge \
+  -p "{\"stringData\":{\"admin.password\":\"$BCRYPT\",\"admin.passwordMtime\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+kubectl delete secret argocd-initial-admin-secret -n argocd
+```
+
+Identifiants dans `gitops/secrets/argocd/argocd.sops.yaml` (hors GitOps, comme le bootstrap ArgoCD lui-même — ArgoCD ne peut pas déchiffrer via KSOPS un secret dont il a besoin pour exister).
+
 ## 6. Activer KSOPS (déchiffrement automatique des secrets)
 
 ```bash
