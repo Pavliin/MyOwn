@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.4](https://github.com/Pavliin/MyOwn/compare/v0.1.3...v0.1.4) (2026-08-20)
+
+### Fonctionnalités
+
+* **immich:** resize the library volume for real use (10Gi -> 300Gi) ([790bd70](https://github.com/Pavliin/MyOwn/commit/790bd70bcb55262bd4397ddd3ec14969a95ad64f))
+* **nextcloud:** install groupfolders for shared family folders ([86213ef](https://github.com/Pavliin/MyOwn/commit/86213ef26baee700422d8d199905b7d62660854d))
+* **ops:** complete first-boot account setup on the mini PC ([a776b21](https://github.com/Pavliin/MyOwn/commit/a776b21383e9ebcc8898258bce67f4adc8728a6f))
+* **wireguard:** reinstall the admin VPN on the real mini PC ([4189403](https://github.com/Pavliin/MyOwn/commit/4189403a4f69e6ee7a1186a123f7b16824efc6c2))
+
+### Correctifs
+
+* **argocd:** pin a stable admin password ([0d2354b](https://github.com/Pavliin/MyOwn/commit/0d2354b4b54deb252e4bb056e6cee23921ea1581))
+* **authentik:** pin a stable akadmin bootstrap password ([e271f1c](https://github.com/Pavliin/MyOwn/commit/e271f1c22ee02ee0cb03de61c20c7a3890ed1b4a))
+* **jellyfin:** source media from the shared family folder, not admin ([bc2cbc0](https://github.com/Pavliin/MyOwn/commit/bc2cbc02903f876b1b9ca56c6f9356d13105df86))
+* **monitoring:** pin a stable Grafana admin password ([1fa3029](https://github.com/Pavliin/MyOwn/commit/1fa3029fc3a2586c8944462f91de5443c074e5c0))
+
+### Documentation
+
+* correct the CronJob-Progressing root cause ([356bde9](https://github.com/Pavliin/MyOwn/commit/356bde93251d27472a103e20fe406cea3e129b6c))
+* note the trailing-newline secret bug found fixing Grafana too ([797f111](https://github.com/Pavliin/MyOwn/commit/797f111b68b8ef0bf1d1f86bfd63ea8900976865))
+* record the shared media folder migration and its real bugs ([945e628](https://github.com/Pavliin/MyOwn/commit/945e628b3919850d2792db7a408d62b3ac1d171e))
+
 ## [0.1.3](https://github.com/Pavliin/MyOwn/compare/v0.1.2...v0.1.3) (2026-08-20)
 
 ### Fonctionnalités
