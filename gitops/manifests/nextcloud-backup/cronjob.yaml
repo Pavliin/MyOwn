@@ -64,8 +64,16 @@ spec:
                   mountPath: /repo
           volumes:
             - name: data
-              persistentVolumeClaim:
-                claimName: nextcloud-nextcloud
+              # hostPath, not a PVC: Nextcloud's own data moved to a fixed
+              # hostPath a while back (gitops/apps/nextcloud.yaml), but this
+              # job kept referencing the old pre-migration PVC name
+              # (nextcloud-nextcloud) — silently never existed, leaving the
+              # backup pod stuck Pending indefinitely (confirmed live:
+              # "persistentvolumeclaim \"nextcloud-nextcloud\" not found",
+              # 21h with zero successful runs). See notes-techniques.md.
+              hostPath:
+                path: /var/lib/rancher/k3s/storage/myown/nextcloud-data
+                type: Directory
             - name: dump
               emptyDir: {}
             - name: repo
