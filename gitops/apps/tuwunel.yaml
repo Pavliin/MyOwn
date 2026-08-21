@@ -7,13 +7,13 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.4
       path: gitops/manifests/tuwunel
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.4
       path: gitops/secrets/tuwunel
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.4
       path: gitops/manifests/tuwunel-backup
   destination:
     server: https://kubernetes.default.svc

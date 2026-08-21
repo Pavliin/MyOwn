@@ -65,13 +65,13 @@ spec:
             # own raw Ingress (gitops/manifests/livekit-ingress/) instead.
             type: disable
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.4
       path: gitops/secrets/livekit
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.4
       path: gitops/manifests/livekit-ingress
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.4
       path: gitops/manifests/lk-jwt-service
   destination:
     server: https://kubernetes.default.svc
