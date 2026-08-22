@@ -320,7 +320,7 @@ kubectl exec -n kube-system "$POD" -- rm -f /data/acme.json
 kubectl rollout restart deployment traefik -n kube-system
 ```
 
-**4. DynDNS** — Free (Freebox) ne propose pas d'IP fixe ici (vérifié : pas d'option "IP fixe", fonctionnalité native "DNS dynamique" présente mais inutilisée). `gitops/apps/gandi-dyndns.yaml` maintient les enregistrements `@`/`*` à jour (CronJob, toutes les 15 min). Nécessite son propre secret SOPS (`gitops/secrets/gandi-dyndns/gandi-dyndns.sops.yaml`, clé `GANDIV5_PERSONAL_ACCESS_TOKEN`, même PAT que l'étape 1).
+**4. DynDNS** — Free (Freebox) ne propose pas d'IP fixe ici (vérifié : pas d'option "IP fixe", fonctionnalité native "DNS dynamique" présente mais inutilisée). `gitops/apps/gandi-dyndns.yaml` maintient les enregistrements `@`/`*` à jour (CronJob, toutes les 5 min). Nécessite son propre secret SOPS (`gitops/secrets/gandi-dyndns/gandi-dyndns.sops.yaml`, clé `GANDIV5_PERSONAL_ACCESS_TOKEN`, même PAT que l'étape 1).
 
 **5. Port-forward Freebox** — `mafreebox.freebox.fr` → Paramètres avancés → **Gestion des ports** → rediriger le port **443/tcp uniquement** (pas 80, inutile pour DNS-01) vers l'IP LAN du mini PC.
 

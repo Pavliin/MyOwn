@@ -31,12 +31,17 @@
 # script, silently skipping the still-needed A record update too — found
 # by a real run that created both A records then died before either AAAA
 # call.
+#
+# 5 min schedule + 120s TTL (not the original 15 min / 300s): worst-case
+# exposure after a real IP change is schedule + TTL — was up to ~20 min,
+# now ~7 min. Cost of the tighter interval is negligible (two curl calls,
+# usually a no-op PUT); not worth trading a shorter DNS blackout for it.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: gandi-dyndns
 spec:
-  schedule: "*/15 * * * *"
+  schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -69,7 +74,7 @@ spec:
                     curl -sf -X PUT \
                       -H "Authorization: Bearer ${GANDIV5_PERSONAL_ACCESS_TOKEN}" \
                       -H "Content-Type: application/json" \
-                      -d "{\"rrset_values\":[\"${value}\"],\"rrset_ttl\":300}" \
+                      -d "{\"rrset_values\":[\"${value}\"],\"rrset_ttl\":120}" \
                       "https://api.gandi.net/v5/livedns/domains/${DOMAIN}/records/${name}/${type}"
                     echo "${type} ${name}.${DOMAIN} -> ${value}"
                   }
