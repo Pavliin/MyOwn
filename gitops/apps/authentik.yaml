@@ -33,16 +33,16 @@ spec:
               - authentik-blueprint-jellyfin-sso
               - authentik-blueprint-account-recovery
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.6
       path: gitops/secrets/authentik
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.6
       path: gitops/secrets/authentik-blueprints
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.6
       path: gitops/manifests/authentik-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.6
       path: gitops/manifests/authentik-public
   destination:
     server: https://kubernetes.default.svc
