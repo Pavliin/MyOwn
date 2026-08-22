@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.5](https://github.com/Pavliin/MyOwn/compare/v0.1.4...v0.1.5) (2026-08-22)
+
+### Fonctionnalités
+
+* **gitops:** generalize the domain/Let's Encrypt pattern to 8 more services ([f2c2018](https://github.com/Pavliin/MyOwn/commit/f2c201827d9c0c2687e64af5d250dfc144f37b1d))
+* **sso:** migrate all 5 integrated services to the public hostnames ([d30f545](https://github.com/Pavliin/MyOwn/commit/d30f5458dea5ddec1bcf5a7ce555f08a811bd5e8))
+* **traefik,dns:** real domain + Let's Encrypt via Gandi DNS-01, canary on Uptime Kuma ([6fc4081](https://github.com/Pavliin/MyOwn/commit/6fc4081405631b7b0b04f5991658f1a74bdadc95))
+
+### Correctifs
+
+* **authentik:** correct authentik-secrets YAML structure ([1f3cee6](https://github.com/Pavliin/MyOwn/commit/1f3cee659dd04274ba7bd21d7d3619f4233a94b8))
+* **gandi-dyndns:** tighten schedule/TTL to cut IP-change exposure window ([0d7ebc4](https://github.com/Pavliin/MyOwn/commit/0d7ebc4913465c3c6a5a9ed06a76a46fdc9d90dd))
+* **nextcloud:** backup CronJob referenced a PVC that no longer exists ([a9fec54](https://github.com/Pavliin/MyOwn/commit/a9fec54a1fa9180a67f88f4ef2e5e75e7ffbda65))
+
+### Documentation
+
+* record domain/Let's Encrypt canary validation, update current state ([335cc3c](https://github.com/Pavliin/MyOwn/commit/335cc3c92ccd36386f6fa0b2a4f880fee099624d))
+* record the generalization pass and the Nextcloud permissions incident ([b0b7dff](https://github.com/Pavliin/MyOwn/commit/b0b7dff43b0648f17a4058538c75029f9c14845c))
+* record the SSO migration and the ArgoCD selfHeal reversion incident ([d54a619](https://github.com/Pavliin/MyOwn/commit/d54a6199766fa4dc80fe44767a80831bd3d49021))
+
 ## [0.1.4](https://github.com/Pavliin/MyOwn/compare/v0.1.3...v0.1.4) (2026-08-20)
 
 ### Fonctionnalités
