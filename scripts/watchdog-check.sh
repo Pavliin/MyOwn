@@ -35,7 +35,14 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# NOT derived from this script's own location: watchdog-setup.sh copies
+# this file to /usr/local/bin/, so "the parent directory of wherever I
+# live" would resolve to /usr/local at runtime, not the actual git
+# checkout — real bug found running the forced-failure test tonight.
+# watchdog-setup.sh bakes the real path in via Environment=; the bare
+# BASH_SOURCE-relative fallback only matters when run manually from
+# inside the repo (e.g. scripts/watchdog-check.sh) for local testing.
+REPO_ROOT="${MYOWN_WD_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 STATE_DIR="${MYOWN_WD_STATE_DIR:-/var/lib/myown-watchdog}"
 SECRETS_FILE="$REPO_ROOT/gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml"
 # systemd's own default PATH doesn't include ~/.local/bin, where sops
