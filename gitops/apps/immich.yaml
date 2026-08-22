@@ -76,6 +76,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/immich-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/immich-public
   destination:
     server: https://kubernetes.default.svc
     namespace: immich

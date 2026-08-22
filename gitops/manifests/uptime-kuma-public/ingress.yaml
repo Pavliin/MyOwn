@@ -1,0 +1,34 @@
+# Separate raw Ingress rather than adding to the chart's own `ingress.tls`
+# (gitops/apps/uptime-kuma.yaml): that chart's template always renders
+# `secretName: {{ .secretName }}` for every `tls` entry, with no way to
+# omit it — incompatible with a Traefik-managed ACME cert, which needs
+# `tls: {}` and a certResolver annotation instead of a static Secret.
+# Purely additive: myown-uptime.local (LAN, plain HTTP) is untouched.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uptime-kuma-public
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # Only one Ingress in the whole cluster needs to declare the wildcard
+    # domain explicitly — Traefik caches the resulting cert in acme.json
+    # and reuses it automatically for any other router whose Host() falls
+    # under this SAN, no new ACME request needed.
+    traefik.ingress.kubernetes.io/router.tls.domains.0.main: offsystem.fr
+    traefik.ingress.kubernetes.io/router.tls.domains.0.sans: "*.offsystem.fr"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - status.offsystem.fr
+  rules:
+    - host: status.offsystem.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001

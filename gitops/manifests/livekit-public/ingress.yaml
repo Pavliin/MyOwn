@@ -1,0 +1,35 @@
+# Separate Ingress rather than adding a second host to the existing
+# gitops/manifests/livekit-ingress/ingress.yaml (static secretName, same
+# reasoning as tuwunel-public). Only the WS/HTTP signaling port (7880,
+# same backend as the existing Ingress) — the raw RTC media ports
+# (7881/tcp, 7882/udp) bypass Traefik entirely via hostPort, unaffected.
+#
+# DNS+cert reachability only: `LIVEKIT_URL` (gitops/apps/livekit.yaml,
+# read by lk-jwt-service and echoed to the browser as the actual media
+# connection target — notes-techniques.md) still points at the LAN
+# wss://myown-livekit.local hostname. An external Element Call client
+# won't actually use this new public hostname until that config, and the
+# matching lk-jwt-service well-known wiring, are updated too — deferred,
+# same as the SSO caveat on the other services in this pass.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: livekit-public
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - livekit.offsystem.fr
+  rules:
+    - host: livekit.offsystem.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: livekit-sfu
+                port:
+                  number: 80

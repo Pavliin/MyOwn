@@ -73,6 +73,12 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/lk-jwt-service
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/livekit-public
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/lk-jwt-service-public
   destination:
     server: https://kubernetes.default.svc
     namespace: livekit

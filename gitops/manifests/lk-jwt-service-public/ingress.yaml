@@ -1,0 +1,25 @@
+# Separate Ingress rather than adding a second host to the existing
+# gitops/manifests/lk-jwt-service/ingress.yaml (static secretName, same
+# reasoning as tuwunel-public/livekit-public).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lk-jwt-service-public
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - livekit-jwt.offsystem.fr
+  rules:
+    - host: livekit-jwt.offsystem.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lk-jwt-service
+                port:
+                  number: 80
