@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.6](https://github.com/Pavliin/MyOwn/compare/v0.1.5...v0.1.6) (2026-08-22)
+
+### Fonctionnalités
+
+* **authentik:** add account-recovery flow blueprint ([6db1511](https://github.com/Pavliin/MyOwn/commit/6db1511d3e81c994cec886294ce37721086b9319))
+* **livekit:** sync LiveKit's TURN cert from Traefik's own ACME store ([05cb3c7](https://github.com/Pavliin/MyOwn/commit/05cb3c71646e22905043037ccd40fdd4c50a445c))
+
+### Correctifs
+
+* **livekit:** branch externally and add TURN ([270fedd](https://github.com/Pavliin/MyOwn/commit/270fedd9d022a95caeede1fdb53e52a854ce9e49))
+
+### Documentation
+
+* record LiveKit TURN/external branching and account recovery ([8ac45b6](https://github.com/Pavliin/MyOwn/commit/8ac45b65f6dd24da3c40b947c9890b0e2fe4c05c))
+
 ## [0.1.5](https://github.com/Pavliin/MyOwn/compare/v0.1.4...v0.1.5) (2026-08-22)
 
 ### Fonctionnalités
