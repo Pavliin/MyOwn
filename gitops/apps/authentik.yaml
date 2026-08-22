@@ -32,16 +32,16 @@ spec:
               - authentik-blueprint-tuwunel-sso
               - authentik-blueprint-jellyfin-sso
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.5
       path: gitops/secrets/authentik
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.5
       path: gitops/secrets/authentik-blueprints
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.5
       path: gitops/manifests/authentik-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.5
       path: gitops/manifests/authentik-public
   destination:
     server: https://kubernetes.default.svc
