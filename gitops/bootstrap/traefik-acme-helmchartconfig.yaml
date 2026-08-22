@@ -58,3 +58,11 @@ spec:
           # Traefik's own default is the real production ACME directory.
           dnsChallenge:
             provider: gandiv5
+    # Added 2026-08-22 specifically to diagnose the MISSING_MATRIX_RTC_TRANSPORT
+    # LiveKit investigation (notes-techniques.md) — no request-level visibility
+    # existed before this, only Traefik's own internal/error logs. Cheap to
+    # keep enabled permanently (JSON access logs, no behavior change).
+    logs:
+      access:
+        enabled: true
+        format: json
