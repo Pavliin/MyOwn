@@ -1,0 +1,60 @@
+# Overlays k3s's own built-in Traefik HelmChart (kube-system/traefik,
+# managed by k3s's Addon controller — never edit that HelmChart directly,
+# it gets reset on every k3s restart). HelmChartConfig is the mechanism
+# k3s provides specifically to extend a built-in addon chart's values
+# without touching the HelmChart resource itself; same name/namespace as
+# the HelmChart it overlays.
+#
+# Adds a DNS-01 ACME resolver (Gandi LiveDNS, provider `gandiv5` — native
+# to the lego library Traefik bundles, no extra webhook/controller needed)
+# so Traefik can obtain a real Let's Encrypt wildcard certificate
+# (*.offsystem.fr + apex) instead of the mkcert dev certs used so far.
+# DNS-01 doesn't require port 80 inbound — only outbound access to the
+# Gandi API and Let's Encrypt's ACME servers.
+#
+# Applied manually (kubectl apply), like the other gitops/bootstrap/
+# files — outside ArgoCD's app-of-apps, same boundary already documented
+# in CLAUDE.md ("ArgoCD manages everything except the bootstrap layer
+# itself"). Requires a Secret `gandi-dns-credentials` in kube-system
+# (kubectl create secret generic gandi-dns-credentials -n kube-system
+# --from-literal=token=<Gandi PAT, LiveDNS-only scope on offsystem.fr>)
+# created manually beforehand — same class as sops-age, not committed.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    persistence:
+      enabled: true
+      path: /data
+    env:
+      - name: GANDIV5_PERSONAL_ACCESS_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: gandi-dns-credentials
+            key: token
+    deployment:
+      initContainers:
+        # acme.json must be 0600 or lego refuses to use it — the PVC
+        # starts out root-owned, this runs once before Traefik itself.
+        - name: acme-permissions
+          image: busybox:1.36
+          command: ["sh", "-c", "touch /data/acme.json; chmod -v 600 /data/acme.json"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          email: chartier.ro@gmail.com
+          storage: /data/acme.json
+          # Validated on the staging CA first (2026-08-22): real
+          # "(STAGING) Let's Encrypt" cert obtained and served for
+          # offsystem.fr/*.offsystem.fr, confirmed via openssl s_client —
+          # proved the DNS-01/gandiv5 pipeline end-to-end before touching
+          # production rate limits. No caServer override here now:
+          # Traefik's own default is the real production ACME directory.
+          dnsChallenge:
+            provider: gandiv5

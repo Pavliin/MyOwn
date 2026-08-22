@@ -1,0 +1,87 @@
+# Keeps offsystem.fr's DNS pointed at this network's current public IP.
+# Free (Freebox) doesn't offer a static-IP option here (confirmed: no
+# "IP fixe" setting found, native "DNS dynamique" feature present but
+# unused — Free itself treats the WAN IP as changeable) — without this,
+# the wildcard A/AAAA record would silently go stale on the next IP
+# change and every *.offsystem.fr service would become unreachable from
+# outside with no visible error.
+#
+# Updates the wildcard (`*`) and apex (`@`) records directly rather than
+# a specific subdomain: matches the wildcard TLS certificate already
+# requested by Traefik (gitops/bootstrap/traefik-acme-helmchartconfig.yaml)
+# — future services only need a new Ingress, never a new DNS record.
+#
+# Always PUTs unconditionally rather than diffing against the current
+# Gandi record first: idempotent no-op if unchanged, avoids fragile JSON
+# parsing of the GET response for a job this cheap to just re-run.
+#
+# IPv6: `hostNetwork: true` below, not a best-effort skip — confirmed live
+# (curl exit 7, "Failed to connect to host") that the regular pod network
+# has no IPv6 egress even though the mini PC host itself has real native
+# IPv6 (k3s's default CNI/flannel is single-stack IPv4 unless dual-stack
+# is explicitly enabled). Same fix as LiveKit's `podHostNetwork` for the
+# same underlying reason — the pod needs to see the host's real external
+# connectivity, not the CNI's own. Low risk here: this container makes
+# only outbound calls, no inbound listener to expose.
+#
+# `if`/`fi` in the script below (not `[ -n "$IPV6" ] && update_record`)
+# matters regardless, in case IPv6 is ever unavailable for another reason
+# (ISP outage, etc.): under `set -eu`, a failed test used directly with
+# `&&` still counts as the list's last command and aborts the whole
+# script, silently skipping the still-needed A record update too — found
+# by a real run that created both A records then died before either AAAA
+# call.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gandi-dyndns
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          containers:
+            - name: gandi-dyndns
+              image: curlimages/curl:8.21.0
+              env:
+                - name: DOMAIN
+                  value: offsystem.fr
+                - name: GANDIV5_PERSONAL_ACCESS_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: gandi-dyndns-secrets
+                      key: GANDIV5_PERSONAL_ACCESS_TOKEN
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+
+                  update_record() {
+                    name="$1"; type="$2"; value="$3"
+                    curl -sf -X PUT \
+                      -H "Authorization: Bearer ${GANDIV5_PERSONAL_ACCESS_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "{\"rrset_values\":[\"${value}\"],\"rrset_ttl\":300}" \
+                      "https://api.gandi.net/v5/livedns/domains/${DOMAIN}/records/${name}/${type}"
+                    echo "${type} ${name}.${DOMAIN} -> ${value}"
+                  }
+
+                  IPV4=$(curl -sf4 https://api.ipify.org || true)
+                  IPV6=$(curl -sf6 https://api64.ipify.org || true)
+
+                  for name in "@" "*"; do
+                    if [ -n "$IPV4" ]; then
+                      update_record "$name" "A" "$IPV4"
+                    fi
+                    if [ -n "$IPV6" ]; then
+                      update_record "$name" "AAAA" "$IPV6"
+                    fi
+                  done
