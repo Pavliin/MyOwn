@@ -47,7 +47,11 @@ PLUGIN_NAME = "Authentik SSO"
 PLUGIN_ID = "f4c1d2a3b5e647899abcdef012345678"
 PLUGIN_REPO_URL = "https://scottfridwin.github.io/jellyfin-plugin-authentik/manifest.json"
 
-AUTHENTIK_URL = os.environ.get("JELLYFIN_SSO_AUTHENTIK_URL", "http://myown-authentik.local:8090")
+# authentik.offsystem.fr, not myown-authentik.local: this is what Authentik
+# mirrors into the browser login redirect too (Host of whichever request
+# fetched discovery/config) — see notes-techniques.md, "Nom de domaine réel
+# + Let's Encrypt". Resolves internally post split-horizon DNS regardless.
+AUTHENTIK_URL = os.environ.get("JELLYFIN_SSO_AUTHENTIK_URL", "https://authentik.offsystem.fr")
 SSO_CLIENT_ID = os.environ.get("JELLYFIN_SSO_CLIENT_ID", "jellyfin")
 SSO_CLIENT_SECRET = os.environ.get("JELLYFIN_SSO_CLIENT_SECRET")
 if not SSO_CLIENT_SECRET:
@@ -153,7 +157,21 @@ s.post(
         "ClientSecret": SSO_CLIENT_SECRET,
         "AdminGroup": "jellyfin-admins",
         "AllowedGroup": "",
-        "ForceHttpsRedirect": False,
+        # Real bug found live once jellyfin.offsystem.fr (real domain, HTTPS
+        # via Traefik) existed alongside myown-jellyfin.local (plain HTTP):
+        # the plugin builds its redirect_uri from the raw inbound
+        # scheme/Host it sees from Kestrel, not any X-Forwarded-* header —
+        # confirmed by testing with explicit X-Forwarded-Proto/Host headers
+        # from a pod genuinely inside Jellyfin's own Known Proxies CIDR,
+        # which had zero effect. Since Traefik always forwards plain HTTP
+        # internally (TLS terminates at the ingress), every request looked
+        # like HTTP to the plugin regardless of what scheme the real client
+        # used — redirect_uri stayed http:// even for the HTTPS public host,
+        # Authentik correctly rejected it (400, no matching redirect_uris
+        # entry). This flag bypasses that detection entirely and always
+        # builds https:// — same effective fix as Nextcloud's
+        # phpClientHttpsFix, different mechanism.
+        "ForceHttpsRedirect": True,
         "AutoCreateUsers": True,
         "EnableGroupSync": True,
         "EnableContentPolicySync": False,
