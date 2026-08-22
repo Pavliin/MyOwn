@@ -90,6 +90,17 @@ spec:
               domain: livekit.offsystem.fr
               tls_port: 5349
               secretName: livekit-turn-tls
+          # Real bug found deploying this for real via ArgoCD (never
+          # surfaced by the earlier hand-patched live test): the chart
+          # defaults turnLoadbalancer.enable to true, silently creating a
+          # second LoadBalancer Service on port 443 — colliding with
+          # Traefik's own LoadBalancer Service already on that port via
+          # k3s's ServiceLB. Not needed at all here: the pod's own
+          # hostNetwork binding + the Freebox port-forward already expose
+          # 5349 directly, no Service/LoadBalancer layer required (same
+          # pattern as the existing 7881/7882 RTC ports).
+          turnLoadbalancer:
+            enable: false
           storeKeysInSecret:
             enabled: true
             existingSecret: livekit-secrets
