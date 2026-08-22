@@ -340,3 +340,20 @@ echo | openssl s_client -connect <IP mini PC>:8453 -servername <sous-domaine> 2>
 Voir `notes-techniques.md`, section "Migration SSO vers les hostnames publics", pour les bugs réels rencontrés par service (Vaultwarden : réassociation SQLite nécessaire ; Jellyfin : `ForceHttpsRedirect`).
 
 **Piège critique, à ne jamais oublier sur une installation dont `root` suit un tag épinglé (mini PC)** : ne **jamais** réactiver `syncPolicy`/`selfHeal` après des tests en direct sans avoir d'abord coupé une release et rejoué `scripts/pin-release.sh` — sinon ArgoCD réécrase silencieusement tout ce qui vient d'être validé en direct dès la resynchronisation, sans que l'UI ne signale de régression (`Synced`/`Healthy` reste affiché).
+
+## 17. LiveKit — branchement externe et TURN
+
+Une fois le domaine réel en place (section 16), LiveKit peut être ouvert à l'extérieur pour de vrais appels multi-appareils, pas seulement un test LAN.
+
+**1. Config applicative** — `well_known.livekit_url` (`tuwunel.toml`) et `LIVEKIT_URL` (`lk-jwt-service`) vers `livekit(-jwt).offsystem.fr`. Piège trouvé en conditions réelles seulement (`curl` ne le détecte pas) : `well_known.client` de `tuwunel.toml` doit *lui aussi* pointer vers l'hôte public, sinon un client externe échoue à la toute première étape ("we couldn't reach this homeserver") — `well_known.server` (fédération) reste volontairement sur le nom LAN, sujet distinct.
+
+**2. Port-forward Freebox supplémentaires** — en plus du 443/tcp de la section 16 :
+
+- `7881/tcp` et `7882/udp` — média RTC direct (déjà nécessaires pour LiveKit en général, cf. section 4).
+- `5349/tcp` — TURN/TLS, nécessaire dès qu'un client est derrière un NAT qui bloque la connexion directe (quasi systématique en mobile). Sans lui, les appels échouent silencieusement uniquement pour certains clients (`removing participant without connection` dans les logs `livekit-sfu`) — pas une erreur visible côté configuration.
+
+**3. TURN et validation d'IP externe** — `gitops/apps/livekit.yaml` : `livekit.turn.enabled: true` (réutilise le certificat Let's Encrypt déjà émis, via `livekit-turn-cert-sync`, aucune émission supplémentaire) et `rtc.skip_external_ip_validation: true` — nécessaire dès que la box ne supporte pas le hairpin NAT en UDP (fréquent, indépendant du support hairpin TCP déjà utilisé pour HTTPS) : sans ce flag, LiveKit annonce des IP internes non routables au lieu de la vraie IP publique pourtant correctement détectée via STUN. Détail complet (pourquoi, logs à l'appui) dans `notes-techniques.md`.
+
+**4. `livekit-turn-cert-sync`** (`gitops/apps/livekit-turn-cert-sync.yaml`) — entièrement automatique une fois synchronisé par ArgoCD, aucune étape manuelle : `CronJob` quotidien qui extrait le certificat wildcard directement depuis l'`acme.json` de Traefik et le republie en `Secret` dans `livekit`.
+
+**Limitation connue, non résolue** : même une fois tout ce qui précède en place, un appel Element Call échoue encore avec `MISSING_MATRIX_RTC_TRANSPORT` sur certains clients (confirmé : appli Element X et navigateur mobile) alors que le PC fonctionne. Infrastructure serveur entièrement validée correcte par preuve directe (réponse serveur correcte confirmée dans les logs d'accès Traefik) — la cause résiduelle est côté client (`element-call`/`matrix-js-sdk`, mécanisme encore expérimental MSC4143/MSC4515), pas résolue à ce jour. Investigation complète dans `notes-techniques.md`.

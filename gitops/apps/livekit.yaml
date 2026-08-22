@@ -56,6 +56,40 @@ spec:
               # instead of an internal Docker address — confirmed via a
               # local test render + live pod before writing this.
               use_external_ip: true
+              # Real bug found live (2026-08-22), external call test: the
+              # Freebox doesn't support UDP hairpin NAT (TCP/443 hairpin
+              # already validated earlier, UDP is a separate router
+              # capability). LiveKit's default self-ping validation of its
+              # own STUN-discovered public IP times out ("context
+              # canceled") because that self-ping is itself a UDP hairpin
+              # round-trip — and on failure LiveKit silently falls back to
+              # advertising every local interface IP raw (cluster CIDR,
+              # WireGuard, LAN IP), never the real public IP. Documented
+              # upstream specifically for this NAT class:
+              # "enable this when SFU is behind NAT that does not allow
+              # self-ping". Confirmed fixed live: STUN-discovered
+              # 82.67.34.121 correctly appears in the advertised candidate
+              # list once this is set.
+              skip_external_ip_validation: true
+            # No TURN server was configured at all before this (2026-08-22)
+            # — LiveKit only offered direct/STUN candidates. Real bug found
+            # via an actual external call: worked from a client on the same
+            # LAN (fell back to an ICE/TCP candidate via the already-open
+            # 7881), failed for every mobile client (WebRTC stacks there
+            # depend on UDP, and without a relay there was no usable path
+            # once direct UDP failed). The chart mounts `secretName`
+            # automatically (LIVEKIT_TURN_CERT/LIVEKIT_TURN_KEY env vars +
+            # volume, see templates/deployment.yaml) — reuses the same real
+            # Let's Encrypt wildcard cert Traefik already manages, extracted
+            # from its acme.json (see livekit-turn-cert-sync CronJob) rather
+            # than issuing a separate cert. TCP/TLS only for now (most
+            # NAT/firewall-resilient) — a UDP TURN listener is easy to add
+            # later (`udp_port:`) if TCP alone ever proves insufficient.
+            turn:
+              enabled: true
+              domain: livekit.offsystem.fr
+              tls_port: 5349
+              secretName: livekit-turn-tls
           storeKeysInSecret:
             enabled: true
             existingSecret: livekit-secrets
@@ -64,6 +98,17 @@ spec:
             # entirely when disabled, so the WS port is exposed via our
             # own raw Ingress (gitops/manifests/livekit-ingress/) instead.
             type: disable
+          # Real deadlock found live (2026-08-22) rolling out the TURN
+          # change above: default RollingUpdate tries to surge a second
+          # pod before killing the first, but both are hostNetwork on the
+          # same single node — the surge pod can never schedule (port
+          # conflict on 7880/7881/7882/5349), so the rollout hangs
+          # forever ("1 old replicas are pending termination"). Recreate
+          # (stop then start) is the correct strategy for any hostNetwork
+          # Deployment on a single-node cluster; will bite the same way on
+          # every future livekit-sfu change without this.
+          deploymentStrategy:
+            type: Recreate
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/livekit

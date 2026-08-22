@@ -25,8 +25,13 @@ spec:
             # "ServerUnreachable" — curl/API tests never exercised this
             # value since they only cover the JWT-issuing side, not what
             # gets handed back to a real browser.
+            # offsystem.fr, not myown-livekit.local: this is what actually
+            # gets handed to the browser for the real media connection —
+            # a remote family member's client needs a hostname it can
+            # reach, matching the RTC media port-forward on the Freebox
+            # (see notes-techniques.md, "Nom de domaine réel + Let's Encrypt").
             - name: LIVEKIT_URL
-              value: wss://myown-livekit.local:8453
+              value: wss://livekit.offsystem.fr
             - name: LIVEKIT_KEY
               valueFrom:
                 secretKeyRef:

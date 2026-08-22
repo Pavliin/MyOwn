@@ -1,0 +1,35 @@
+# Cross-namespace by design: the source cert only exists in Traefik's own
+# acme.json (kube-system, see cronjob.yaml), but the Secret it needs to become
+# lives in livekit (mounted by the livekit-sfu Deployment for its TURN/TLS
+# listener, see gitops/apps/livekit.yaml). Scoped to just this one Secret name
+# rather than a broader "manage secrets in livekit" grant.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: livekit-turn-cert-sync
+  namespace: livekit
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["livekit-turn-tls"]
+    verbs: ["get", "update", "patch"]
+  # Only needed for the very first run, before the Secret exists yet —
+  # `create` can't be scoped by resourceNames since the object doesn't
+  # exist at authorization time.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: livekit-turn-cert-sync
+  namespace: livekit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: livekit-turn-cert-sync
+subjects:
+  - kind: ServiceAccount
+    name: livekit-turn-cert-sync
+    namespace: kube-system
