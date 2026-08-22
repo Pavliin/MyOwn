@@ -32,8 +32,14 @@ TIMER_FILE="/etc/systemd/system/myown-watchdog.timer"
 step() { echo -e "\n\033[1;34m==> $1\033[0m"; }
 
 step "Vérification des outils requis"
-command -v sops >/dev/null || { echo "Manquant : sops (voir manuel-installation.md)."; exit 1; }
+SOPS_BIN="$(command -v sops)" || { echo "Manquant : sops (voir manuel-installation.md)."; exit 1; }
 command -v k3s >/dev/null || { echo "k3s introuvable — ce watchdog cible k3s bare-metal (Phase 4), pas le cluster de dev k3d."; exit 1; }
+# Chemin absolu résolu ici (shell interactif) plutôt que de compter sur
+# `sops` dans le PATH du service systemd, plus restreint (n'inclut pas
+# ~/.local/bin, où sops est souvent installé sans gestionnaire de
+# paquets système) — bug réel trouvé en testant pour de vrai : le
+# contrôle de santé et le redémarrage fonctionnaient, seule la
+# notification échouait silencieusement ("sops: command not found").
 
 step "Installation du script de contrôle (sudo requis)"
 sudo install -d -m 755 /var/lib/myown-watchdog
@@ -49,6 +55,7 @@ After=network-online.target
 Type=oneshot
 Environment=MYOWN_WD_THRESHOLD=${THRESHOLD}
 Environment=MYOWN_WD_MAX_REMEDIATIONS_PER_HOUR=${MAX_REMEDIATIONS_PER_HOUR}
+Environment=MYOWN_WD_SOPS_BIN=${SOPS_BIN}
 ExecStart=${CHECK_SCRIPT_DEST}
 EOF
 
