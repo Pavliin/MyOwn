@@ -357,3 +357,22 @@ Une fois le domaine réel en place (section 16), LiveKit peut être ouvert à l'
 **4. `livekit-turn-cert-sync`** (`gitops/apps/livekit-turn-cert-sync.yaml`) — entièrement automatique une fois synchronisé par ArgoCD, aucune étape manuelle : `CronJob` quotidien qui extrait le certificat wildcard directement depuis l'`acme.json` de Traefik et le republie en `Secret` dans `livekit`.
 
 **Limitation connue, non résolue** : même une fois tout ce qui précède en place, un appel Element Call échoue encore avec `MISSING_MATRIX_RTC_TRANSPORT` sur certains clients (confirmé : appli Element X et navigateur mobile) alors que le PC fonctionne. Infrastructure serveur entièrement validée correcte par preuve directe (réponse serveur correcte confirmée dans les logs d'accès Traefik) — la cause résiduelle est côté client (`element-call`/`matrix-js-sdk`, mécanisme encore expérimental MSC4143/MSC4515), pas résolue à ce jour. Investigation complète dans `notes-techniques.md`.
+
+## 18. Watchdog de remédiation automatique
+
+Pertinent à partir du vrai déploiement (mini PC, k3s bare-metal) — cible directement le service `k3s`, pas k3d. Volontairement **hors GitOps** (service systemd sur l'hôte, pas un manifeste k8s — cf. `architecture.md` §6 pour le raisonnement de dépendance circulaire, même famille que le VPN WireGuard).
+
+```bash
+scripts/watchdog-setup.sh
+```
+
+Nécessite `sudo` de façon interactive (unités systemd, `/var/lib/myown-watchdog/`, redémarrage de `k3s`) — à lancer directement dans votre terminal. Installe `scripts/watchdog-check.sh` vers `/usr/local/bin/myown-watchdog-check.sh`, plus `myown-watchdog.timer` (déclenche un contrôle toutes les 60s par défaut) et `myown-watchdog.service` (`Type=oneshot`, pas un démon).
+
+Vérifie l'API k3s (`k3s kubectl get --raw /healthz`) ; après 3 échecs consécutifs, redémarre automatiquement `k3s.service` — plafonné à 3 tentatives par heure au-delà desquelles le watchdog abandonne plutôt que de boucler indéfiniment. Notifie le salon Matrix `#etat-du-systeme` (même compte `alertbot` qu'Uptime Kuma, jeton déchiffré à la volée depuis `gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml` via `sops` — pas de secret dupliqué sur l'hôte) une fois le cluster de nouveau joignable — les notifications sont mises en file localement (`/var/lib/myown-watchdog/pending-notifications`) et retentées à chaque contrôle tant que Tuwunel n'est pas joignable, puisqu'il tourne lui-même dans le cluster surveillé (même angle mort que celui déjà assumé pour Uptime Kuma).
+
+Réglable via `MYOWN_WD_THRESHOLD`, `MYOWN_WD_MAX_REMEDIATIONS_PER_HOUR`, `MYOWN_WD_INTERVAL` (voir l'en-tête du script). Vérification :
+
+```bash
+journalctl -t myown-watchdog -f
+sudo systemctl status myown-watchdog.timer
+```
