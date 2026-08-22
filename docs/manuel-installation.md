@@ -330,3 +330,13 @@ kubectl rollout restart deployment traefik -n kube-system
 dig +short A <sous-domaine> @ns1.gandi.net   # résolution DNS publique
 echo | openssl s_client -connect <IP mini PC>:8453 -servername <sous-domaine> 2>/dev/null | openssl x509 -noout -issuer
 ```
+
+**6. SSO vers les hostnames publics** — pour qu'une connexion SSO externe aboutisse (pas juste que la page charge), deux étapes supplémentaires par service intégré (Vaultwarden, Nextcloud, Immich, Tuwunel, Jellyfin) :
+
+- **DNS split-horizon d'abord** (`gitops/bootstrap/coredns-custom.yaml`, bloc `offsystem.override`) : sans ça, les appels serveur-à-serveur vers Authentik sortiraient par la Freebox pour revenir dessus. Réappliquer + `kubectl rollout restart deployment coredns -n kube-system`.
+- Basculer `authority`/`discoveryuri`/`issuer_url` de chaque service vers `authentik.offsystem.fr` (jamais `myown-authentik.local` — Authentik reflète le `Host` de la requête de découverte dans la redirection de connexion elle-même). **Jamais `server_name` pour Tuwunel** — seuls `issuer_url`/`callback_url`.
+- Ajouter (pas remplacer, sauf Tuwunel dont `callback_url` est un champ unique) une entrée `redirect_uris` par blueprint Authentik pour le nouveau callback public.
+
+Voir `notes-techniques.md`, section "Migration SSO vers les hostnames publics", pour les bugs réels rencontrés par service (Vaultwarden : réassociation SQLite nécessaire ; Jellyfin : `ForceHttpsRedirect`).
+
+**Piège critique, à ne jamais oublier sur une installation dont `root` suit un tag épinglé (mini PC)** : ne **jamais** réactiver `syncPolicy`/`selfHeal` après des tests en direct sans avoir d'abord coupé une release et rejoué `scripts/pin-release.sh` — sinon ArgoCD réécrase silencieusement tout ce qui vient d'être validé en direct dès la resynchronisation, sans que l'UI ne signale de régression (`Synced`/`Healthy` reste affiché).

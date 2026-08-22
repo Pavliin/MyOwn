@@ -23,3 +23,21 @@ data:
     rewrite name exact myown-tuwunel.local traefik-internal.kube-system.svc.cluster.local
     rewrite name exact myown-livekit.local traefik-internal.kube-system.svc.cluster.local
     rewrite name exact myown-livekit-jwt.local traefik-internal.kube-system.svc.cluster.local
+  # Split-horizon for the real domain: server-to-server calls (SSO token
+  # exchange/discovery) must resolve these internally, never round-trip
+  # through the Freebox NAT — same reasoning as myown-*.local above, now
+  # needed because each service's OIDC authority/discoveryuri/issuer_url
+  # is switching from myown-authentik.local to authentik.offsystem.fr
+  # (required so the browser redirect Authentik constructs — built from
+  # the Host of whichever request fetched discovery — also resolves for
+  # external clients, which myown-authentik.local never will).
+  offsystem.override: |
+    rewrite name exact authentik.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact vaultwarden.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact nextcloud.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact immich.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact tuwunel.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact jellyfin.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact livekit.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact livekit-jwt.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact status.offsystem.fr traefik-internal.kube-system.svc.cluster.local

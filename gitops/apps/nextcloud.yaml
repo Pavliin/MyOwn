@@ -80,10 +80,17 @@ spec:
                 # app (architecture.md §2, "one app per use case") — avoids
                 # two uncoordinated photo libraries. app:disable is idempotent.
                 php occ app:disable photos || true
+                # authentik.offsystem.fr, not myown-authentik.local: Authentik
+                # mirrors the Host of whichever request fetches discovery into
+                # every URL in the returned document, including the one used
+                # for the browser login redirect — so this exact hostname is
+                # what an external user gets redirected to. Resolves
+                # internally post split-horizon DNS either way (see
+                # notes-techniques.md, "Nom de domaine réel + Let's Encrypt").
                 php occ user_oidc:provider authentik \
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
-                  --discoveryuri="http://myown-authentik.local:8090/application/o/nextcloud/.well-known/openid-configuration"
+                  --discoveryuri="https://authentik.offsystem.fr/application/o/nextcloud/.well-known/openid-configuration"
           # user_oidc refuses to run OIDC login unless Nextcloud believes the
           # request came in over HTTPS. Traefik terminates TLS at the ingress
           # and forwards plain HTTP internally, so without this Nextcloud
