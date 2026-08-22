@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.7](https://github.com/Pavliin/MyOwn/compare/v0.1.6...v0.1.7) (2026-08-22)
+
+### Correctifs
+
+* **livekit:** disable the chart's default TURN LoadBalancer Service ([e51daf6](https://github.com/Pavliin/MyOwn/commit/e51daf6462f0f37ab54be71fe1a5c85bf692ecb8))
+
 ## [0.1.6](https://github.com/Pavliin/MyOwn/compare/v0.1.5...v0.1.6) (2026-08-22)
 
 ### Fonctionnalités
