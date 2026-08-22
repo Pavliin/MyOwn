@@ -38,6 +38,16 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_DIR="${MYOWN_WD_STATE_DIR:-/var/lib/myown-watchdog}"
 SECRETS_FILE="$REPO_ROOT/gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml"
+# systemd's own default PATH doesn't include ~/.local/bin, where sops
+# commonly lives when installed without a system package manager — the
+# real bug hit installing this for real (2026-08-22): the health check
+# and remediation worked fine (both use only k3s/systemctl, already on
+# systemd's PATH), but the notification step silently failed with
+# "sops: command not found". watchdog-setup.sh resolves the absolute
+# path at install time (from the interactive shell where `command -v
+# sops` succeeded) and bakes it into the systemd unit; this bare
+# fallback only matters for manual/local testing.
+SOPS_BIN="${MYOWN_WD_SOPS_BIN:-sops}"
 
 THRESHOLD="${MYOWN_WD_THRESHOLD:-3}"
 MAX_REMEDIATIONS_PER_HOUR="${MYOWN_WD_MAX_REMEDIATIONS_PER_HOUR:-3}"
@@ -83,13 +93,13 @@ flush_pending_notifications() {
     [ -s "$PENDING_FILE" ] || return 0
     k3s_healthy || return 0
 
-    if ! command -v sops >/dev/null 2>&1; then
-        log "sops introuvable — notifications en attente non envoyées"
+    if ! command -v "$SOPS_BIN" >/dev/null 2>&1; then
+        log "sops introuvable ($SOPS_BIN) — notifications en attente non envoyées"
         return 0
     fi
 
     local creds
-    if ! creds="$(sops -d "$SECRETS_FILE" 2>/dev/null)"; then
+    if ! creds="$("$SOPS_BIN" -d "$SECRETS_FILE" 2>/dev/null)"; then
         log "échec du déchiffrement de $SECRETS_FILE — notifications en attente non envoyées"
         return 0
     fi
