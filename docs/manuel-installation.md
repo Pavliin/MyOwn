@@ -299,3 +299,34 @@ curl -X POST "http://<jellyfin>/Library/VirtualFolders?name=Films&collectionType
   -H "X-Emby-Authorization: ...Token=\"<token admin>\"" -H "Content-Type: application/json" \
   -d '{"LibraryOptions":{"PathInfos":[{"Path":"/media/files/Films"}]}}'
 ```
+
+## 16. Nom de domaine réel + Let's Encrypt (Gandi, DNS-01)
+
+Phase 4 : bascule des certificats `mkcert` (dev) vers de vrais certificats Let's Encrypt sur un nom de domaine réel. DNS-01 via l'API Gandi (pas HTTP-01) — pas besoin d'exposer le port 80, permet un certificat **wildcard** unique (`*.<domaine>` + apex) plutôt qu'un certificat par service. Détail complet du choix technique (pourquoi `cert-manager` a été écarté, comment le wildcard est réutilisé par tous les futurs services) dans `notes-techniques.md`.
+
+**1. Token Gandi** — Personal Access Token scopé **LiveDNS uniquement**, restreint au domaine si possible (admin.gandi.net → profil → Sécurité → Personal Access Tokens). Ne jamais utiliser l'ancienne clé API (`GANDIV5_API_KEY`), dépréciée.
+
+**2. Secret kube-system (bootstrap, hors GitOps — même statut que `sops-age`)** :
+
+```bash
+kubectl create secret generic gandi-dns-credentials -n kube-system --from-file=token=<fichier contenant le PAT>
+```
+
+**3. Résolveur ACME Traefik** — `kubectl apply -f gitops/bootstrap/traefik-acme-helmchartconfig.yaml` (overlay du `HelmChart` Traefik géré par k3s, ne jamais éditer ce dernier directement). Valider d'abord sur le serveur **staging** Let's Encrypt (`caServer` dans le fichier) avant de rebasculer en production — évite de brûler les quotas de production tant que le flow DNS-01/Gandi n'est pas prouvé. Après validation, retirer `caServer` (défaut Traefik = production), ré-appliquer, **et purger le certificat staging déjà en cache** avant de redémarrer, sinon Traefik continue de servir l'ancien certificat non reconnu :
+
+```bash
+POD=$(kubectl get pods -n kube-system -l app.kubernetes.io/name=traefik -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -n kube-system "$POD" -- rm -f /data/acme.json
+kubectl rollout restart deployment traefik -n kube-system
+```
+
+**4. DynDNS** — Free (Freebox) ne propose pas d'IP fixe ici (vérifié : pas d'option "IP fixe", fonctionnalité native "DNS dynamique" présente mais inutilisée). `gitops/apps/gandi-dyndns.yaml` maintient les enregistrements `@`/`*` à jour (CronJob, toutes les 15 min). Nécessite son propre secret SOPS (`gitops/secrets/gandi-dyndns/gandi-dyndns.sops.yaml`, clé `GANDIV5_PERSONAL_ACCESS_TOKEN`, même PAT que l'étape 1).
+
+**5. Port-forward Freebox** — `mafreebox.freebox.fr` → Paramètres avancés → **Gestion des ports** → rediriger le port **443/tcp uniquement** (pas 80, inutile pour DNS-01) vers l'IP LAN du mini PC.
+
+**Vérification** :
+
+```bash
+dig +short A <sous-domaine> @ns1.gandi.net   # résolution DNS publique
+echo | openssl s_client -connect <IP mini PC>:8453 -servername <sous-domaine> 2>/dev/null | openssl x509 -noout -issuer
+```
