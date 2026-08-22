@@ -43,6 +43,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/vaultwarden-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/vaultwarden-public
   destination:
     server: https://kubernetes.default.svc
     namespace: vaultwarden

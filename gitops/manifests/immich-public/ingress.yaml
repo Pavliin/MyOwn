@@ -1,0 +1,27 @@
+# Immich runs plain HTTP (myown-immich.local:8090) today, no existing TLS
+# Ingress to conflict with — still a separate raw Ingress rather than
+# adding tls to the chart's own values, for consistency with every other
+# service in this generalization pass. Reuses the wildcard cert already
+# obtained via the Uptime Kuma canary, no new ACME request needed.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: immich-public
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - immich.offsystem.fr
+  rules:
+    - host: immich.offsystem.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: immich-server
+                port:
+                  number: 2283

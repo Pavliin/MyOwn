@@ -15,6 +15,13 @@ spec:
             host: myown-nextcloud.local
             trustedDomains:
               - myown-nextcloud.local
+              # Nextcloud rejects any Host header not in this list with a
+              # plain 400, before even reaching the app — found live,
+              # nextcloud.offsystem.fr returned 400 despite the Ingress
+              # and cert both being correct. `host` above stays the LAN
+              # name (what the chart uses to build its own internal
+              # config), this list is what's actually checked per-request.
+              - nextcloud.offsystem.fr
             configs:
               # Nextcloud's SSRF guard (preventLocalAddress) blocks outbound
               # requests to hosts resolving to private/cluster IPs by default
@@ -144,6 +151,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/nextcloud-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/nextcloud-public
   destination:
     server: https://kubernetes.default.svc
     namespace: nextcloud

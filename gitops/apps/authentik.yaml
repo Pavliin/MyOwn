@@ -40,6 +40,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/authentik-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/authentik-public
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik
