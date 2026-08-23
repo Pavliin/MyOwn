@@ -1,0 +1,37 @@
+# Same reasoning as vaultwarden-public/nextcloud-public/etc.: the chart's
+# own `ingress.tls: true` hardcodes a secretName pointing at a cert-manager-
+# or self-signed-issued Secret, incompatible with a Traefik-managed ACME
+# cert — so the chart's own Ingress stays disabled (gitops/apps/mailu.yaml,
+# `ingress.enabled: false`) and this additive Ingress reuses the wildcard
+# *.offsystem.fr cert via the certresolver annotation instead, same as every
+# other public-facing service in this project.
+#
+# Mailu's own `front` component terminates its own TLS on the `https`
+# (443) port of the `mailu-front` Service — Traefik defaults to speaking
+# plain HTTP to backends, so `front.service.annotations` in
+# gitops/apps/mailu.yaml sets `service.serversscheme: https` on that
+# Service (verified against Traefik's own fixture:
+# pkg/provider/kubernetes/ingress/fixtures/Ingress-with-annotations.yml —
+# a Service-level annotation, not an Ingress one).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mailu-public
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - mailu.offsystem.fr
+  rules:
+    - host: mailu.offsystem.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mailu-front
+                port:
+                  number: 443

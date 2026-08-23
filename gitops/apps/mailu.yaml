@@ -1,0 +1,75 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mailu
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://mailu.github.io/helm-charts/
+      chart: mailu
+      targetRevision: 2.7.3
+      helm:
+        valuesObject:
+          domain: offsystem.fr
+          hostnames:
+            - mailu.offsystem.fr
+          timezone: Europe/Paris
+          existingSecret: mailu-secrets
+          initialAccount:
+            enabled: true
+            username: admin
+            domain: offsystem.fr
+            existingSecret: mailu-secrets
+            existingSecretPasswordKey: initial-account-password
+            mode: create
+          global:
+            database:
+              roundcube:
+                existingSecret: mailu-secrets
+                existingSecretPasswordKey: roundcube-db-password
+          # Chart's own Ingress hardcodes a cert-manager/self-signed
+          # secretName, incompatible with Traefik's own ACME resolver —
+          # same reasoning as Vaultwarden/Nextcloud/etc. Disabled here,
+          # replaced by the additive gitops/manifests/mailu-public/
+          # Ingress (certresolver annotation, reuses the *.offsystem.fr
+          # wildcard cert already issued).
+          ingress:
+            enabled: false
+          front:
+            service:
+              annotations:
+                # `front` terminates its own TLS on the `https` (443) port
+                # of its own Service — Traefik defaults to plain HTTP to
+                # backends, this tells it to speak HTTPS instead. Verified
+                # against Traefik's own fixture (Service-level annotation,
+                # not Ingress-level): pkg/provider/kubernetes/ingress/
+                # fixtures/Ingress-with-annotations.yml.
+                traefik.ingress.kubernetes.io/service.serversscheme: https
+          # Radicale (CalDAV/CardDAV) left disabled — Nextcloud Calendar/
+          # Contacts already covers this, confirmed in the Mailcow/Mailu
+          # comparison (notes-techniques.md); activating it here would be
+          # redundant, not a missing feature.
+          webdav:
+            enabled: false
+          persistence:
+            single_pvc: true
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/mailu
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/mailu-public
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/mailu-forwardauth
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mailu
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
