@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.8](https://github.com/Pavliin/MyOwn/compare/v0.1.7...v0.1.8) (2026-08-23)
+
+### Fonctionnalités
+
+* **watchdog:** add host-level k3s auto-remediation watchdog ([4896a2c](https://github.com/Pavliin/MyOwn/commit/4896a2c1020821923b63f3b871b02cdc9d18db36))
+
+### Correctifs
+
+* **watchdog:** resolve sops's absolute path at install time ([6978c8e](https://github.com/Pavliin/MyOwn/commit/6978c8e49e46eca6d1269b4c47bcc7016fb83237))
+* **watchdog:** resolve the real repo root at install time, not runtime ([20b38cd](https://github.com/Pavliin/MyOwn/commit/20b38cdfa54e77d75847b14d5b4ceb8e524a6e8b))
+* **watchdog:** point sops at the real age key when running as root ([f345cf3](https://github.com/Pavliin/MyOwn/commit/f345cf35ff74dcceba83e9d104656524261ca9e0))
+
+### Documentation
+
+* record the watchdog's real forced-outage validation ([a3a7909](https://github.com/Pavliin/MyOwn/commit/a3a7909dc52e0ae31abf2b8fd44bdeb2c986efdb))
+
 ## [0.1.7](https://github.com/Pavliin/MyOwn/compare/v0.1.6...v0.1.7) (2026-08-22)
 
 ### Correctifs
