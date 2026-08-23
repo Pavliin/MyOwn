@@ -1,0 +1,10 @@
+# Postfix transport map — routes offsystem.fr straight to Mailu through
+# the WireGuard mail-relay tunnel instead of doing normal MX/DNS lookups.
+# Brackets around the host disable MX resolution: connect directly to
+# that IP:port. 10.100.1.2 is the tunnel address of the "home" peer
+# (dev machine today, mini PC after migration — see
+# ../../wireguard-mail-relay/README.md), where scripts/mailu-portforward-setup.sh
+# keeps port 25 forwarded to svc/mailu-front inside the cluster.
+#
+# Applied on the VPS with: postmap /etc/postfix/transport
+offsystem.fr    smtp:[10.100.1.2]:25
