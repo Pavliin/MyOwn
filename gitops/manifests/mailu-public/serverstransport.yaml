@@ -1,0 +1,19 @@
+# Traefik verifies the backend's TLS certificate by default when
+# `service.serversscheme: https` is set (gitops/apps/mailu.yaml,
+# front.service.annotations). front's cert has CN=mailu.offsystem.fr,
+# but Traefik connects to the pod's ClusterIP, not that hostname — the
+# mismatch fails verification. Traefik's Go HTTP client then returns a
+# generic "Internal Server Error" (500) that looks identical to a real
+# backend error at a glance: confirmed it wasn't one by checking front's
+# own nginx access/error logs, which show nothing at all for these
+# requests — the connection never got far enough for nginx to log it.
+# insecureSkipVerify is fine here: this is an internal, already-trusted
+# service (same cluster, same wildcard cert issued for real by Let's
+# Encrypt) — the risk this flag normally guards against (a spoofed
+# backend) doesn't apply on a private pod network.
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: mailu-front-transport
+spec:
+  insecureSkipVerify: true
