@@ -46,6 +46,25 @@ spec:
                 # not Ingress-level): pkg/provider/kubernetes/ingress/
                 # fixtures/Ingress-with-annotations.yml.
                 traefik.ingress.kubernetes.io/service.serversscheme: https
+                # Real bug found live: Traefik verifies the backend's TLS
+                # cert by default once serversscheme=https is set. front's
+                # cert has CN=mailu.offsystem.fr, but Traefik connects to
+                # the pod's ClusterIP — verification fails
+                # ("x509: cannot validate certificate for 10.x.x.x because
+                # it doesn't contain any IP SANs"), and Traefik returns a
+                # generic "Internal Server Error" (500) that looks like a
+                # real backend error until you check front's own nginx
+                # logs and find nothing there — confirmed it wasn't one
+                # before reaching for this fix. insecureSkipVerify is safe
+                # here: internal pod-network traffic, same wildcard cert
+                # issued for real by Let's Encrypt, not a spoofable
+                # third party. Reference format confirmed live: Traefik's
+                # annotation-based provider needs the namespace-prefixed
+                # form (<namespace>-<name>@kubernetescrd), same pattern
+                # already used for Middleware refs — a same-namespace,
+                # unprefixed name silently fails with "servers transport
+                # not found".
+                traefik.ingress.kubernetes.io/service.serverstransport: mailu-mailu-front-transport@kubernetescrd
           # Radicale (CalDAV/CardDAV) left disabled — Nextcloud Calendar/
           # Contacts already covers this, confirmed in the Mailcow/Mailu
           # comparison (notes-techniques.md); activating it here would be
