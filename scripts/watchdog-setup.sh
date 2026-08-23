@@ -34,6 +34,17 @@ step() { echo -e "\n\033[1;34m==> $1\033[0m"; }
 step "Vérification des outils requis"
 SOPS_BIN="$(command -v sops)" || { echo "Manquant : sops (voir manuel-installation.md)."; exit 1; }
 command -v k3s >/dev/null || { echo "k3s introuvable — ce watchdog cible k3s bare-metal (Phase 4), pas le cluster de dev k3d."; exit 1; }
+AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
+[ -f "$AGE_KEY_FILE" ] || { echo "Clé age introuvable : $AGE_KEY_FILE (voir manuel-installation.md, gestion des secrets)."; exit 1; }
+# Le service tourne en root (nécessaire pour systemctl restart k3s),
+# dont le HOME par défaut n'est pas celui de l'utilisateur interactif —
+# sops y chercherait la clé au mauvais endroit (/root/.config/... au
+# lieu de $HOME/.config/...). Bug réel trouvé en testant pour de vrai,
+# une fois les deux problèmes de chemin précédents corrigés : sops
+# trouvait bien le binaire et le fichier chiffré, mais échouait quand
+# même au déchiffrement, faute de clé. SOPS_AGE_KEY_FILE est la
+# variable native que sops respecte déjà — rien à changer côté
+# watchdog-check.sh, juste la fixer explicitement dans l'unité.
 # Chemin absolu résolu ici (shell interactif) plutôt que de compter sur
 # `sops` dans le PATH du service systemd, plus restreint (n'inclut pas
 # ~/.local/bin, où sops est souvent installé sans gestionnaire de
@@ -57,6 +68,7 @@ Environment=MYOWN_WD_THRESHOLD=${THRESHOLD}
 Environment=MYOWN_WD_MAX_REMEDIATIONS_PER_HOUR=${MAX_REMEDIATIONS_PER_HOUR}
 Environment=MYOWN_WD_SOPS_BIN=${SOPS_BIN}
 Environment=MYOWN_WD_REPO_ROOT=${REPO_ROOT}
+Environment=SOPS_AGE_KEY_FILE=${AGE_KEY_FILE}
 ExecStart=${CHECK_SCRIPT_DEST}
 EOF
 
