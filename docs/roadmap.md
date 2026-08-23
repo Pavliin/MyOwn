@@ -87,7 +87,7 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
   - Apps Android Nextcloud + Immich, backup automatique photos/vidéos en conditions réelles (Phase 2)
   - App Android Element X, test de fédération Matrix avec un second serveur externe (Phase 3)
   - Jellyfin : accès distant réel validé par un membre de la famille éloigné (800 km), avec vérification de la bande passante en lecture simultanée (Phase 3.5)
-- Provisionnement du VPS façade (Hetzner/OVH/Scaleway), configuration Postfix relay + SPF/DKIM/DMARC
+- ~~Provisionnement du VPS façade~~ — fait (OVH VPS-1, voir `notes-techniques.md`), configuration Postfix relay + SPF/DKIM/DMARC restante
 - Déploiement Mailu à domicile (chart Helm officiel, `Application` ArgoCD comme le reste du projet), connexion au relais VPS
 - Migration progressive des correspondants (soi-même d'abord, en parallèle d'un compte existant le temps de valider la délivrabilité)
 - Suivi de délivrabilité (tests d'envoi vers Gmail/Outlook, monitoring des blacklists)
