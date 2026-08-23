@@ -1,0 +1,35 @@
+# Serves .well-known/matrix/server on the apex domain (offsystem.fr) —
+# the Matrix federation *identity* (server_name) once it becomes
+# offsystem.fr, decoupled from the actual *hosting* domain
+# (tuwunel.offsystem.fr, unchanged). Tuwunel itself generates this
+# response from its own well_known.server config value, regardless of
+# which Host header the request arrived on — no new Deployment/Service,
+# just another route to the same backend as tuwunel-public/ingress.yaml.
+#
+# Whole apex host routed here rather than scoped to just the
+# .well-known path: nothing else claims offsystem.fr bare today
+# (confirmed live, 404 before this), and keeping it simple avoids a
+# second Ingress object fighting over the same host later if that
+# changes — revisit if the apex ever needs to serve something else too.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tuwunel-federation-delegation
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - offsystem.fr
+  rules:
+    - host: offsystem.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tuwunel
+                port:
+                  number: 8008
