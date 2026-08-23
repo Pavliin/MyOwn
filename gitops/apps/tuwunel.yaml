@@ -18,6 +18,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/tuwunel-public
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/tuwunel-federation-delegation
   destination:
     server: https://kubernetes.default.svc
     namespace: tuwunel
