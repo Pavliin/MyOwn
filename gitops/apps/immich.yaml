@@ -60,10 +60,10 @@ spec:
                 size: 5Gi
                 accessMode: ReadWriteOnce
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.8
       path: gitops/secrets/immich
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.8
       path: gitops/manifests/immich-postgres
     # Static hostPath-backed PV/PVC (immich-library), same name the chart
     # already references. Also closes a real gap found live: this PVC
@@ -71,13 +71,13 @@ spec:
     # never declared in GitOps, so a fresh cluster would have failed to
     # start Immich at all (existingClaim pointing at nothing).
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.8
       path: gitops/manifests/immich-library
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.8
       path: gitops/manifests/immich-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.8
       path: gitops/manifests/immich-public
   destination:
     server: https://kubernetes.default.svc
