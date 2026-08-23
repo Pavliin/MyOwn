@@ -18,6 +18,22 @@ spec:
       labels:
         app: tuwunel
     spec:
+      # Real bug found live (2026-08-23) testing federation with matrix.org
+      # after the server_name migration: the regular pod network has no
+      # IPv6 egress at all (confirmed via a debug pod: no default IPv6
+      # route, direct IPv6 connect fails instantly) — same underlying gap
+      # already hit and fixed for gandi-dyndns. Outbound federation
+      # (make_join to a real dual-stack remote server) tried the AAAA
+      # record DNS returned and never fell back to the working A record,
+      # so every join attempt failed. hostNetwork gives the pod the host's
+      # real dual-stack connectivity — same pattern as LiveKit.
+      hostNetwork: true
+      # Required alongside hostNetwork: true, or DNS resolution falls back
+      # to the host's own /etc/resolv.conf instead of the in-cluster
+      # resolver — would break Tuwunel's own internal lookups (e.g. its
+      # OIDC calls to authentik.offsystem.fr via the split-horizon
+      # CoreDNS override). Same gotcha already documented for LiveKit.
+      dnsPolicy: ClusterFirstWithHostNet
       # Kubernetes auto-injects Docker-links-style env vars for every
       # Service in the namespace, named "<SVC>_..." uppercased — since the
       # Service here is itself named "tuwunel", that collides with the
