@@ -163,7 +163,7 @@ def main():
                     type=NotificationType.MATRIX,
                     isDefault=True,
                     applyExisting=True,
-                    homeserverUrl="https://myown-tuwunel.local:8453",
+                    homeserverUrl="https://tuwunel.offsystem.fr",
                     internalRoomId=ALERT_ROOM_ID,
                     accessToken=ALERTBOT_TOKEN,
                 )
