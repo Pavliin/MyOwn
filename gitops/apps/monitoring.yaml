@@ -30,7 +30,7 @@ spec:
                 - myown-grafana.local
               path: /
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.9
       path: gitops/secrets/monitoring
   destination:
     server: https://kubernetes.default.svc

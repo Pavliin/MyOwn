@@ -153,13 +153,13 @@ spec:
                 hosts:
                   - myown-nextcloud.local
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.9
       path: gitops/secrets/nextcloud
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.9
       path: gitops/manifests/nextcloud-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.9
       path: gitops/manifests/nextcloud-public
   destination:
     server: https://kubernetes.default.svc
