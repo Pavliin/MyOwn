@@ -37,6 +37,20 @@ spec:
           ingress:
             enabled: false
           front:
+            # Real deadlock found live: front's raw mail ports (25/143/...)
+            # are hostPort-bound by default, and this chart hardcodes
+            # `RollingUpdate` with no override field — on this single-node
+            # cluster, any future rollout of front (e.g. this very
+            # proxyAuth change) makes the surge pod fail to schedule
+            # forever ("didn't have free ports"), same deadlock class
+            # already hit and fixed for LiveKit. Disabling hostPort here
+            # is the right call for now regardless: nothing today needs
+            # raw external SMTP/IMAP reachability (all mail-flow testing
+            # so far is internal-only) — real external mail ports are
+            # deliberately deferred to the VPS-relay design, out of scope
+            # for this plan.
+            hostPort:
+              enabled: false
             service:
               annotations:
                 # `front` terminates its own TLS on the `https` (443) port
@@ -73,6 +87,27 @@ spec:
             enabled: false
           persistence:
             single_pvc: true
+          # SSO via the ForwardAuth mechanism validated in isolation
+          # (notes-techniques.md) before ever touching Mailu — the
+          # Middleware (gitops/manifests/mailu-forwardauth/) is attached
+          # to the Ingress (gitops/manifests/mailu-public/ingress.yaml)
+          # separately, this just tells Mailu to trust the header it adds.
+          proxyAuth:
+            # Pod CIDR of this single-node cluster (confirmed via
+            # `kubectl get nodes -o jsonpath='{.items[0].spec.podCIDR}'`)
+            # — every request front receives genuinely comes from
+            # Traefik's own pod (the only party that can inject this
+            # header), never directly from an end user, so trusting the
+            # whole pod network here is equivalent to trusting Traefik
+            # specifically, not a broad grant.
+            whitelist: "10.42.0.0/24"
+            # NOT the chart's own default ("X-Auth-Email") — a real bug
+            # caught before shipping: Authentik's outpost sends
+            # "X-authentik-email" (confirmed in the ForwardAuth response
+            # headers during the whoami validation), a genuinely
+            # different header name, not just different casing.
+            header: "X-authentik-email"
+            create: "true"
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/mailu
