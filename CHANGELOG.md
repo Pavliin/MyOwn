@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.9](https://github.com/Pavliin/MyOwn/compare/v0.1.8...v0.1.9) (2026-08-23)
+
+### Fonctionnalités
+
+* **tuwunel:** migrate server_name to offsystem.fr for real federation ([5f35e71](https://github.com/Pavliin/MyOwn/commit/5f35e71b90a044f1d2e1870f6ae4a59584bf67c2))
+
+### Correctifs
+
+* **tuwunel:** give the pod real IPv6 egress via hostNetwork ([0ad4356](https://github.com/Pavliin/MyOwn/commit/0ad43563e90061151b7c154d886c58a317c666d1))
+
+### Documentation
+
+* record the Tuwunel server_name migration and federation validation ([a147bb9](https://github.com/Pavliin/MyOwn/commit/a147bb905dffa5578f8170d3a84f82824aa4a929))
+
 ## [0.1.8](https://github.com/Pavliin/MyOwn/compare/v0.1.7...v0.1.8) (2026-08-23)
 
 ### Fonctionnalités
