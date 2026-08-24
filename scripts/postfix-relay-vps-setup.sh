@@ -63,6 +63,16 @@ ssh -i "$VPS_SSH_KEY" "$VPS_HOST" "
   sudo postconf -e \"inet_interfaces = all\"
   sudo postconf -e \"smtp_tls_security_level = may\"
   sudo postconf -e \"smtpd_tls_security_level = may\"
+  # Real bug found via a live outbound test: this VPS has native IPv6
+  # (OVH default), and Postfix's default address_preference let it pick
+  # IPv6 to reach Gmail — but SPF/PTR here are deliberately IPv4-only
+  # (matches this project's existing stance of deferring IPv6 as a
+  # separate chantier, see notes-techniques.md). Gmail bounced with
+  # \"SPF ... did not pass\" because it checked the IPv6 source against
+  # an SPF record that only lists ip4:. Forcing IPv4 preference keeps
+  # outbound consistent with what's actually authenticated, without
+  # taking on a full IPv6 SPF/reverse-DNS setup now.
+  sudo postconf -e \"smtp_address_preference = ipv4\"
 
   sudo cp /tmp/postfix-transport /etc/postfix/transport
   sudo postmap /etc/postfix/transport
