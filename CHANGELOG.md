@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.13](https://github.com/Pavliin/MyOwn/compare/v0.1.12...v0.1.13) (2026-08-25)
+
+Note : même bug que pour les releases précédentes — `commit-and-tag-version` a comparé par erreur contre `v0.1.2` au lieu de `v0.1.12` (`pin-release.sh` déplace les tags hors de l'ascendance de `master`) — section reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.12`.
+
+### Correctifs
+
+* **mailu:** unblock rcmcarddav's HTTPS calls (snuffleupagus false positive) ([40e5a92](https://github.com/Pavliin/MyOwn/commit/40e5a92a61e5417fdc731729a691ec8523ad1f11))
+
+### Documentation
+
+* record the recovery-flow rebuild and rcmcarddav integration ([27949bb](https://github.com/Pavliin/MyOwn/commit/27949bbb1135ead87df24ad8dbff9f9708b84db1))
+* sync CLAUDE.md current state with v0.1.4 and post-release fixes ([0fe49bb](https://github.com/Pavliin/MyOwn/commit/0fe49bb70b596aeb065f7888d8d1fb1d82c33d87))
+
 ## [0.1.12](https://github.com/Pavliin/MyOwn/compare/v0.1.11...v0.1.12) (2026-08-24)
 
 Note : même bug que pour 0.1.10/0.1.11 — `commit-and-tag-version` a comparé par erreur contre `v0.1.2` au lieu de `v0.1.11` (`pin-release.sh` déplace les tags hors de l'ascendance de `master`) — section reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.11`.
