@@ -11,7 +11,8 @@ Cette page regroupe les deux guides du projet :
   d'administration courantes par service. Pour l'administrateur.
 
 !!! tip "Un raccourci pour tout retrouver"
-    Le [fichier de favoris](downloads/myown-favoris.html) ajoute un dossier
+    Le [fichier de favoris](downloads/myown-favoris.html){: download="myown-favoris.html" }
+    ajoute un dossier
     avec le lien de chaque service directement dans votre navigateur — pas
     besoin de retenir les adresses. Une fois téléchargé, importez-le
     (Chrome : `chrome://bookmarks` → menu → *Importer des favoris* ;
