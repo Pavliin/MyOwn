@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.10](https://github.com/Pavliin/MyOwn/compare/v0.1.9...v0.1.10) (2026-08-24)
+
+Note : `commit-and-tag-version` a comparé par erreur contre `v0.1.2` au lieu de `v0.1.9` (les tags `v0.1.3`-`v0.1.9` ne sont plus des ancêtres de `master` depuis que `pin-release.sh` les déplace sur un commit jamais mergé) — cette section a été reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.9`.
+
+### Fonctionnalités
+
+* **mail:** add Gandi DNS records for the VPS relay (A/MX/SPF/DKIM/DMARC) ([316eb91](https://github.com/Pavliin/MyOwn/commit/316eb916bf040a3138f6def82b07cd248171b541))
+* **mail:** bootstrap dedicated WireGuard tunnel for VPS mail relay ([a075b83](https://github.com/Pavliin/MyOwn/commit/a075b835d93ad83c677cb59d4aae8c6476ec2181))
+* **mail:** configure Postfix relay on the VPS façade ([9a894ad](https://github.com/Pavliin/MyOwn/commit/9a894ad3649f4eabbec078adc7b45bb054bf0245))
+* **mail:** expose Mailu:25 to the VPS relay via a persistent port-forward ([38cbe8a](https://github.com/Pavliin/MyOwn/commit/38cbe8a0b17106dcb265de7cc550cfdd24287261))
+* **mail:** route Mailu's outbound mail through the VPS relay ([43e4852](https://github.com/Pavliin/MyOwn/commit/43e48521c4cf7f00d55c4eeba3ac805f81b845b7))
+* **mailu:** activate ForwardAuth SSO on the public Ingress ([5b38807](https://github.com/Pavliin/MyOwn/commit/5b388076e9b65bf12942e4e4dde377c9bb44ba7a))
+* **mailu:** add base Mailu deployment ([8be8644](https://github.com/Pavliin/MyOwn/commit/8be8644ce1a3da629a332544a25290b5f8c895ec))
+* **mailu:** add Restic backup CronJob ([eadaabe](https://github.com/Pavliin/MyOwn/commit/eadaabe6f699ada192e44e4540330c87dbefc3d1))
+* **mailu:** make front's TLS cert and the SSO callback route reproducible ([4329b73](https://github.com/Pavliin/MyOwn/commit/4329b7366c14d81b155c8597bd8c8197ff0ba09d))
+* **mailu:** prepare Authentik ForwardAuth SSO wiring ([ae81746](https://github.com/Pavliin/MyOwn/commit/ae817464dab24a02159ab7c6c9dcb4ab3ed0ddc6))
+
+### Correctifs
+
+* **mailu:** skip backend TLS verification for front's own certificate ([c3ee9d4](https://github.com/Pavliin/MyOwn/commit/c3ee9d45d1f9743ec1c470d335561f7e1c80e357))
+* **mailu:** use Recreate strategy for postfix to avoid a rollout deadlock ([e301e7c](https://github.com/Pavliin/MyOwn/commit/e301e7c88f83070684d94c18087c3ba8edfb47f9))
+
+### Documentation
+
+* flag the myown-*.local hostname ambiguity between dev and mini PC ([ed163f2](https://github.com/Pavliin/MyOwn/commit/ed163f2e8793e9b365f5d6daa5934b2fb10327b3))
+* pivot mail stack decision from Mailcow to Mailu ([48fda34](https://github.com/Pavliin/MyOwn/commit/48fda34410c5fb5dfdfdf3f114ebec5c074f568c))
+* record Mailcow deployment research, refresh current state ([39fde74](https://github.com/Pavliin/MyOwn/commit/39fde746a2fbcc456bd38f769d34e336e3b18b50))
+* record the full Mailu deployment and SSO validation ([89270e3](https://github.com/Pavliin/MyOwn/commit/89270e35cc1b3d056a4a556eb44f657f3febec9b))
+* record the Mailu Restic backup validation and two ArgoCD gotchas ([e3bc759](https://github.com/Pavliin/MyOwn/commit/e3bc759908beaa7a0c84abc0b500c3cf3c20b183))
+* record the VPS façade provisioning, done in an untracked session ([0da8913](https://github.com/Pavliin/MyOwn/commit/0da891300a0ca1d21989b54365f59088e0763f32))
+* record the VPS mail relay chantier, validated end-to-end ([4583912](https://github.com/Pavliin/MyOwn/commit/4583912e74f5fb4ac5986dd3caf03307099b9786))
+* record two pre-existing dev-cluster outages found and fixed ([b587e6f](https://github.com/Pavliin/MyOwn/commit/b587e6fd8d30caf90b07ed6e580c6863c0da2811))
 ## [0.1.9](https://github.com/Pavliin/MyOwn/compare/v0.1.8...v0.1.9) (2026-08-23)
 
 ### Fonctionnalités
