@@ -111,6 +111,16 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Compte admin local** (`admin`) : reste disponible en secours si Authentik est indisponible, mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`.
 - **Statut** : déploiement, sauvegarde Restic, SSO Authentik et bibliothèque sourcée depuis Nextcloud tous validés en conditions réelles (`notes-techniques.md`).
 
+## Mailu — messagerie électronique (mail)
+
+**À quoi ça sert** : boîte mail complète (webmail, filtres anti-spam/antivirus, alias) sur le domaine `offsystem.fr` — remplace une messagerie type Gmail/Outlook. Envoi/réception réels validés (relais via un VPS façade, voir `notes-techniques.md`).
+
+- **URL (webmail)** : <https://mailu.offsystem.fr>
+- **Adresse mail** : `<utilisateur>@offsystem.fr`
+- **Se connecter** : SSO Authentik (un seul compte, comme pour les autres services) — pas de formulaire de connexion Mailu natif visible, la page redirige directement vers Authentik.
+- **Contacts (carnet d'adresses)** : pas encore relié à Nextcloud Contacts (`rcmcarddav`, prévu mais pas encore fait — voir `CLAUDE.md`).
+- **Statut** : déploiement, SSO Authentik et sauvegarde Restic validés en conditions réelles ; relais sortant/entrant validé avec de vrais mails (`notes-techniques.md`). Connexion SSO webmail validée jusqu'à la page de login réelle ; reste à confirmer par un login complet.
+
 ## À venir
 
 Chaque nouveau service applicatif aura sa propre section ici : URL, identifiants, prise en main de base, et pour les services destinés à la famille/aux amis, des instructions pensées pour un public non technique.
