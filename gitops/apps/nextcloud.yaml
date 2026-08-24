@@ -50,6 +50,18 @@ spec:
                   secretKeyRef:
                     name: nextcloud-secrets
                     key: OIDC_CLIENT_SECRET
+              # The official image's own Apache config hardcodes
+              # LimitRequestBody to this env var, defaulting to 1073741824
+              # (exactly 1GiB) — found live via a real rclone migration of a
+              # personal video/music library: every file above that size
+              # failed with a bare Apache 413 (0 bytes read server-side, per
+              # SabreDAV's own error message), everything below succeeded.
+              # PHP's upload_max_filesize/post_max_size don't gate this at
+              # all (WebDAV PUT streams via php://input, not $_FILES) — this
+              # was the only actual limit. 0 = unlimited, per the image's own
+              # documented behavior for this variable.
+              - name: APACHE_BODY_LIMIT
+                value: "0"
             hooks:
               # before-starting (not post-installation): the latter only fires
               # on a brand-new install (no config.php yet) — useless here since
