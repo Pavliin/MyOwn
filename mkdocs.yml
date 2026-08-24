@@ -1,0 +1,59 @@
+site_name: MyOwn — Aide
+site_url: https://aide.offsystem.fr
+site_description: Manuels d'utilisation et d'administration de MyOwn.
+docs_dir: docs
+repo_url: https://github.com/Pavliin/MyOwn
+repo_name: MyOwn
+edit_uri: edit/master/docs/
+
+nav:
+  - Accueil: index.md
+  - Manuel utilisateur: manuel-utilisateur.md
+  - Manuel admin: manuel-admin.md
+
+theme:
+  name: material
+  language: fr
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Basculer en thème sombre
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Basculer en thème clair
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+
+plugins:
+  - search:
+      lang: fr

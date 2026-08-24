@@ -1,0 +1,44 @@
+/* Palette "custom" référencée depuis mkdocs.yml (theme.palette.primary/accent).
+   Ton chaud/personnel plutôt que le bleu Material par défaut — cohérent avec
+   l'esprit "maison numérique" du projet plutôt qu'un outil générique. */
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: #6b3540;
+  --md-primary-fg-color--light: #8a4f5b;
+  --md-primary-fg-color--dark: #4d2530;
+  --md-primary-bg-color: #faf8f4;
+  --md-primary-bg-color--light: #faf8f4;
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="custom"] {
+  --md-primary-fg-color: #4d2530;
+  --md-primary-fg-color--light: #6b3540;
+  --md-primary-fg-color--dark: #2c1218;
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: #a1631f;
+  --md-accent-fg-color--transparent: #a1631f1a;
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: #ffffff;
+}
+
+[data-md-color-scheme="slate"][data-md-color-accent="custom"] {
+  --md-accent-fg-color: #d99a4e;
+  --md-accent-fg-color--transparent: #d99a4e26;
+}
+
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #faf8f4;
+}
+
+.md-typeset {
+  font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-weight: 600;
+}

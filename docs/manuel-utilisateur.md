@@ -1,129 +1,222 @@
-# Manuel d'utilisation
+# Manuel utilisateur
 
-Guide des services déployés : à quoi chacun sert, comment y accéder, comment s'en servir. Ce document grandit au même rythme que la roadmap.
+Guide de prise en main des services MyOwn — un compte unique, une section par
+service : à quoi il sert, comment démarrer.
 
-Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajoutée (voir [`manuel-installation.md`](manuel-installation.md)) et un accès HTTP simple (`:8090`) — pas de HTTPS tant qu'on est sur le cluster de dev local.
+Tous les services se rejoignent avec la même identité : un email et un mot de
+passe, créés une fois pour toutes via **Authentik**, votre "compte MyOwn". Sur
+chaque service, cherchez un bouton du type *« Se connecter via Authentik »* —
+c'est toujours la même connexion.
 
-## ArgoCD — orchestration GitOps
+## 👤 Mon compte (Authentik)
 
-**À quoi ça sert** : c'est le tableau de bord qui montre l'état de tout ce qui est déployé, et qui applique automatiquement les changements poussés sur `master` du dépôt. En pratique : on ne déploie jamais rien "à la main", on modifie un fichier dans `gitops/apps/` et ArgoCD synchronise le cluster tout seul.
+**À quoi ça sert** : le compte qui ouvre tous les autres services — vous ne
+créez un compte séparé nulle part ailleurs.
 
-- **URL** : <http://myown-argocd.local:8090>
-- **Identifiants** : utilisateur `admin`, mot de passe :
+- **Adresse** : <https://authentik.offsystem.fr>
 
-  ```bash
-  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-  ```
+### Pour commencer
 
-- **Usage** : la page d'accueil liste toutes les `Application`. Vert (`Synced`/`Healthy`) = tout va bien. Cliquer sur une application affiche l'arbre complet des ressources Kubernetes qu'elle a créées, utile pour diagnostiquer un problème.
+1. Le premier accès se fait via un **lien envoyé par l'administrateur** — pas
+   d'inscription libre.
+2. Ce lien vous laisse choisir vous-même votre mot de passe ; personne
+   d'autre, pas même l'administrateur, ne le voit passer.
+3. Une fois connecté, vous pouvez retrouver vos informations de profil dans
+   le menu en haut à droite.
 
-## Grafana — métriques du cluster
+### Ajouter un authentificateur (recommandé)
 
-**À quoi ça sert** : visualiser la santé technique du cluster (CPU, mémoire, état des pods) via des graphiques. Utile pour repérer un service qui consomme anormalement ou qui redémarre en boucle.
+Un authentificateur permet de récupérer votre compte vous-même en cas de mot
+de passe oublié, sans passer par l'administrateur — il ne vous sera **jamais**
+demandé pour une connexion normale, uniquement pour cette récupération.
 
-- **URL** : <http://myown-grafana.local:8090>
-- **Identifiants** : utilisateur `admin`, mot de passe :
+1. Depuis votre profil (menu en haut à droite), ouvrez la section
+   **Authentificateurs**.
+2. Ajoutez un authentificateur **TOTP** et scannez le QR code affiché avec
+   une application comme Google Authenticator, Aegis ou Ente Auth.
+3. Saisissez le code à 6 chiffres affiché pour confirmer.
 
-  ```bash
-  kubectl -n monitoring get secret monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 -d
-  ```
+!!! example "Capture à venir"
+    Écran d'ajout d'un authentificateur TOTP.
 
-- **Usage** : ~29 tableaux de bord préconfigurés (fournis par défaut avec kube-prometheus-stack) sont disponibles dans le menu **Dashboards** à gauche — par exemple "Kubernetes / Compute Resources / Cluster" pour une vue d'ensemble. Rien à configurer pour les avoir, ils sont déjà provisionnés.
+!!! note "Mot de passe oublié"
+    Depuis l'écran de connexion, **Mot de passe oublié ?** vous identifie
+    (nom d'utilisateur ou email) puis vous demande un code de votre
+    authentificateur avant de choisir un nouveau mot de passe — à condition
+    d'en avoir configuré un comme ci-dessus. Sans authentificateur, demandez
+    un lien à l'administrateur.
 
-## Uptime Kuma — disponibilité des services
+## 🗂️ Nextcloud — fichiers, agenda, contacts
 
-**À quoi ça sert** : vérifie régulièrement que chaque service répond, et affiche un statut simple (vert/rouge) avec historique. C'est la vue pensée pour être lisible même par quelqu'un de non technique, à terme.
+**À quoi ça sert** : vos fichiers, votre calendrier, vos contacts, vos notes
+et vos listes de tâches, accessibles depuis n'importe où — le remplaçant
+maison de Google Drive.
 
-- **URL** : <http://myown-uptime.local:8090> — identifiants admin dans `gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml` (compte local à Uptime Kuma, sans lien avec Authentik).
-- **Page de statut publique** (pensée pour toute la famille, pas seulement l'admin) : <http://myown-uptime.local:8090/status/etat-du-systeme> — six services suivis (Authentik, Vaultwarden, Nextcloud, Immich, Tuwunel, LiveKit), configurés via `scripts/uptime-kuma-setup.py` plutôt qu'à la main dans l'UI (reproductible après une recréation du cluster — détails et vrais bugs rencontrés dans `notes-techniques.md`).
-- **Alertes en cas de panne** : salon Matrix `#etat-du-systeme:offsystem.fr`, ouvert à quiconque dans le foyer veut le rejoindre (depuis Element Web par exemple — rechercher/rejoindre l'alias directement). Le bot `@alertbot` y publie automatiquement les changements d'état (panne/rétablissement) — une seule fois, visible par tous, pas besoin de solliciter l'admin pour savoir "c'est en panne pour tout le monde ou juste chez moi ?".
+- **Adresse** : <https://nextcloud.offsystem.fr>
 
-## Authentik — identité et authentification (SSO)
+### Pour commencer
 
-**À quoi ça sert** : à terme, le point d'entrée unique pour se connecter à tous les services du projet (un seul compte par personne). Pour l'instant, aucun autre service n'est encore branché dessus — uniquement Authentik lui-même est accessible.
+1. Connectez-vous avec le bouton *« Se connecter via Authentik »*.
+2. Glissez-déposez un fichier depuis votre ordinateur pour l'envoyer.
+3. Dans le menu de gauche : **Calendrier**, **Contacts**, **Notes** (texte
+   libre) et **Tâches** (listes à cocher partagées — une tâche avec une date
+   apparaît aussi automatiquement dans le Calendrier).
+4. Le dossier **Mediatheque** est partagé avec toute la famille : déposez-y
+   un film ou un album pour qu'il apparaisse dans Jellyfin (voir plus bas).
 
-- **URL** : <http://myown-authentik.local:8090>
-- **Identifiants** : aucun compte bootstrap configuré — au premier accès, Authentik propose son propre flow de configuration initiale pour créer le compte administrateur (`akadmin`).
-- **Usage** : l'application "Vaultwarden" y est déclarée automatiquement (via blueprint, pas besoin de la créer à la main). Menu **Applications** pour voir/gérer qui peut y accéder.
+!!! example "Capture à venir"
+    Écran d'accueil Nextcloud après connexion — vue Fichiers.
 
-## Vaultwarden — mots de passe
+## 🔑 Vaultwarden — mots de passe
 
-**À quoi ça sert** : gestionnaire de mots de passe auto-hébergé, compatible avec toutes les applications officielles Bitwarden (navigateur, mobile, desktop) — c'est le premier service applicatif "réel" du projet.
+**À quoi ça sert** : un coffre-fort qui retient tous vos mots de passe à
+votre place, compatible avec l'application officielle Bitwarden (navigateur,
+téléphone, ordinateur).
 
-- **URL** : <https://myown-vaultwarden.local:8453> (⚠️ HTTPS et port 8453, pas 8090 comme les autres services — le web vault a besoin de l'API Subtle Crypto du navigateur pour chiffrer/déchiffrer côté client, indisponible en HTTP sur un nom d'hôte personnalisé même si celui-ci pointe vers `127.0.0.1`) — le panneau d'administration est à `/admin`
-- **Premier accès** : le certificat est signé par une CA locale (mkcert) déjà approuvée sur cette machine — pas d'avertissement de sécurité attendu. Sur une autre machine, voir `manuel-installation.md` pour régénérer/faire confiance au certificat.
-- **Identifiants utilisateur** : aucun compte par défaut — créez le vôtre depuis la page d'accueil (**Create Account**), comme sur bitwarden.com
-- **Jeton du panneau admin** (`/admin`) :
+- **Adresse** : <https://vaultwarden.offsystem.fr>
 
-  ```bash
-  kubectl -n vaultwarden get secret vaultwarden-secrets -o jsonpath="{.data.ADMIN_TOKEN}" | base64 -d
-  ```
+### Pour commencer
 
-- **Usage** : pour vous y connecter depuis une app Bitwarden (navigateur ou mobile), il faut changer le "serveur" dans les réglages de l'application vers l'URL ci-dessus avant de vous connecter — Bitwarden pointe vers bitwarden.com par défaut.
-- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via SSO" (ou équivalent selon le client) redirige vers Authentik. La connexion classique par email/mot de passe reste aussi disponible — les deux ne sont pas exclusives à ce stade.
-- **Le mot de passe principal reste demandé après le SSO — c'est normal.** Le SSO prouve *qui* vous êtes (authentification) ; il ne peut pas fournir la clé qui déchiffre votre coffre (chiffrement), parce que cette clé est dérivée du mot de passe principal **côté navigateur uniquement** — le serveur ne le connaît jamais, même l'opérateur du serveur ne peut pas lire vos mots de passe sans lui. Les deux mécanismes sont volontairement séparés (zero-knowledge encryption) ; ce n'est pas une étape de connexion en trop.
+1. Ouvrez l'adresse ci-dessus et cliquez sur *« Se connecter via
+   Authentik »* — pas besoin de créer un compte séparé.
+2. À cette première connexion, Vaultwarden vous demande de définir votre
+   **mot de passe maître**. Le SSO prouve qui vous êtes, mais seul ce mot de
+   passe peut déchiffrer votre coffre — d'où cette double étape :
+   choisissez-le solide et dont vous vous souviendrez, personne ne peut vous
+   le retrouver s'il est perdu, pas même l'administrateur du serveur.
+3. Installez l'extension ou l'application Bitwarden, puis dans ses réglages
+   changez le **serveur** pour l'adresse ci-dessus (Bitwarden pointe vers
+   bitwarden.com par défaut) avant de vous connecter avec les mêmes
+   identifiants.
+4. Ajoutez votre premier mot de passe avec le bouton **+**.
 
-## Nextcloud — fichiers, contacts, calendrier, notes, tâches
+!!! example "Capture à venir"
+    Réglage « Serveur auto-hébergé » dans l'application Bitwarden.
 
-**À quoi ça sert** : remplace Google Drive/Docs pour le stockage et le partage de fichiers, plus contacts (CardDAV), calendrier (CalDAV), notes texte libre et listes de tâches. Pas encore de sauvegarde Restic ni d'app Android à ce stade (cf. `roadmap.md`).
+## 📷 Immich — photos et vidéos
 
-- **URL** : <https://myown-nextcloud.local:8453> (⚠️ HTTPS et port 8453, pas 8090 — comme Vaultwarden, mais pour une raison différente ici : l'app SSO `user_oidc` refuse purement et simplement de fonctionner en HTTP, indépendamment de toute question de navigateur)
-- **Premier accès** : certificat signé par la CA locale mkcert déjà approuvée sur cette machine — pas d'avertissement attendu. Sur une autre machine, voir `manuel-installation.md`.
-- **Identifiants (compte admin local)** : utilisateur `admin`, mot de passe :
+**À quoi ça sert** : le remplaçant maison de Google Photos — stockage,
+albums, recherche parmi vos photos et vidéos, avec reconnaissance des
+visages qui tourne localement (rien n'est envoyé à l'extérieur).
 
-  ```bash
-  kubectl -n nextcloud get secret nextcloud-secrets -o jsonpath="{.data.NEXTCLOUD_PASSWORD}" | base64 -d
-  ```
+- **Adresse** : <https://immich.offsystem.fr>
 
-- **Usage** : interface web classique Nextcloud, glisser-déposer pour envoyer des fichiers.
-- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via authentik" (ou équivalent) redirige vers Authentik — un seul compte, comme pour Vaultwarden. La connexion classique par mot de passe local reste disponible (utile notamment pour le compte `admin` ci-dessus, qui n'existe pas dans Authentik).
-- **Contacts et calendrier** : apps installées et activées, utilisables directement depuis l'interface web ou via un client CalDAV/CardDAV externe (Thunderbird, l'app calendrier d'un téléphone, etc.) — pas besoin d'attendre l'app mobile dédiée, différée en Phase 4.
-- **Notes et Tâches** : deux usages différents, pas redondants. **Notes** (app `notes`) pour du texte libre en markdown — personnel par défaut, partageable via le partage de fichiers/dossiers classique de Nextcloud (ex. une liste de cadeaux visible par toute la famille). **Tasks** (app `tasks`) pour des listes à cocher basées CalDAV, partageables en temps réel entre comptes (ex. une liste de courses synchronisée avec son/sa conjoint·e) ; une tâche avec date d'échéance apparaît aussi directement dans le Calendrier, cochable depuis cette vue.
-- **Photos** : l'app Photos native de Nextcloud est désactivée — Immich (section ci-dessous) est la seule app photo du projet, pour éviter une double bibliothèque déroutante.
+### Pour commencer
 
-## Immich — photos et vidéos
+1. Connectez-vous avec le bouton *« Se connecter via Authentik »*.
+2. Glissez-déposez des photos ou vidéos depuis votre navigateur.
+3. L'application mobile officielle Immich peut aussi être configurée pour
+   pointer vers cette adresse, pour une sauvegarde automatique depuis votre
+   téléphone.
 
-**À quoi ça sert** : remplace Google Photos — stockage, organisation, recherche sémantique et reconnaissance faciale sur les photos/vidéos, avec sauvegarde automatique depuis mobile (app Android/iOS officielle). Pas encore de sauvegarde Restic ni d'app Android configurée à ce stade — cf. `roadmap.md`.
+!!! example "Capture à venir"
+    Bibliothèque de photos après un premier import.
 
-- **URL** : <http://myown-immich.local:8090>
-- **Premier accès** : aucun compte par défaut — un écran de création de compte administrateur apparaît à la première visite.
-- **Usage** : glisser-déposer des photos/vidéos depuis le navigateur pour tester. La reconnaissance faciale et la recherche sémantique tournent en local (service `machine-learning` du même déploiement, aucune donnée envoyée à l'extérieur) — les premières analyses peuvent prendre un moment le temps que les modèles se chargent.
-- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter via Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Configuré nativement dans Immich (pas d'app tierce comme pour Nextcloud), sans aucune manipulation à faire : la configuration OAuth est posée automatiquement au déploiement.
+## 💬 Messagerie (Tuwunel)
 
-## Tuwunel — messagerie (texte + appels vidéo de groupe)
+**À quoi ça sert** : discussions texte et appels vidéo de groupe — pas
+seulement avec la famille : ce serveur peut aussi discuter avec n'importe
+qui possédant un compte sur un autre serveur Matrix (comme email, mais pour
+la messagerie).
 
-**À quoi ça sert** : serveur Matrix (texte, et maintenant appels vidéo de groupe via LiveKit), remplace Conduwuit prévu initialement (archivé en amont, voir `notes-techniques.md`). Pas de client mobile dédié pour l'instant — Element X, l'app prévue, est différée à la Phase 4 pour les mêmes raisons de résolution DNS locale que les autres apps Android — mais **Element Web, hébergé sur app.element.io, fonctionne dès maintenant** comme client complet (texte et appels), pointé vers notre serveur.
+- **Sur ordinateur** : [Element Web](https://app.element.io) (aucune
+  installation nécessaire)
+- **Sur mobile** : **Element X**, disponible sur le Play Store et l'App
+  Store
 
-- **URL (API, pas d'interface web ici)** : <https://tuwunel.offsystem.fr> — répond au protocole client-serveur Matrix.
-- **Se connecter via Element Web** : aller sur <https://app.element.io>, à l'écran de connexion choisir **Modifier** en face du serveur proposé par défaut, saisir `tuwunel.offsystem.fr`, puis se connecter (SSO Authentik).
-- **Identité Matrix** : `@<utilisateur>:offsystem.fr` (ex. `@robin:offsystem.fr`) — pas `tuwunel.offsystem.fr`, l'identité utilise le domaine principal, pas le sous-domaine où le serveur est hébergé (choix fait le 2026-08-23 pour permettre une vraie fédération avec d'autres serveurs Matrix, voir `notes-techniques.md`).
-- **Appels vidéo de groupe** : dans une room, bouton d'appel — rejoint automatiquement un appel Element Call, média géré par LiveKit (TURN configuré, validé en conditions réelles y compris hors LAN).
-- **Fédération** : validée en conditions réelles avec un compte matrix.org externe (conversation bidirectionnelle réelle, pas juste un test technique) — on peut donc discuter avec n'importe qui possédant un compte Matrix ailleurs, pas seulement d'autres membres du foyer.
-- **Statut** : déploiement validé en conditions réelles — SSO Authentik, sauvegarde Restic quotidienne, appels LiveKit/TURN, fédération Matrix externe.
+### Pour commencer
 
-## Jellyfin — films et musique
+#### Sur ordinateur (Element Web)
 
-**À quoi ça sert** : bibliothèque de films/séries/musique (achetés) avec lecture en streaming — le complément de Nextcloud/Immich pour ce cas d'usage précis, pensé pour une famille dispersée géographiquement.
+1. Ouvrez [app.element.io](https://app.element.io).
+2. Sur l'écran de connexion, cliquez sur **Modifier** en face du serveur
+   proposé par défaut, et saisissez `offsystem.fr`.
+3. Connectez-vous via Authentik. Votre identité est
+   `@votre-prenom:offsystem.fr`.
+4. Dans une conversation, un bouton d'appel démarre un appel vidéo de
+   groupe.
 
-- **URL** : <http://myown-jellyfin.local:8090>
-- **Ajouter du contenu** : pas d'upload direct dans Jellyfin — déposer le fichier dans le dossier `Films` ou `Musique` de **Nextcloud** (interface web, glisser-déposer, ou client de sync), comme pour n'importe quel autre fichier. Jellyfin lit ce même dossier en lecture seule, une seule copie. Puis relancer un scan pour qu'il apparaisse tout de suite : Dashboard → Bibliothèques → icône de rafraîchissement (sinon, scan périodique automatique).
-- **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter avec Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Premier compte créé automatiquement à la première connexion, mais **sans droits admin par défaut** — voir `manuel-installation.md` étape 13 pour donner les droits admin à un compte.
-- **Compte admin local** (`admin`) : reste disponible en secours si Authentik est indisponible, mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`.
-- **Statut** : déploiement, sauvegarde Restic, SSO Authentik et bibliothèque sourcée depuis Nextcloud tous validés en conditions réelles (`notes-techniques.md`).
+#### Sur mobile (Element X)
 
-## Mailu — messagerie électronique (mail)
+1. Installez **Element X** depuis le Play Store ou l'App Store.
+2. Au démarrage, choisissez l'option pour un **serveur personnalisé** et
+   saisissez `offsystem.fr`.
+3. Connectez-vous via Authentik.
 
-**À quoi ça sert** : boîte mail complète (webmail, filtres anti-spam/antivirus, alias) sur le domaine `offsystem.fr` — remplace une messagerie type Gmail/Outlook. Envoi/réception réels validés (relais via un VPS façade, voir `notes-techniques.md`).
+!!! note "État du système du foyer"
+    Le salon [#etat-du-systeme](https://matrix.to/#/#etat-du-systeme:offsystem.fr)
+    prévient en cas de panne d'un service — cliquez sur le lien pour le
+    rejoindre directement (la recherche de salon dans Element ne trouve pas
+    toujours les alias existants).
 
-- **URL (webmail)** : <https://mailu.offsystem.fr>
-- **Adresse mail** : celle du champ email du compte Authentik, tant qu'elle est en `@offsystem.fr` (ex. `robin.chartier@offsystem.fr`) — chaque nouvelle adresse est **créée automatiquement à la première connexion SSO**, comme pour Immich ou Nextcloud. Si le compte a encore un email externe (Gmail...), Mailu refuse la connexion (`domain=...` dans l'erreur) tant que l'email Authentik n'a pas été mis à jour vers l'adresse `@offsystem.fr` voulue (admin uniquement, via l'interface Authentik).
-- **Se connecter** : SSO Authentik (un seul compte, comme pour les autres services) — pas de formulaire de connexion Mailu natif visible, la page redirige directement vers Authentik.
-- **Contacts (carnet d'adresses)** : relié à Nextcloud Contacts en libre-service, comme le TOTP — Settings → CardDAV → "+" dans le webmail, avec :
-  - **URL** : `https://nextcloud.offsystem.fr/remote.php/dav/`
-  - **Nom d'utilisateur** : ton identifiant Nextcloud interne (pas ton email — visible via `occ user:list` côté admin, ou demande-le)
-  - **Mot de passe** : un mot de passe d'application généré dans Nextcloud (Paramètres → Sécurité → "Appareils et sessions")
-- **Statut** : déploiement, SSO Authentik, connexion webmail réelle, contacts Nextcloud et sauvegarde Restic tous validés en conditions réelles ; relais sortant/entrant validé avec de vrais mails (`notes-techniques.md`).
+!!! warning "Appels vidéo de groupe sur mobile"
+    Les appels de groupe fonctionnent bien depuis un ordinateur. Sur mobile,
+    un problème connu les empêche encore de démarrer — le chat texte, lui,
+    fonctionne normalement partout.
 
-## À venir
+## ✉️ Mailu — courrier électronique
 
-Chaque nouveau service applicatif aura sa propre section ici : URL, identifiants, prise en main de base, et pour les services destinés à la famille/aux amis, des instructions pensées pour un public non technique.
+**À quoi ça sert** : une boîte mail complète (webmail, anti-spam) sur le
+domaine `offsystem.fr` — le remplaçant maison de Gmail/Outlook.
+
+- **Adresse** : <https://mailu.offsystem.fr>
+
+### Pour commencer
+
+1. Connectez-vous via Authentik — pas de formulaire de connexion séparé, la
+   page redirige directement.
+2. Votre adresse mail est automatiquement créée à cette première connexion,
+   à partir de l'email de votre compte MyOwn.
+
+!!! warning "Adresse en @offsystem.fr requise"
+    Si votre compte MyOwn utilise encore un email extérieur (Gmail...), la
+    connexion à Mailu est refusée. Demandez à l'administrateur de mettre à
+    jour votre email vers une adresse `@offsystem.fr` avant votre première
+    connexion.
+
+### Lier votre carnet d'adresses Nextcloud
+
+Le webmail affiche vos contacts Nextcloud directement à la composition,
+ajoutés en libre-service, comme l'authentificateur plus haut.
+
+1. Dans le webmail, **Paramètres → CardDAV**, puis **+**.
+2. Renseignez :
+   - **URL** : `https://nextcloud.offsystem.fr/remote.php/dav/`
+   - **Nom d'utilisateur** : votre identifiant Nextcloud interne — **pas**
+     votre email. S'il n'est pas visible dans vos réglages Nextcloud,
+     demandez-le à l'administrateur.
+   - **Mot de passe** : un **mot de passe d'application** généré dans
+     Nextcloud (**Paramètres → Sécurité → « Appareils et sessions »**), pas
+     votre mot de passe MyOwn habituel.
+
+!!! example "Capture à venir"
+    Formulaire d'ajout CardDAV dans le webmail Mailu.
+
+## 🎬 Jellyfin — films et musique
+
+**À quoi ça sert** : votre bibliothèque de films, séries et musique, en
+streaming sur tous vos écrans.
+
+- **Adresse** : <https://jellyfin.offsystem.fr>
+
+### Pour commencer
+
+1. Connectez-vous via Authentik — votre compte Jellyfin est créé
+   automatiquement à la première connexion.
+2. Pour ajouter un film ou un album : déposez le fichier dans le dossier
+   **Mediatheque** de Nextcloud (voir plus haut) — Jellyfin le détecte et
+   l'affiche après une courte mise à jour automatique.
+
+!!! example "Capture à venir"
+    Écran d'accueil Jellyfin avec la bibliothèque de films.
+
+## 🟢 État du système
+
+**À quoi ça sert** : vérifier en un coup d'œil que tout fonctionne, sans
+avoir à demander à l'administrateur.
+
+- **Adresse** : <https://status.offsystem.fr>
+
+Vert = tout va bien. En cas de panne, un message est aussi posté
+automatiquement dans le salon
+[#etat-du-systeme](https://matrix.to/#/#etat-du-systeme:offsystem.fr).

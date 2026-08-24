@@ -3,6 +3,10 @@ MD013: false
 MD033: false
 MD040: false
 MD041: false
+# Repeated subsection titles (e.g. "Pour commencer" under each service) are
+# legitimate structure, not duplication, as long as they're not siblings.
+MD024:
+  siblings_only: true
 # Not enforced by the pinned CI action version (DavidAnson/markdownlint-cli2-action@v18);
 # disabled locally too so `npm run lint:md` matches what CI actually checks.
 MD060: false

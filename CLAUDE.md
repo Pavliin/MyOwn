@@ -14,9 +14,12 @@ A personal self-hosted cloud project (files, photos, passwords, messaging, mail 
 - [`docs/vision-long-terme.md`](docs/vision-long-terme.md) — long-term directions to keep in mind, out of scope for the POC
 - [`docs/notes-techniques.md`](docs/notes-techniques.md) — as-built reference: deployed versions, notable config choices, gotchas actually hit and how they were resolved
 - [`docs/manuel-installation.md`](docs/manuel-installation.md) — reproducible steps for a first install
-- [`docs/manuel-utilisateur.md`](docs/manuel-utilisateur.md) — how to use each deployed service (URL, credentials, basics)
+- [`docs/manuel-utilisateur.md`](docs/manuel-utilisateur.md) — family-facing: what each service is for and how to get started with it (production URLs, SSO-only, no credentials/commands)
+- [`docs/manuel-admin.md`](docs/manuel-admin.md) — admin-facing: enrolling a new user, and routine admin actions per service (credentials, `occ`/`sops` commands, admin panels)
 
-**Keep the last three updated as you go, not retroactively**: whenever a service is added or changed in `gitops/apps/`, or a real bug/gotcha is hit and fixed (not a typo — an actual "this didn't work the way the docs/chart suggested" moment), add it to `notes-techniques.md` in the same PR. Same for `manuel-installation.md` (new bootstrap step) and `manuel-utilisateur.md` (new service reachable by a human) whenever they change. Retrofitting these later is much easier to get wrong or skip entirely.
+Both manuals (plus `docs/index.md`) are also built into a browsable site via MkDocs Material (`mkdocs.yml`, `.github/workflows/docs.yml`), published at `aide.offsystem.fr` — the rest of `docs/` stays plain repo Markdown, not part of that site's nav.
+
+**Keep the last four updated as you go, not retroactively**: whenever a service is added or changed in `gitops/apps/`, or a real bug/gotcha is hit and fixed (not a typo — an actual "this didn't work the way the docs/chart suggested" moment), add it to `notes-techniques.md` in the same PR. Same for `manuel-installation.md` (new bootstrap step), `manuel-utilisateur.md` (new service reachable by a human), and `manuel-admin.md` (new admin action or enrollment caveat) whenever they change. Retrofitting these later is much easier to get wrong or skip entirely.
 
 ## Current state
 
