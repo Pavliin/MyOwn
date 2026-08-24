@@ -136,6 +136,26 @@ spec:
             # different header name, not just different casing.
             header: "X-authentik-email"
             create: "true"
+          # Real bug found live (2026-08-24): rcmcarddav (Roundcube's
+          # CardDAV plugin, already in roundcubePlugins by default) failed
+          # every "add address book" attempt against Nextcloud with a bare
+          # "Erreur de serveur" — traced via nginx/php-fpm logs to the
+          # image's own baked-in Snuffleupagus hardening dropping guzzle's
+          # curl_setopt(CURLOPT_SSL_VERIFYPEER/HOST, ...) call outright,
+          # even though it was *enabling* verification, not disabling it
+          # (the rule matches on the option constant alone, not the value).
+          # Full corrected copy of the template mounted over the image's
+          # own, see gitops/manifests/mailu-webmail-carddav-fix/ for the
+          # exact two lines added and why.
+          webmail:
+            extraVolumes:
+              - name: snuffleupagus-carddav-fix
+                configMap:
+                  name: mailu-webmail-snuffleupagus-rules
+            extraVolumeMounts:
+              - name: snuffleupagus-carddav-fix
+                mountPath: /etc/snuffleupagus.rules.tpl
+                subPath: snuffleupagus.rules.tpl
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/mailu
@@ -148,6 +168,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/mailu-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/mailu-webmail-carddav-fix
   destination:
     server: https://kubernetes.default.svc
     namespace: mailu
