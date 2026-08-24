@@ -118,8 +118,11 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **URL (webmail)** : <https://mailu.offsystem.fr>
 - **Adresse mail** : celle du champ email du compte Authentik, tant qu'elle est en `@offsystem.fr` (ex. `robin.chartier@offsystem.fr`) — chaque nouvelle adresse est **créée automatiquement à la première connexion SSO**, comme pour Immich ou Nextcloud. Si le compte a encore un email externe (Gmail...), Mailu refuse la connexion (`domain=...` dans l'erreur) tant que l'email Authentik n'a pas été mis à jour vers l'adresse `@offsystem.fr` voulue (admin uniquement, via l'interface Authentik).
 - **Se connecter** : SSO Authentik (un seul compte, comme pour les autres services) — pas de formulaire de connexion Mailu natif visible, la page redirige directement vers Authentik.
-- **Contacts (carnet d'adresses)** : pas encore relié à Nextcloud Contacts (`rcmcarddav`, prévu mais pas encore fait — voir `CLAUDE.md`).
-- **Statut** : déploiement, SSO Authentik, connexion webmail réelle et sauvegarde Restic tous validés en conditions réelles ; relais sortant/entrant validé avec de vrais mails (`notes-techniques.md`).
+- **Contacts (carnet d'adresses)** : relié à Nextcloud Contacts en libre-service, comme le TOTP — Settings → CardDAV → "+" dans le webmail, avec :
+  - **URL** : `https://nextcloud.offsystem.fr/remote.php/dav/`
+  - **Nom d'utilisateur** : ton identifiant Nextcloud interne (pas ton email — visible via `occ user:list` côté admin, ou demande-le)
+  - **Mot de passe** : un mot de passe d'application généré dans Nextcloud (Paramètres → Sécurité → "Appareils et sessions")
+- **Statut** : déploiement, SSO Authentik, connexion webmail réelle, contacts Nextcloud et sauvegarde Restic tous validés en conditions réelles ; relais sortant/entrant validé avec de vrais mails (`notes-techniques.md`).
 
 ## À venir
 
