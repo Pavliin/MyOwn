@@ -98,6 +98,20 @@ spec:
           # is needed — confirmed via `helm template` that the chart only
           # renders RELAYHOST/RELAYNETS from host/networks, doesn't
           # require credentials to be set.
+          # Real deadlock hit live, twice, on this single-node cluster: the
+          # chart's default RollingUpdate briefly runs old+new postfix pods
+          # together, and both try to lock the same Postfix spool on the
+          # shared PVC (persistence.single_pvc above) — the new pod fails
+          # to start ("the Postfix mail system is already running"), so
+          # the old pod never terminates and the rollout hangs forever.
+          # Same deadlock class as front's hostPort issue, different
+          # resource (a PID lock instead of a port). Recreate is a native
+          # Kubernetes Deployment strategy (not a chart-specific value),
+          # confirmed via `helm template` that this chart passes it
+          # through unmodified.
+          postfix:
+            updateStrategy:
+              type: Recreate
           externalRelay:
             host: "10.100.1.1:25"
             networks: ["10.100.1.0/24"]
