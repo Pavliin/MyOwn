@@ -193,7 +193,7 @@ Toutes les `Application` doivent converger vers `Synced`/`Healthy` (quelques min
 
 ## 12. VPN d'accès admin (WireGuard, optionnel en dev)
 
-Pas requis pour utiliser le cluster de dev — pertinent surtout à partir du vrai déploiement (mini PC, Phase 4), où ArgoCD/`kubectl`/SSH ne doivent jamais être exposés directement sur internet (`architecture.md` §6/§11). Volontairement **hors GitOps** (service systemd sur l'hôte, pas un manifeste k8s — cf. [`wireguard/README.md`](../wireguard/README.md) pour le raisonnement).
+Pas requis pour utiliser le cluster de dev — pertinent surtout à partir du vrai déploiement (mini PC, Phase 4), où ArgoCD/`kubectl`/SSH ne doivent jamais être exposés directement sur internet (`architecture.md` §6/§11). Volontairement **hors GitOps** (service systemd sur l'hôte, pas un manifeste k8s — cf. `wireguard/README.md` à la racine du dépôt pour le raisonnement).
 
 ```bash
 scripts/wireguard-setup.sh
