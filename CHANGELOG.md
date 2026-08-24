@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.12](https://github.com/Pavliin/MyOwn/compare/v0.1.11...v0.1.12) (2026-08-24)
+
+Note : même bug que pour 0.1.10/0.1.11 — `commit-and-tag-version` a comparé par erreur contre `v0.1.2` au lieu de `v0.1.11` (`pin-release.sh` déplace les tags hors de l'ascendance de `master`) — section reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.11`.
+
+### Fonctionnalités
+
+* **authentik:** add self-service recovery via TOTP ([ffdb26b](https://github.com/Pavliin/MyOwn/commit/ffdb26bc5dfdb511e5ae17cc7b03f6ee3c2662cf))
+
+### Correctifs
+
+* **authentik:** remove MFA requirement from normal login ([8dcbadb](https://github.com/Pavliin/MyOwn/commit/8dcbadb1aae5d928d74af2cb6a0a735f2a05ac85))
+
 ## [0.1.11](https://github.com/Pavliin/MyOwn/compare/v0.1.10...v0.1.11) (2026-08-24)
 
 Note : `commit-and-tag-version` a de nouveau comparé par erreur contre `v0.1.2` au lieu de `v0.1.10` (même cause qu'en 0.1.10 : `pin-release.sh` déplace les tags hors de l'ascendance de `master`) — cette section a été reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.10`.
