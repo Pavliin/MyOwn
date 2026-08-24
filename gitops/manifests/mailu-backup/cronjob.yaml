@@ -1,0 +1,56 @@
+# Unlike Nextcloud/Immich/Authentik, Mailu has no separate database to
+# pg_dump: persistence.single_pvc: true (gitops/apps/mailu.yaml) puts
+# everything — admin's SQLite db, DKIM keys, Dovecot maildirs, rspamd
+# state, webmail config — on one PVC (mailu-storage), each component
+# under its own subPath. Same shape as Vaultwarden/Tuwunel: back up the
+# whole PVC, no subPath restriction, so every component's data is
+# captured in one pass.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mailu-restic-backup
+spec:
+  # After Authentik (04:00), before Jellyfin (04:15) — staggered with the
+  # other daily backups to avoid overlapping jobs on this single-node
+  # cluster.
+  schedule: "30 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: restic-backup
+              image: restic/restic:0.19.1
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: /repo
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mailu-secrets
+                      key: RESTIC_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  restic snapshots >/dev/null 2>&1 || restic init
+                  restic backup /data --tag mailu
+                  restic forget --tag mailu --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: repo
+                  mountPath: /repo
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: mailu-storage
+            - name: repo
+              persistentVolumeClaim:
+                claimName: mailu-restic-repo

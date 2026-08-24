@@ -145,6 +145,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/mailu-forwardauth
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/mailu-backup
   destination:
     server: https://kubernetes.default.svc
     namespace: mailu
