@@ -37,8 +37,10 @@ choix délibéré, pas un oubli.
    | Immich, Tuwunel | Le **tout premier** compte créé sur le service devient son admin — à réserver au vôtre, avant d'inviter qui que ce soit d'autre. |
    | Mailu | Refuse la connexion tant que l'email Authentik n'est pas en `@offsystem.fr` (erreur avec `domain=...`). |
 
-5. Envoyer le [fichier de favoris](https://aide.offsystem.fr) et le lien du
-   [manuel utilisateur](manuel-utilisateur.md).
+5. Envoyer le [fichier de favoris](https://aide.offsystem.fr/downloads/myown-favoris.html)
+   et le lien du [manuel utilisateur](manuel-utilisateur.md) — ou simplement
+   le lien de [l'accueil](https://aide.offsystem.fr), qui pointe déjà vers
+   les deux.
 
 ## Authentik — identité (SSO)
 
