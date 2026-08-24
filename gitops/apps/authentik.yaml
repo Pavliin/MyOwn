@@ -33,6 +33,7 @@ spec:
               - authentik-blueprint-jellyfin-sso
               - authentik-blueprint-account-recovery
               - authentik-blueprint-mailu-sso
+              - authentik-blueprint-login-mfa-optional
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/authentik
