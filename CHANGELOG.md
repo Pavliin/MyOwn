@@ -2,6 +2,63 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.14](https://github.com/Pavliin/MyOwn/compare/v0.1.13...v0.1.14) (2026-08-24)
+
+### Correctifs
+
+* **nextcloud:** correct the .well-known/carddav+caldav http:// redirect ([25e83d9](https://github.com/Pavliin/MyOwn/commit/25e83d9e180c4ff65ed6d38ef90aca087aafa50a))
+
+### Documentation
+
+* record the .well-known scheme fix and its real root cause ([4ed2d1a](https://github.com/Pavliin/MyOwn/commit/4ed2d1a))
+* fix calendar event landing on the wrong Nextcloud account ([68352bf](https://github.com/Pavliin/MyOwn/commit/68352bf9678a3b2ad6c4dc2b65e435016f38f700))
+* fix floating-time CalDAV event invisible in Nextcloud UI ([dac8ed3](https://github.com/Pavliin/MyOwn/commit/dac8ed395a9a6dc76ca5c2f375ad0f1548490d0c))
+* fix stale release process, add GitHub Release step ([1af644e](https://github.com/Pavliin/MyOwn/commit/1af644e73786103a3cea8bb568d98225cb0d3d9b))
+* flag the myown-*.local hostname ambiguity between dev and mini PC ([ed163f2](https://github.com/Pavliin/MyOwn/commit/ed163f2e8793e9b365f5d6daa5934b2fb10327b3))
+* **installer:** trace secrets-push integration gap and sequencing risk ([db8ccd9](https://github.com/Pavliin/MyOwn/commit/db8ccd9d4b077219b4d9466914a937036da92800))
+* **jellyfin:** record media-from-Nextcloud migration, fix stale backup docs ([195da09](https://github.com/Pavliin/MyOwn/commit/195da093a9bc858dec22ca9778a9cd2b1d1df37f))
+* **jellyfin:** record real backup/restore validation ([0f1660f](https://github.com/Pavliin/MyOwn/commit/0f1660f57fb3ba145152375745ef1f31178037dd))
+* **jellyfin:** record real deployment, inotify fix, and current status ([4624b25](https://github.com/Pavliin/MyOwn/commit/4624b258c8de43d1e8a135e6a0796b867bdf6383))
+* **jellyfin:** record SSO setup, add reproducible setup script ([acbe3cd](https://github.com/Pavliin/MyOwn/commit/acbe3cda77031147e19abc6e5bbb34d13483ec1f))
+* **jellyfin:** record the Authentik admin-group setup step ([2a362c7](https://github.com/Pavliin/MyOwn/commit/2a362c77a3f904455b8f75071fbe9b6ba1e86377))
+* **materiel:** record OptiPlex purchase, note the rejected gaming PC ([8da40b6](https://github.com/Pavliin/MyOwn/commit/8da40b691d6ded252d134005b1a7e3877761eebf))
+* note Element Web's room-join-by-alias UX gap ([f7e2eae](https://github.com/Pavliin/MyOwn/commit/f7e2eaebb8289748012821766a03206afe1725e8))
+* note the trailing-newline secret bug found fixing Grafana too ([797f111](https://github.com/Pavliin/MyOwn/commit/797f111b68b8ef0bf1d1f86bfd63ea8900976865))
+* pivot mail stack decision from Mailcow to Mailu ([48fda34](https://github.com/Pavliin/MyOwn/commit/48fda34410c5fb5dfdfdf3f114ebec5c074f568c))
+* record cluster crash-loop incident, add resilience roadmap items ([063e153](https://github.com/Pavliin/MyOwn/commit/063e15355417b276c5ff07b3923ee2e0a3da4175))
+* record domain/Let's Encrypt canary validation, update current state ([335cc3c](https://github.com/Pavliin/MyOwn/commit/335cc3c92ccd36386f6fa0b2a4f880fee099624d))
+* record LiveKit TURN/external branching and account recovery ([8ac45b6](https://github.com/Pavliin/MyOwn/commit/8ac45b65f6dd24da3c40b947c9890b0e2fe4c05c))
+* record Mailcow deployment research, refresh current state ([39fde74](https://github.com/Pavliin/MyOwn/commit/39fde746a2fbcc456bd38f769d34e336e3b18b50))
+* record the .well-known scheme fix and its real root cause ([4ed2d1a](https://github.com/Pavliin/MyOwn/commit/4ed2d1a4b9e84bc0a8f27e94d99dd58a6b84cffa))
+* record the first real Mailu SSO login and its two real bugs ([432f2da](https://github.com/Pavliin/MyOwn/commit/432f2da622b4ea2ba5f33f7a3ecb326d64c5ba95))
+* record the full Mailu deployment and SSO validation ([89270e3](https://github.com/Pavliin/MyOwn/commit/89270e35cc1b3d056a4a556eb44f657f3febec9b))
+* record the generalization pass and the Nextcloud permissions incident ([b0b7dff](https://github.com/Pavliin/MyOwn/commit/b0b7dff43b0648f17a4058538c75029f9c14845c))
+* record the Mailu mini PC migration ([4988ddf](https://github.com/Pavliin/MyOwn/commit/4988ddf372665d9e493045e1e86fe509068c5012))
+* record the Mailu Restic backup validation and two ArgoCD gotchas ([e3bc759](https://github.com/Pavliin/MyOwn/commit/e3bc759908beaa7a0c84abc0b500c3cf3c20b183))
+* record the Nextcloud/Immich hostPath storage migration ([5d7ebe5](https://github.com/Pavliin/MyOwn/commit/5d7ebe5c8d571df1c2bbb606f25d0563394a5f9d))
+* record the recovery-flow rebuild and rcmcarddav integration ([27949bb](https://github.com/Pavliin/MyOwn/commit/27949bbb1135ead87df24ad8dbff9f9708b84db1))
+* record the shared media folder migration and its real bugs ([945e628](https://github.com/Pavliin/MyOwn/commit/945e628b3919850d2792db7a408d62b3ac1d171e))
+* record the SSO migration and the ArgoCD selfHeal reversion incident ([d54a619](https://github.com/Pavliin/MyOwn/commit/d54a6199766fa4dc80fe44767a80831bd3d49021))
+* record the Tuwunel server_name migration and federation validation ([a147bb9](https://github.com/Pavliin/MyOwn/commit/a147bb905dffa5578f8170d3a84f82824aa4a929))
+* record the VPS façade provisioning, done in an untracked session ([0da8913](https://github.com/Pavliin/MyOwn/commit/0da891300a0ca1d21989b54365f59088e0763f32))
+* record the VPS mail relay chantier, validated end-to-end ([4583912](https://github.com/Pavliin/MyOwn/commit/4583912e74f5fb4ac5986dd3caf03307099b9786))
+* record the watchdog's real forced-outage validation ([a3a7909](https://github.com/Pavliin/MyOwn/commit/a3a7909dc52e0ae31abf2b8fd44bdeb2c986efdb))
+* record two pre-existing dev-cluster outages found and fixed ([b587e6f](https://github.com/Pavliin/MyOwn/commit/b587e6fd8d30caf90b07ed6e580c6863c0da2811))
+* refine roadmap and architecture for IA scope, ops, and pointers ([24a05e8](https://github.com/Pavliin/MyOwn/commit/24a05e8313c739b648eea8d8ece66296db637596))
+* replace Conduwuit with Tuwunel across the docs ([84d2af5](https://github.com/Pavliin/MyOwn/commit/84d2af5d43902e9160263531c800246acee15a60))
+* **roadmap:** add Jellyfin to Phase 3.5/4 ([6450984](https://github.com/Pavliin/MyOwn/commit/6450984065c2ed6bfa4d11460d91bfa4d9b4c5d9))
+* **roadmap:** add Pi-hole/AdGuard Home to Phase 4 ([af971cd](https://github.com/Pavliin/MyOwn/commit/af971cdb8d06a98933accecc8365e38577aa2b06))
+* **roadmap:** refine package-delivery idea toward Tasks, not Calendar ([1e38b56](https://github.com/Pavliin/MyOwn/commit/1e38b568030e8d071a2808ca8a05573ad2d227e1))
+* specify decentralized update checks and the auto/manual choice ([c37eb0c](https://github.com/Pavliin/MyOwn/commit/c37eb0c44e8b3bcec05426c8f1999f5e6a5fc742))
+* sync CLAUDE.md current state with v0.1.4 and post-release fixes ([0fe49bb](https://github.com/Pavliin/MyOwn/commit/0fe49bb70b596aeb065f7888d8d1fb1d82c33d87))
+* validate the admin-account/Vaultwarden secrets model ([1a3caca](https://github.com/Pavliin/MyOwn/commit/1a3cacae246c38b8bf7c9b4625094f90dda156cb))
+* validate the full mail-to-calendar pipeline end-to-end ([62880e2](https://github.com/Pavliin/MyOwn/commit/62880e28abfbc6744ed1d5011e47383e278546ad))
+* **vision:** add location-aware AI assistant as long-term idea ([46c446a](https://github.com/Pavliin/MyOwn/commit/46c446af4db90bd44873b0dc618ffe51a4747ff8))
+* **vision:** add two-stage public deployment strategy ([153c964](https://github.com/Pavliin/MyOwn/commit/153c9647bcea4a13a7a815e70ff0f8d29efae9f4))
+* **vision:** compare Fediverse and Solid for the social network piste ([83763b2](https://github.com/Pavliin/MyOwn/commit/83763b259573a78f5ba6a284590b8d228be46e1c))
+* **wireguard:** record real client handshake validation ([7a98119](https://github.com/Pavliin/MyOwn/commit/7a9811995a6e1ea45105a6d133cbdfd5d05b1115))
+* **wireguard:** record real validation, commit encrypted server config ([6ac9d15](https://github.com/Pavliin/MyOwn/commit/6ac9d154b5f1f33c338792b8aa66dcd21398c0e4))
+* write up the Nextcloud/Traefik WebDAV upload limit fixes ([947b635](https://github.com/Pavliin/MyOwn/commit/947b635e2ed3f38eb6ad9616a580f1516e877174)), references [#132](https://github.com/Pavliin/MyOwn/issues/132) [#133](https://github.com/Pavliin/MyOwn/issues/133)
 ## [0.1.13](https://github.com/Pavliin/MyOwn/compare/v0.1.12...v0.1.13) (2026-08-25)
 
 Note : même bug que pour les releases précédentes — `commit-and-tag-version` a comparé par erreur contre `v0.1.2` au lieu de `v0.1.12` (`pin-release.sh` déplace les tags hors de l'ascendance de `master`) — section reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.12`.
