@@ -2,6 +2,141 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.12](https://github.com/Pavliin/MyOwn/compare/v0.1.11...v0.1.12) (2026-08-24)
+
+Note : même bug que pour 0.1.10/0.1.11 — `commit-and-tag-version` a comparé par erreur contre `v0.1.2` au lieu de `v0.1.11` (`pin-release.sh` déplace les tags hors de l'ascendance de `master`) — section reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.11`.
+
+### Fonctionnalités
+
+* **authentik:** add self-service recovery via TOTP ([ffdb26b](https://github.com/Pavliin/MyOwn/commit/ffdb26bc5dfdb511e5ae17cc7b03f6ee3c2662cf))
+
+### Correctifs
+
+* **authentik:** remove MFA requirement from normal login ([8dcbadb](https://github.com/Pavliin/MyOwn/commit/8dcbadb1aae5d928d74af2cb6a0a735f2a05ac85))
+
+## [0.1.11](https://github.com/Pavliin/MyOwn/compare/v0.1.10...v0.1.11) (2026-08-24)
+
+Note : `commit-and-tag-version` a de nouveau comparé par erreur contre `v0.1.2` au lieu de `v0.1.10` (même cause qu'en 0.1.10 : `pin-release.sh` déplace les tags hors de l'ascendance de `master`) — cette section a été reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.10`.
+
+### Fonctionnalités
+
+* **mail:** add the mini PC as a wireguard-mail-relay peer ([6489d82](https://github.com/Pavliin/MyOwn/commit/6489d822b50d190122afba273c899f9f93ac0e9a))
+* **mail:** retarget the VPS relay to the mini PC ([cf4025a](https://github.com/Pavliin/MyOwn/commit/cf4025a5a186929ecd879062fc5e5d0f96f6dafe))
+
+### Correctifs
+
+* **mailu:** fall back to the wildcard cert in mailu-cert-sync ([c2c78a2](https://github.com/Pavliin/MyOwn/commit/c2c78a2f0a9718632733a55d90f471c00a503598))
+* **nextcloud:** remove the 1GiB Apache upload cap on WebDAV PUT ([bcbb5ce](https://github.com/Pavliin/MyOwn/commit/bcbb5ce094a72515c9f5ff236edf5f27945d1838))
+* **traefik:** disable the default 60s readTimeout on the websecure entrypoint ([81da404](https://github.com/Pavliin/MyOwn/commit/81da404efeb5e1d06f508497cb8dab05a4f5e9c4))
+
+### Documentation
+
+* record the Mailu mini PC migration ([4988ddf](https://github.com/Pavliin/MyOwn/commit/4988ddf372665d9e493045e1e86fe509068c5012))
+* write up the Nextcloud/Traefik WebDAV upload limit fixes ([947b635](https://github.com/Pavliin/MyOwn/commit/947b635e2ed3f38eb6ad9616a580f1516e877174)), references [#132](https://github.com/Pavliin/MyOwn/issues/132) [#133](https://github.com/Pavliin/MyOwn/issues/133)
+
+## [0.1.10](https://github.com/Pavliin/MyOwn/compare/v0.1.9...v0.1.10) (2026-08-24)
+
+Note : `commit-and-tag-version` a comparé par erreur contre `v0.1.2` au lieu de `v0.1.9` (les tags `v0.1.3`-`v0.1.9` ne sont plus des ancêtres de `master` depuis que `pin-release.sh` les déplace sur un commit jamais mergé) — cette section a été reconstruite manuellement avec les seuls commits réellement nouveaux depuis `v0.1.9`.
+
+### Fonctionnalités
+
+* **mail:** add Gandi DNS records for the VPS relay (A/MX/SPF/DKIM/DMARC) ([316eb91](https://github.com/Pavliin/MyOwn/commit/316eb916bf040a3138f6def82b07cd248171b541))
+* **mail:** bootstrap dedicated WireGuard tunnel for VPS mail relay ([a075b83](https://github.com/Pavliin/MyOwn/commit/a075b835d93ad83c677cb59d4aae8c6476ec2181))
+* **mail:** configure Postfix relay on the VPS façade ([9a894ad](https://github.com/Pavliin/MyOwn/commit/9a894ad3649f4eabbec078adc7b45bb054bf0245))
+* **mail:** expose Mailu:25 to the VPS relay via a persistent port-forward ([38cbe8a](https://github.com/Pavliin/MyOwn/commit/38cbe8a0b17106dcb265de7cc550cfdd24287261))
+* **mail:** route Mailu's outbound mail through the VPS relay ([43e4852](https://github.com/Pavliin/MyOwn/commit/43e48521c4cf7f00d55c4eeba3ac805f81b845b7))
+* **mailu:** activate ForwardAuth SSO on the public Ingress ([5b38807](https://github.com/Pavliin/MyOwn/commit/5b388076e9b65bf12942e4e4dde377c9bb44ba7a))
+* **mailu:** add base Mailu deployment ([8be8644](https://github.com/Pavliin/MyOwn/commit/8be8644ce1a3da629a332544a25290b5f8c895ec))
+* **mailu:** add Restic backup CronJob ([eadaabe](https://github.com/Pavliin/MyOwn/commit/eadaabe6f699ada192e44e4540330c87dbefc3d1))
+* **mailu:** make front's TLS cert and the SSO callback route reproducible ([4329b73](https://github.com/Pavliin/MyOwn/commit/4329b7366c14d81b155c8597bd8c8197ff0ba09d))
+* **mailu:** prepare Authentik ForwardAuth SSO wiring ([ae81746](https://github.com/Pavliin/MyOwn/commit/ae817464dab24a02159ab7c6c9dcb4ab3ed0ddc6))
+
+### Correctifs
+
+* **mailu:** skip backend TLS verification for front's own certificate ([c3ee9d4](https://github.com/Pavliin/MyOwn/commit/c3ee9d45d1f9743ec1c470d335561f7e1c80e357))
+* **mailu:** use Recreate strategy for postfix to avoid a rollout deadlock ([e301e7c](https://github.com/Pavliin/MyOwn/commit/e301e7c88f83070684d94c18087c3ba8edfb47f9))
+
+### Documentation
+
+* flag the myown-*.local hostname ambiguity between dev and mini PC ([ed163f2](https://github.com/Pavliin/MyOwn/commit/ed163f2e8793e9b365f5d6daa5934b2fb10327b3))
+* pivot mail stack decision from Mailcow to Mailu ([48fda34](https://github.com/Pavliin/MyOwn/commit/48fda34410c5fb5dfdfdf3f114ebec5c074f568c))
+* record Mailcow deployment research, refresh current state ([39fde74](https://github.com/Pavliin/MyOwn/commit/39fde746a2fbcc456bd38f769d34e336e3b18b50))
+* record the full Mailu deployment and SSO validation ([89270e3](https://github.com/Pavliin/MyOwn/commit/89270e35cc1b3d056a4a556eb44f657f3febec9b))
+* record the Mailu Restic backup validation and two ArgoCD gotchas ([e3bc759](https://github.com/Pavliin/MyOwn/commit/e3bc759908beaa7a0c84abc0b500c3cf3c20b183))
+* record the VPS façade provisioning, done in an untracked session ([0da8913](https://github.com/Pavliin/MyOwn/commit/0da891300a0ca1d21989b54365f59088e0763f32))
+* record the VPS mail relay chantier, validated end-to-end ([4583912](https://github.com/Pavliin/MyOwn/commit/4583912e74f5fb4ac5986dd3caf03307099b9786))
+* record two pre-existing dev-cluster outages found and fixed ([b587e6f](https://github.com/Pavliin/MyOwn/commit/b587e6fd8d30caf90b07ed6e580c6863c0da2811))
+## [0.1.9](https://github.com/Pavliin/MyOwn/compare/v0.1.8...v0.1.9) (2026-08-23)
+
+### Fonctionnalités
+
+* **tuwunel:** migrate server_name to offsystem.fr for real federation ([5f35e71](https://github.com/Pavliin/MyOwn/commit/5f35e71b90a044f1d2e1870f6ae4a59584bf67c2))
+
+### Correctifs
+
+* **tuwunel:** give the pod real IPv6 egress via hostNetwork ([0ad4356](https://github.com/Pavliin/MyOwn/commit/0ad43563e90061151b7c154d886c58a317c666d1))
+
+### Documentation
+
+* record the Tuwunel server_name migration and federation validation ([a147bb9](https://github.com/Pavliin/MyOwn/commit/a147bb905dffa5578f8170d3a84f82824aa4a929))
+
+## [0.1.8](https://github.com/Pavliin/MyOwn/compare/v0.1.7...v0.1.8) (2026-08-23)
+
+### Fonctionnalités
+
+* **watchdog:** add host-level k3s auto-remediation watchdog ([4896a2c](https://github.com/Pavliin/MyOwn/commit/4896a2c1020821923b63f3b871b02cdc9d18db36))
+
+### Correctifs
+
+* **watchdog:** resolve sops's absolute path at install time ([6978c8e](https://github.com/Pavliin/MyOwn/commit/6978c8e49e46eca6d1269b4c47bcc7016fb83237))
+* **watchdog:** resolve the real repo root at install time, not runtime ([20b38cd](https://github.com/Pavliin/MyOwn/commit/20b38cdfa54e77d75847b14d5b4ceb8e524a6e8b))
+* **watchdog:** point sops at the real age key when running as root ([f345cf3](https://github.com/Pavliin/MyOwn/commit/f345cf35ff74dcceba83e9d104656524261ca9e0))
+
+### Documentation
+
+* record the watchdog's real forced-outage validation ([a3a7909](https://github.com/Pavliin/MyOwn/commit/a3a7909dc52e0ae31abf2b8fd44bdeb2c986efdb))
+
+## [0.1.7](https://github.com/Pavliin/MyOwn/compare/v0.1.6...v0.1.7) (2026-08-22)
+
+### Correctifs
+
+* **livekit:** disable the chart's default TURN LoadBalancer Service ([e51daf6](https://github.com/Pavliin/MyOwn/commit/e51daf6462f0f37ab54be71fe1a5c85bf692ecb8))
+
+## [0.1.6](https://github.com/Pavliin/MyOwn/compare/v0.1.5...v0.1.6) (2026-08-22)
+
+### Fonctionnalités
+
+* **authentik:** add account-recovery flow blueprint ([6db1511](https://github.com/Pavliin/MyOwn/commit/6db1511d3e81c994cec886294ce37721086b9319))
+* **livekit:** sync LiveKit's TURN cert from Traefik's own ACME store ([05cb3c7](https://github.com/Pavliin/MyOwn/commit/05cb3c71646e22905043037ccd40fdd4c50a445c))
+
+### Correctifs
+
+* **livekit:** branch externally and add TURN ([270fedd](https://github.com/Pavliin/MyOwn/commit/270fedd9d022a95caeede1fdb53e52a854ce9e49))
+
+### Documentation
+
+* record LiveKit TURN/external branching and account recovery ([8ac45b6](https://github.com/Pavliin/MyOwn/commit/8ac45b65f6dd24da3c40b947c9890b0e2fe4c05c))
+
+## [0.1.5](https://github.com/Pavliin/MyOwn/compare/v0.1.4...v0.1.5) (2026-08-22)
+
+### Fonctionnalités
+
+* **gitops:** generalize the domain/Let's Encrypt pattern to 8 more services ([f2c2018](https://github.com/Pavliin/MyOwn/commit/f2c201827d9c0c2687e64af5d250dfc144f37b1d))
+* **sso:** migrate all 5 integrated services to the public hostnames ([d30f545](https://github.com/Pavliin/MyOwn/commit/d30f5458dea5ddec1bcf5a7ce555f08a811bd5e8))
+* **traefik,dns:** real domain + Let's Encrypt via Gandi DNS-01, canary on Uptime Kuma ([6fc4081](https://github.com/Pavliin/MyOwn/commit/6fc4081405631b7b0b04f5991658f1a74bdadc95))
+
+### Correctifs
+
+* **authentik:** correct authentik-secrets YAML structure ([1f3cee6](https://github.com/Pavliin/MyOwn/commit/1f3cee659dd04274ba7bd21d7d3619f4233a94b8))
+* **gandi-dyndns:** tighten schedule/TTL to cut IP-change exposure window ([0d7ebc4](https://github.com/Pavliin/MyOwn/commit/0d7ebc4913465c3c6a5a9ed06a76a46fdc9d90dd))
+* **nextcloud:** backup CronJob referenced a PVC that no longer exists ([a9fec54](https://github.com/Pavliin/MyOwn/commit/a9fec54a1fa9180a67f88f4ef2e5e75e7ffbda65))
+
+### Documentation
+
+* record domain/Let's Encrypt canary validation, update current state ([335cc3c](https://github.com/Pavliin/MyOwn/commit/335cc3c92ccd36386f6fa0b2a4f880fee099624d))
+* record the generalization pass and the Nextcloud permissions incident ([b0b7dff](https://github.com/Pavliin/MyOwn/commit/b0b7dff43b0648f17a4058538c75029f9c14845c))
+* record the SSO migration and the ArgoCD selfHeal reversion incident ([d54a619](https://github.com/Pavliin/MyOwn/commit/d54a6199766fa4dc80fe44767a80831bd3d49021))
+
 ## [0.1.4](https://github.com/Pavliin/MyOwn/compare/v0.1.3...v0.1.4) (2026-08-20)
 
 ### Fonctionnalités

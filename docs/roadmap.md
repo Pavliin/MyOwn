@@ -75,6 +75,7 @@ Objectif : construire et valider sur le cluster de dev tout ce qui ne dépend ni
 Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + domaine) — le premier composant, Mail, en a de toute façon besoin dès le départ, donc cette bascule sert aussi à débloquer d'un coup toutes les validations différées des phases précédentes, avant de livrer la brique la plus complexe techniquement.
 
 - Achat et mise en service du mini PC, migration du cluster GitOps du dev (k3d) vers le mini PC (mêmes manifests, changement de cible uniquement)
+- **Ambiguïté `myown-*.local` entre dev et minipc** : les deux clusters exposent les mêmes hostnames (manifests Ingress identiques, aucune séparation par environnement) — seul `/etc/hosts` sur la machine cliente décide lequel des deux est réellement atteint. Sur la machine de dev, ces entrées ont été repointées à la main vers l'IP LAN du minipc le 2026-08-20, sans que ça soit documenté nulle part ; un futur `install.sh` réappliquerait sa valeur `127.0.0.1` par-dessus sans détecter le conflit, ajoutant une ligne en doublon plutôt qu'une erreur explicite. Corriger `install.sh` pour qu'il détecte une IP différente sur une entrée déjà présente au lieu de dupliquer la ligne ; évaluer aussi une vraie séparation de nommage (`myown-dev-*` pour le cluster de dev) si une confusion récurrente le justifie — non trivial, demanderait d'introduire une séparation par environnement dans les manifests GitOps eux-mêmes, actuellement partagés verbatim entre dev et minipc.
 - **IP fixe** : réservation DHCP pour le mini PC au niveau du routeur familial, pour qu'un redémarrage de la box ne lui attribue jamais une IP différente — élimine la cause déclenchante de l'incident de cluster de dev du 2026-08-20 (`notes-techniques.md`), moins probable mais pas exclue sur le vrai k3s bare-metal.
 - Acquisition du nom de domaine, bascule Traefik vers Let's Encrypt réel (remplace les certificats mkcert du dev)
 - **Accès distant admin** : VPN WireGuard auto-hébergé (pas de dépendance tierce type Tailscale, cohérent avec `architecture.md` §1) — aucun outil d'administration (ArgoCD, `kubectl`, SSH) exposé directement sur internet, tout passe par le VPN. Mitige le risque déjà assumé d'indisponibilité de l'admin (`architecture.md` §11) : déblocage à distance via le VPN, ou guidage téléphonique de quelqu'un sur place en cas de panne matérielle complète.
@@ -87,8 +88,9 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
   - Apps Android Nextcloud + Immich, backup automatique photos/vidéos en conditions réelles (Phase 2)
   - App Android Element X, test de fédération Matrix avec un second serveur externe (Phase 3)
   - Jellyfin : accès distant réel validé par un membre de la famille éloigné (800 km), avec vérification de la bande passante en lecture simultanée (Phase 3.5)
-- Provisionnement du VPS façade (Hetzner/OVH/Scaleway), configuration Postfix relay + SPF/DKIM/DMARC
-- Déploiement Mailcow à domicile, connexion au relais VPS
+- ~~Provisionnement du VPS façade~~ — fait (OVH VPS-1, voir `notes-techniques.md`)
+- ~~Relais Postfix + SPF/DKIM/DMARC + tunnel WireGuard dédié VPS↔domicile~~ — fait et validé dans les deux sens (envoi/réception réels avec un compte Gmail externe, arrivée en boîte de réception), voir `notes-techniques.md`. Encore sur le cluster de dev, pas le mini PC — migration séparée, pas commencée
+- ~~Déploiement Mailu à domicile~~ — fait (chart Helm officiel, `Application` ArgoCD comme le reste du projet, cluster de dev), SSO Authentik inclus, connecté au relais VPS
 - Migration progressive des correspondants (soi-même d'abord, en parallèle d'un compte existant le temps de valider la délivrabilité)
 - Suivi de délivrabilité (tests d'envoi vers Gmail/Outlook, monitoring des blacklists)
 

@@ -31,6 +31,9 @@ spec:
               - authentik-blueprint-immich-sso
               - authentik-blueprint-tuwunel-sso
               - authentik-blueprint-jellyfin-sso
+              - authentik-blueprint-account-recovery
+              - authentik-blueprint-mailu-sso
+              - authentik-blueprint-login-mfa-optional
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/authentik
@@ -40,6 +43,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/authentik-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/authentik-public
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik

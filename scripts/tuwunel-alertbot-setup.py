@@ -22,8 +22,8 @@ import string
 
 import requests
 
-BASE = "https://myown-tuwunel.local:8453"
-SERVER_NAME = "myown-tuwunel.local"
+BASE = "https://tuwunel.offsystem.fr"
+SERVER_NAME = "offsystem.fr"
 BOT_USER = "alertbot"
 ROOM_ALIAS = "etat-du-systeme"
 ROOM_NAME = "État du système"
@@ -35,11 +35,10 @@ REG_TOKEN = None  # fill in before running, never commit a real value here
 BOT_PASS = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
 
 s = requests.Session()
-# requests bundles its own CA store (certifi), separate from the OS trust
-# store `mkcert -install` configures — same gotcha as every other outbound
-# HTTPS call to *.local services made from outside a browser this project
-# has hit (lk-jwt-service's SSL_CERT_FILE, Uptime Kuma's NODE_EXTRA_CA_CERTS).
-s.verify = f"{__import__('subprocess').run(['mkcert', '-CAROOT'], capture_output=True, text=True).stdout.strip()}/rootCA.pem"
+# Real Let's Encrypt cert on tuwunel.offsystem.fr (since the server_name
+# migration to offsystem.fr, 2026-08-23) — no more mkcert CA workaround
+# needed now that this hits the public hostname instead of the old
+# myown-tuwunel.local:8453 mkcert one.
 
 if not REG_TOKEN:
     raise SystemExit("Set REG_TOKEN (from gitops/secrets/tuwunel/tuwunel.sops.yaml) before running.")

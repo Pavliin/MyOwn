@@ -1,0 +1,36 @@
+# Cross-namespace by design: the source cert only exists in Traefik's own
+# acme.json (kube-system, see cronjob.yaml), but the Secret it needs to become
+# lives in mailu (mounted by front's Deployment for its own TLS termination —
+# see gitops/apps/mailu.yaml, `initialAccount`/front cert volume). Scoped to
+# just this one Secret name rather than a broader "manage secrets in mailu"
+# grant — same pattern already used for livekit-turn-cert-sync.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mailu-cert-sync
+  namespace: mailu
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["mailu-certificates"]
+    verbs: ["get", "update", "patch"]
+  # Only needed for the very first run, before the Secret exists yet —
+  # `create` can't be scoped by resourceNames since the object doesn't
+  # exist at authorization time.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mailu-cert-sync
+  namespace: mailu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mailu-cert-sync
+subjects:
+  - kind: ServiceAccount
+    name: mailu-cert-sync
+    namespace: kube-system

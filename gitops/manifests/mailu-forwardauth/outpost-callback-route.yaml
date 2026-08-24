@@ -1,0 +1,37 @@
+# Real gap found live testing the actual SSO login (not just curl): after
+# Authentik authenticates the user, it redirects the browser to
+# https://mailu.offsystem.fr/outpost.goauthentik.io/callback?code=...&state=...
+# so the *embedded outpost* itself can complete the OAuth exchange and set
+# its session cookie — this request must reach Authentik, not Mailu's own
+# `front`. A plain Ingress can't express this: it has no way to route a
+# path prefix to a Service in a different namespace (authentik-server
+# lives in the `authentik` namespace, not `mailu`) without the
+# ExternalName workaround, which Traefik's Ingress provider disallows by
+# default (confirmed live: "externalName services not allowed", same
+# error hit once already during the throwaway whoami ForwardAuth proof).
+#
+# IngressRoute (Traefik's own CRD) supports a `services[].namespace`
+# field directly, no ExternalName trick needed — the minimal-footprint
+# fix here, used only for this one cross-namespace path rather than
+# reaching for a cluster-wide Traefik config change.
+#
+# Without this route, the callback silently lands on `front` instead,
+# the OAuth exchange never completes, and the browser ends up back on
+# Mailu's own native login form — no error shown, just SSO silently not
+# working. `priority: 100` so this callback path is matched before the
+# main mailu-public Ingress's catch-all `/` rule.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mailu-outpost-callback
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`mailu.offsystem.fr`) && PathPrefix(`/outpost.goauthentik.io`)
+      kind: Rule
+      priority: 100
+      services:
+        - name: authentik-server
+          namespace: authentik
+          port: 80

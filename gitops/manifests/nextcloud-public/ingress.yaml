@@ -1,0 +1,27 @@
+# Same reasoning as gitops/manifests/uptime-kuma-public/: the chart's own
+# `ingress.tls[].secretName` is mandatory, incompatible with a
+# Traefik-managed ACME cert. Purely additive — myown-nextcloud.local
+# (mkcert, :8453) is untouched. Reuses the wildcard cert already obtained
+# via the Uptime Kuma canary, no new ACME request needed.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud-public
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - nextcloud.offsystem.fr
+  rules:
+    - host: nextcloud.offsystem.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextcloud
+                port:
+                  number: 8080

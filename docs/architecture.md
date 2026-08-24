@@ -45,7 +45,7 @@ Le projet n'est pas une réécriture des briques critiques (mot de passe, mail, 
         │   (SSO)    │   (mdp)   │ (fichiers)│ (photos)  │(messagerie)│
         └───────────┴───────────┴───────────┴───────────┴───────────┘
                 │                                          │
-             Mailcow                                    LiveKit
+              Mailu                                     LiveKit
            (stockage mail)                          (appels vidéo groupe)
                 │
         Ollama (tri/résumé mail, local)
@@ -80,9 +80,9 @@ Remplace Google Photos. ML local embarqué (reconnaissance faciale, recherche s�
 - **LiveKit** : SFU léger pour les appels vidéo de groupe (3-4 personnes) via Element Call.
 - **Element X** : client Android.
 
-### 5.6 Mail — Mailcow + façade VPS
+### 5.6 Mail — Mailu + façade VPS
 
-Le composant le plus risqué techniquement (cf. §7). Mailcow (Postfix/Dovecot/Rspamd/SOGo) pour la maturité et le webmail intégré, stockage réel à domicile. Un VPS à bonne réputation IP (Hetzner/OVH/Scaleway, ~5€/mois) sert de façade SMTP entrée/sortie et relaie vers le domicile — seule dépense récurrente acceptée du projet.
+Le composant le plus risqué techniquement (cf. §7). **Mailu** (Postfix/Dovecot/Rspamd/Roundcube, + Radicale CalDAV/CardDAV optionnel — désactivé ici, Nextcloud couvre déjà ce besoin) retenu après comparaison directe avec Mailcow : recherche de faisabilité Kubernetes menée le 2026-08-23 (`notes-techniques.md`) a confirmé Mailcow structurellement incompatible avec k3s (composant `privileged: true` + `network_mode: host` manipulant iptables, pilotage direct du socket Docker, aucun Helm chart, refus explicite des mainteneurs — issue #189/#7200), alors que Mailu dispose d'un chart Helm maintenu par l'organisation elle-même (`github.com/Mailu/helm-charts`, actif) et d'une stack sans composant privilégié ni accès au socket Docker — s'intègre directement au patron ArgoCD/k3s déjà en place pour tout le reste du projet, sans décision d'hébergement hors-cluster à trancher. Comparatif fonctionnel réel (aliases, filtres Sieve, tags, intégration carnet d'adresses Nextcloud) : parité sur alias/catch-all et filtres Sieve (UI par défaut des deux côtés) ; SOGo (Mailcow) a des tags multi-étiquettes natifs que Roundcube (Mailu) n'a pas nativement ; Mailu peut en contrepartie connecter le plugin `rcmcarddav` de Roundcube directement aux contacts Nextcloud pour l'autocomplétion, ce que SOGo ne sait pas faire (LDAP/SQL uniquement) — détail complet dans `notes-techniques.md`. Stockage réel à domicile dans les deux cas. Un VPS à bonne réputation IP (Hetzner/OVH/Scaleway, ~5€/mois) sert de façade SMTP entrée/sortie et relaie vers le domicile — seule dépense récurrente acceptée du projet.
 
 ### 5.7 IA locale — Ollama
 
@@ -98,8 +98,9 @@ Modèle local **Qwen3 8B**, retenu après un comparatif réel contre Mistral 7B 
   - Ampleur exacte du passage en manuel (tout ou partiellement) non tranchée — à décider au moment de l'implémentation, une fois un usage familial réel en place.
 - **Canal d'annonce familial** : réutilise le salon Matrix partagé `#etat-du-systeme` déjà en place pour l'alerting (`gitops/apps/uptime-kuma.yaml`, `scripts/tuwunel-alertbot-setup.py`) plutôt que d'en créer un nouveau — les deux relèvent du même besoin ("que se passe-t-il avec notre système ?") du point de vue de la famille. `scripts/tuwunel-announce.py` permet de poster une annonce formatée avant un changement notable.
 - **Traefik** comme reverse proxy / ingress, gestion automatique TLS via Let's Encrypt.
-- **Helm charts** communautaires réutilisés quand ils existent (Nextcloud, Immich, Vaultwarden) plutôt que des manifests réécrits from scratch.
+- **Helm charts** communautaires réutilisés quand ils existent (Nextcloud, Immich, Vaultwarden, Mailu) plutôt que des manifests réécrits from scratch.
 - **Accès administrateur distant** : VPN WireGuard auto-hébergé (Phase 4) — aucune dépendance tierce (écarté volontairement : Tailscale, plus simple à poser mais qui ajoute un service de coordination propriétaire externe), aucun outil d'administration exposé directement sur internet. Déployé en service systemd sur l'hôte, volontairement **hors GitOps** (pas de `Deployment` k8s) : ce VPN sert justement à accéder au cluster pour intervenir dessus, le placer dedans créerait une dépendance circulaire (cluster en panne → VPN censé permettre d'y remédier tombe avec lui). Détail dans `wireguard/README.md`.
+- **Watchdog de remédiation automatique** (Phase 4) — même raisonnement de dépendance circulaire que le VPN ci-dessus : ce mécanisme existe pour réparer le cluster quand il est en panne, donc il ne peut pas vivre dedans. Service systemd sur l'hôte (`myown-watchdog.timer`, déclenche `scripts/watchdog-check.sh`), volontairement hors GitOps. Vérifie périodiquement l'API k3s, redémarre automatiquement le service après plusieurs échecs consécutifs, avec un plafond de tentatives pour éviter une boucle infinie qui masquerait un vrai problème (dans ce cas, priorité au VPN admin, déblocage téléphonique guidé en dernier recours — cf. §11). Notifie le salon Matrix partagé `#etat-du-systeme` (même canal que l'alerting Uptime Kuma) une fois le cluster de nouveau joignable — limite assumée : comme ce salon vit dans le cluster surveillé, aucune alerte ne peut sortir pendant une panne totale, seulement après coup.
 
 ## 7. Mail : risques et mitigation
 
@@ -114,7 +115,7 @@ Un domicile résidentiel français est structurellement inadapté à l'envoi de 
 ## 8. Sécurité
 
 - Secrets (mots de passe DB, tokens API, clés TLS) jamais en clair dans le dépôt Git — SOPS ou Sealed Secrets à trancher en phase d'implémentation.
-- Chiffrement au repos pour les volumes de données sensibles (Vaultwarden, Nextcloud, Mailcow).
+- Chiffrement au repos pour les volumes de données sensibles (Vaultwarden, Nextcloud, Mailu).
 - Principe du moindre privilège entre services (réseaux k8s séparés / NetworkPolicies).
 - Scan de vulnérabilités des images (Trivy), cohérent avec la pratique professionnelle de l'auteur.
 

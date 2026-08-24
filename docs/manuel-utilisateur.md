@@ -36,7 +36,7 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 - **URL** : <http://myown-uptime.local:8090> — identifiants admin dans `gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml` (compte local à Uptime Kuma, sans lien avec Authentik).
 - **Page de statut publique** (pensée pour toute la famille, pas seulement l'admin) : <http://myown-uptime.local:8090/status/etat-du-systeme> — six services suivis (Authentik, Vaultwarden, Nextcloud, Immich, Tuwunel, LiveKit), configurés via `scripts/uptime-kuma-setup.py` plutôt qu'à la main dans l'UI (reproductible après une recréation du cluster — détails et vrais bugs rencontrés dans `notes-techniques.md`).
-- **Alertes en cas de panne** : salon Matrix `#etat-du-systeme:myown-tuwunel.local`, ouvert à quiconque dans le foyer veut le rejoindre (depuis Element Web par exemple — rechercher/rejoindre l'alias directement). Le bot `@alertbot` y publie automatiquement les changements d'état (panne/rétablissement) — une seule fois, visible par tous, pas besoin de solliciter l'admin pour savoir "c'est en panne pour tout le monde ou juste chez moi ?".
+- **Alertes en cas de panne** : salon Matrix `#etat-du-systeme:offsystem.fr`, ouvert à quiconque dans le foyer veut le rejoindre (depuis Element Web par exemple — rechercher/rejoindre l'alias directement). Le bot `@alertbot` y publie automatiquement les changements d'état (panne/rétablissement) — une seule fois, visible par tous, pas besoin de solliciter l'admin pour savoir "c'est en panne pour tout le monde ou juste chez moi ?".
 
 ## Authentik — identité et authentification (SSO)
 
@@ -94,10 +94,12 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 
 **À quoi ça sert** : serveur Matrix (texte, et maintenant appels vidéo de groupe via LiveKit), remplace Conduwuit prévu initialement (archivé en amont, voir `notes-techniques.md`). Pas de client mobile dédié pour l'instant — Element X, l'app prévue, est différée à la Phase 4 pour les mêmes raisons de résolution DNS locale que les autres apps Android — mais **Element Web, hébergé sur app.element.io, fonctionne dès maintenant** comme client complet (texte et appels), pointé vers notre serveur.
 
-- **URL (API, pas d'interface web ici)** : <https://myown-tuwunel.local:8453> — répond au protocole client-serveur Matrix. HTTPS (pas `:8090`) à cause du cookie de session SSO, marqué `Secure` par Tuwunel — voir `notes-techniques.md`.
-- **Se connecter via Element Web** : aller sur <https://app.element.io>, à l'écran de connexion choisir **Modifier** en face du serveur proposé par défaut, saisir `myown-tuwunel.local:8453`, puis se connecter (compte créé via l'API, ou SSO Authentik).
-- **Appels vidéo de groupe** : dans une room, bouton d'appel — rejoint automatiquement un appel Element Call, média géré par LiveKit. Fonctionne pour 3-4 participants d'après l'architecture ciblée ; validé à ce stade avec un compte réel en navigateur (audio, réactions), pas encore avec plusieurs appareils simultanés sur le LAN.
-- **Statut** : déploiement nu, SSO Authentik et sauvegarde Restic quotidienne tous validés en conditions réelles. LiveKit validé de bout en bout (découverte MatrixRTC, connexion média réelle, réactions).
+- **URL (API, pas d'interface web ici)** : <https://tuwunel.offsystem.fr> — répond au protocole client-serveur Matrix.
+- **Se connecter via Element Web** : aller sur <https://app.element.io>, à l'écran de connexion choisir **Modifier** en face du serveur proposé par défaut, saisir `tuwunel.offsystem.fr`, puis se connecter (SSO Authentik).
+- **Identité Matrix** : `@<utilisateur>:offsystem.fr` (ex. `@robin:offsystem.fr`) — pas `tuwunel.offsystem.fr`, l'identité utilise le domaine principal, pas le sous-domaine où le serveur est hébergé (choix fait le 2026-08-23 pour permettre une vraie fédération avec d'autres serveurs Matrix, voir `notes-techniques.md`).
+- **Appels vidéo de groupe** : dans une room, bouton d'appel — rejoint automatiquement un appel Element Call, média géré par LiveKit (TURN configuré, validé en conditions réelles y compris hors LAN).
+- **Fédération** : validée en conditions réelles avec un compte matrix.org externe (conversation bidirectionnelle réelle, pas juste un test technique) — on peut donc discuter avec n'importe qui possédant un compte Matrix ailleurs, pas seulement d'autres membres du foyer.
+- **Statut** : déploiement validé en conditions réelles — SSO Authentik, sauvegarde Restic quotidienne, appels LiveKit/TURN, fédération Matrix externe.
 
 ## Jellyfin — films et musique
 
@@ -108,6 +110,16 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 - **Connexion via Authentik (SSO)** : sur l'écran de connexion, un bouton "Se connecter avec Authentik" redirige vers Authentik — un seul compte, comme pour les autres services. Premier compte créé automatiquement à la première connexion, mais **sans droits admin par défaut** — voir `manuel-installation.md` étape 13 pour donner les droits admin à un compte.
 - **Compte admin local** (`admin`) : reste disponible en secours si Authentik est indisponible, mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`.
 - **Statut** : déploiement, sauvegarde Restic, SSO Authentik et bibliothèque sourcée depuis Nextcloud tous validés en conditions réelles (`notes-techniques.md`).
+
+## Mailu — messagerie électronique (mail)
+
+**À quoi ça sert** : boîte mail complète (webmail, filtres anti-spam/antivirus, alias) sur le domaine `offsystem.fr` — remplace une messagerie type Gmail/Outlook. Envoi/réception réels validés (relais via un VPS façade, voir `notes-techniques.md`).
+
+- **URL (webmail)** : <https://mailu.offsystem.fr>
+- **Adresse mail** : celle du champ email du compte Authentik, tant qu'elle est en `@offsystem.fr` (ex. `robin.chartier@offsystem.fr`) — chaque nouvelle adresse est **créée automatiquement à la première connexion SSO**, comme pour Immich ou Nextcloud. Si le compte a encore un email externe (Gmail...), Mailu refuse la connexion (`domain=...` dans l'erreur) tant que l'email Authentik n'a pas été mis à jour vers l'adresse `@offsystem.fr` voulue (admin uniquement, via l'interface Authentik).
+- **Se connecter** : SSO Authentik (un seul compte, comme pour les autres services) — pas de formulaire de connexion Mailu natif visible, la page redirige directement vers Authentik.
+- **Contacts (carnet d'adresses)** : pas encore relié à Nextcloud Contacts (`rcmcarddav`, prévu mais pas encore fait — voir `CLAUDE.md`).
+- **Statut** : déploiement, SSO Authentik, connexion webmail réelle et sauvegarde Restic tous validés en conditions réelles ; relais sortant/entrant validé avec de vrais mails (`notes-techniques.md`).
 
 ## À venir
 

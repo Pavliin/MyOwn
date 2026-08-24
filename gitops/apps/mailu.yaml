@@ -1,0 +1,160 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mailu
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://mailu.github.io/helm-charts/
+      chart: mailu
+      targetRevision: 2.7.3
+      helm:
+        valuesObject:
+          domain: offsystem.fr
+          hostnames:
+            - mailu.offsystem.fr
+          timezone: Europe/Paris
+          existingSecret: mailu-secrets
+          initialAccount:
+            enabled: true
+            username: admin
+            domain: offsystem.fr
+            existingSecret: mailu-secrets
+            existingSecretPasswordKey: initial-account-password
+            mode: create
+          global:
+            database:
+              roundcube:
+                existingSecret: mailu-secrets
+                existingSecretPasswordKey: roundcube-db-password
+          # Chart's own Ingress hardcodes a cert-manager/self-signed
+          # secretName, incompatible with Traefik's own ACME resolver —
+          # same reasoning as Vaultwarden/Nextcloud/etc. Disabled here,
+          # replaced by the additive gitops/manifests/mailu-public/
+          # Ingress (certresolver annotation, reuses the *.offsystem.fr
+          # wildcard cert already issued).
+          ingress:
+            enabled: false
+          front:
+            # Real deadlock found live: front's raw mail ports (25/143/...)
+            # are hostPort-bound by default, and this chart hardcodes
+            # `RollingUpdate` with no override field — on this single-node
+            # cluster, any future rollout of front (e.g. this very
+            # proxyAuth change) makes the surge pod fail to schedule
+            # forever ("didn't have free ports"), same deadlock class
+            # already hit and fixed for LiveKit. Disabling hostPort here
+            # is the right call for now regardless: nothing today needs
+            # raw external SMTP/IMAP reachability (all mail-flow testing
+            # so far is internal-only) — real external mail ports are
+            # deliberately deferred to the VPS-relay design, out of scope
+            # for this plan.
+            hostPort:
+              enabled: false
+            service:
+              annotations:
+                # `front` terminates its own TLS on the `https` (443) port
+                # of its own Service — Traefik defaults to plain HTTP to
+                # backends, this tells it to speak HTTPS instead. Verified
+                # against Traefik's own fixture (Service-level annotation,
+                # not Ingress-level): pkg/provider/kubernetes/ingress/
+                # fixtures/Ingress-with-annotations.yml.
+                traefik.ingress.kubernetes.io/service.serversscheme: https
+                # Real bug found live: Traefik verifies the backend's TLS
+                # cert by default once serversscheme=https is set. front's
+                # cert has CN=mailu.offsystem.fr, but Traefik connects to
+                # the pod's ClusterIP — verification fails
+                # ("x509: cannot validate certificate for 10.x.x.x because
+                # it doesn't contain any IP SANs"), and Traefik returns a
+                # generic "Internal Server Error" (500) that looks like a
+                # real backend error until you check front's own nginx
+                # logs and find nothing there — confirmed it wasn't one
+                # before reaching for this fix. insecureSkipVerify is safe
+                # here: internal pod-network traffic, same wildcard cert
+                # issued for real by Let's Encrypt, not a spoofable
+                # third party. Reference format confirmed live: Traefik's
+                # annotation-based provider needs the namespace-prefixed
+                # form (<namespace>-<name>@kubernetescrd), same pattern
+                # already used for Middleware refs — a same-namespace,
+                # unprefixed name silently fails with "servers transport
+                # not found".
+                traefik.ingress.kubernetes.io/service.serverstransport: mailu-mailu-front-transport@kubernetescrd
+          # Radicale (CalDAV/CardDAV) left disabled — Nextcloud Calendar/
+          # Contacts already covers this, confirmed in the Mailcow/Mailu
+          # comparison (notes-techniques.md); activating it here would be
+          # redundant, not a missing feature.
+          webdav:
+            enabled: false
+          persistence:
+            single_pvc: true
+          # Outbound mail must not attempt direct delivery from this dev
+          # machine's own IP (no PTR/SPF/reputation there, and residential
+          # ISPs commonly block outbound :25 anyway) — route everything
+          # through the VPS façade's Postfix relay via the WireGuard
+          # mail-relay tunnel instead (wireguard-mail-relay/,
+          # mail-relay-vps/). 10.100.1.1 is the VPS side of that tunnel.
+          # No username/password: the VPS's own mynetworks already trusts
+          # this tunnel subnet (mail-relay-vps/postfix), so no SMTP AUTH
+          # is needed — confirmed via `helm template` that the chart only
+          # renders RELAYHOST/RELAYNETS from host/networks, doesn't
+          # require credentials to be set.
+          # Real deadlock hit live, twice, on this single-node cluster: the
+          # chart's default RollingUpdate briefly runs old+new postfix pods
+          # together, and both try to lock the same Postfix spool on the
+          # shared PVC (persistence.single_pvc above) — the new pod fails
+          # to start ("the Postfix mail system is already running"), so
+          # the old pod never terminates and the rollout hangs forever.
+          # Same deadlock class as front's hostPort issue, different
+          # resource (a PID lock instead of a port). Recreate is a native
+          # Kubernetes Deployment strategy (not a chart-specific value),
+          # confirmed via `helm template` that this chart passes it
+          # through unmodified.
+          postfix:
+            updateStrategy:
+              type: Recreate
+          externalRelay:
+            host: "10.100.1.1:25"
+            networks: ["10.100.1.0/24"]
+          # SSO via the ForwardAuth mechanism validated in isolation
+          # (notes-techniques.md) before ever touching Mailu — the
+          # Middleware (gitops/manifests/mailu-forwardauth/) is attached
+          # to the Ingress (gitops/manifests/mailu-public/ingress.yaml)
+          # separately, this just tells Mailu to trust the header it adds.
+          proxyAuth:
+            # Pod CIDR of this single-node cluster (confirmed via
+            # `kubectl get nodes -o jsonpath='{.items[0].spec.podCIDR}'`)
+            # — every request front receives genuinely comes from
+            # Traefik's own pod (the only party that can inject this
+            # header), never directly from an end user, so trusting the
+            # whole pod network here is equivalent to trusting Traefik
+            # specifically, not a broad grant.
+            whitelist: "10.42.0.0/24"
+            # NOT the chart's own default ("X-Auth-Email") — a real bug
+            # caught before shipping: Authentik's outpost sends
+            # "X-authentik-email" (confirmed in the ForwardAuth response
+            # headers during the whoami validation), a genuinely
+            # different header name, not just different casing.
+            header: "X-authentik-email"
+            create: "true"
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/secrets/mailu
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/mailu-public
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/mailu-forwardauth
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/mailu-backup
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mailu
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

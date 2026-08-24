@@ -11,7 +11,11 @@ spec:
       targetRevision: 0.46.0
       helm:
         valuesObject:
-          domain: "https://myown-vaultwarden.local:8453"
+          # Real public hostname now (was myown-vaultwarden.local:8453) —
+          # this is what Vaultwarden itself uses to build its own
+          # callback/redirect URLs. Reachable from LAN too, post
+          # split-horizon DNS (gitops/bootstrap/coredns-custom.yaml).
+          domain: "https://vaultwarden.offsystem.fr"
           adminToken:
             existingSecret: vaultwarden-secrets
             existingSecretKey: ADMIN_TOKEN
@@ -29,7 +33,27 @@ spec:
             hostname: myown-vaultwarden.local
           sso:
             enabled: true
-            authority: "http://myown-authentik.local:8090/application/o/vaultwarden/"
+            # authentik.offsystem.fr, not myown-authentik.local: Authentik
+            # builds its OIDC discovery document (including the
+            # authorization_endpoint used for the browser redirect) from
+            # the Host of whichever request fetches it — so this exact
+            # hostname is what ends up in the login redirect too. Using
+            # the LAN-only name here would mean external logins always
+            # redirect to somewhere unreachable, even though Vaultwarden
+            # itself is reachable at vaultwarden.offsystem.fr. Resolves
+            # internally either way post split-horizon DNS, so no
+            # performance cost for LAN-only traffic.
+            #
+            # https://, not http:// — real bug found live: the new
+            # authentik-public Ingress (gitops/manifests/authentik-public/)
+            # carries a `tls` block, so Traefik only serves it on the
+            # websecure entrypoint (8453/443); port 8090 returns a bare
+            # 404 for this host (confirmed via curl, unlike
+            # myown-authentik.local which still answers on both). Real
+            # Let's Encrypt cert means no CA-trust workaround needed
+            # here, unlike the mkcert-CA mounting lk-jwt-service/Uptime
+            # Kuma needed for the same class of internal HTTPS call.
+            authority: "https://authentik.offsystem.fr/application/o/vaultwarden/"
             scopes: "openid email profile"
             ignoreEmailVerification: true
             existingSecret: vaultwarden-secrets
@@ -43,6 +67,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/vaultwarden-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/vaultwarden-public
   destination:
     server: https://kubernetes.default.svc
     namespace: vaultwarden

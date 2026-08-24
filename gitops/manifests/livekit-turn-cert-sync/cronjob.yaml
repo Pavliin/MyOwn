@@ -1,0 +1,53 @@
+# Keeps LiveKit's TURN/TLS listener on the same real Let's Encrypt wildcard
+# cert Traefik already manages, instead of issuing/managing a second cert —
+# there is no cert-manager in this cluster (deliberate choice, see
+# traefik-acme-helmchartconfig.yaml), so this reuses Traefik's own acme.json
+# rather than duplicating the DNS-01/Gandi ACME flow for one more consumer.
+#
+# Runs in kube-system (not livekit) because that's where the source data is:
+# the `traefik` PVC (RWO, local-path — effectively a hostPath under the
+# hood, which is what lets a second pod on the same single node mount it
+# read-only alongside the Traefik pod itself) can only be mounted by a pod
+# in its own namespace. The resulting Secret it writes lives in livekit
+# instead, via the cross-namespace RBAC in rbac.yaml.
+#
+# Daily is far more often than needed (Let's Encrypt renews ~30 days before
+# expiry) but costs nothing and keeps the drift window small.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: livekit-turn-cert-sync
+  namespace: kube-system
+spec:
+  schedule: "5 5 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: livekit-turn-cert-sync
+          restartPolicy: OnFailure
+          containers:
+            - name: livekit-turn-cert-sync
+              image: alpine/k8s:1.30.0
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  CERT_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.main=="offsystem.fr") | .certificate' /data/acme.json)
+                  KEY_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.main=="offsystem.fr") | .key' /data/acme.json)
+                  echo "$CERT_B64" | base64 -d > /tmp/tls.crt
+                  echo "$KEY_B64" | base64 -d > /tmp/tls.key
+                  kubectl create secret tls livekit-turn-tls -n livekit \
+                    --cert=/tmp/tls.crt --key=/tmp/tls.key \
+                    --dry-run=client -o yaml | kubectl apply -f -
+                  shred -u /tmp/tls.crt /tmp/tls.key
+              volumeMounts:
+                - name: traefik-data
+                  mountPath: /data
+                  readOnly: true
+          volumes:
+            - name: traefik-data
+              persistentVolumeClaim:
+                claimName: traefik
+                readOnly: true

@@ -15,6 +15,13 @@ spec:
             host: myown-nextcloud.local
             trustedDomains:
               - myown-nextcloud.local
+              # Nextcloud rejects any Host header not in this list with a
+              # plain 400, before even reaching the app — found live,
+              # nextcloud.offsystem.fr returned 400 despite the Ingress
+              # and cert both being correct. `host` above stays the LAN
+              # name (what the chart uses to build its own internal
+              # config), this list is what's actually checked per-request.
+              - nextcloud.offsystem.fr
             configs:
               # Nextcloud's SSRF guard (preventLocalAddress) blocks outbound
               # requests to hosts resolving to private/cluster IPs by default
@@ -43,6 +50,18 @@ spec:
                   secretKeyRef:
                     name: nextcloud-secrets
                     key: OIDC_CLIENT_SECRET
+              # The official image's own Apache config hardcodes
+              # LimitRequestBody to this env var, defaulting to 1073741824
+              # (exactly 1GiB) — found live via a real rclone migration of a
+              # personal video/music library: every file above that size
+              # failed with a bare Apache 413 (0 bytes read server-side, per
+              # SabreDAV's own error message), everything below succeeded.
+              # PHP's upload_max_filesize/post_max_size don't gate this at
+              # all (WebDAV PUT streams via php://input, not $_FILES) — this
+              # was the only actual limit. 0 = unlimited, per the image's own
+              # documented behavior for this variable.
+              - name: APACHE_BODY_LIMIT
+                value: "0"
             hooks:
               # before-starting (not post-installation): the latter only fires
               # on a brand-new install (no config.php yet) — useless here since
@@ -73,10 +92,17 @@ spec:
                 # app (architecture.md §2, "one app per use case") — avoids
                 # two uncoordinated photo libraries. app:disable is idempotent.
                 php occ app:disable photos || true
+                # authentik.offsystem.fr, not myown-authentik.local: Authentik
+                # mirrors the Host of whichever request fetches discovery into
+                # every URL in the returned document, including the one used
+                # for the browser login redirect — so this exact hostname is
+                # what an external user gets redirected to. Resolves
+                # internally post split-horizon DNS either way (see
+                # notes-techniques.md, "Nom de domaine réel + Let's Encrypt").
                 php occ user_oidc:provider authentik \
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
-                  --discoveryuri="http://myown-authentik.local:8090/application/o/nextcloud/.well-known/openid-configuration"
+                  --discoveryuri="https://authentik.offsystem.fr/application/o/nextcloud/.well-known/openid-configuration"
           # user_oidc refuses to run OIDC login unless Nextcloud believes the
           # request came in over HTTPS. Traefik terminates TLS at the ingress
           # and forwards plain HTTP internally, so without this Nextcloud
@@ -144,6 +170,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/nextcloud-backup
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/nextcloud-public
   destination:
     server: https://kubernetes.default.svc
     namespace: nextcloud

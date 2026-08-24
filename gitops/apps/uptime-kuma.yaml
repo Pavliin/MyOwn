@@ -5,40 +5,43 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://dirsigler.github.io/uptime-kuma-helm
-    chart: uptime-kuma
-    targetRevision: 4.1.0
-    helm:
-      valuesObject:
-        ingress:
-          enabled: true
-          className: traefik
-          hosts:
-            - host: myown-uptime.local
-              paths:
-                - path: /
-                  pathType: ImplementationSpecific
-        # Dev-cluster only, both entries below — needed because Node.js
-        # (unlike the OS) bundles its own CA store and doesn't see the
-        # mkcert dev CA trusted via `mkcert -install`. Real bug found via
-        # an actual Matrix notification test, not a dry-run: the Matrix
-        # notification provider failed silently in the UI with
-        # "unable to verify the first certificate" trying to reach
-        # Tuwunel over HTTPS. Same class of gotcha as lk-jwt-service's
-        # SSL_CERT_FILE need. Must be removed once Phase 4 moves to real
-        # Let's Encrypt certs.
-        podEnv:
-          - name: NODE_EXTRA_CA_CERTS
-            value: /etc/ssl/mkcert/ca.pem
-        additionalVolumes:
-          - name: mkcert-ca
-            configMap:
-              name: mkcert-ca
-        additionalVolumeMounts:
-          - name: mkcert-ca
-            mountPath: /etc/ssl/mkcert
-            readOnly: true
+  sources:
+    - repoURL: https://dirsigler.github.io/uptime-kuma-helm
+      chart: uptime-kuma
+      targetRevision: 4.1.0
+      helm:
+        valuesObject:
+          ingress:
+            enabled: true
+            className: traefik
+            hosts:
+              - host: myown-uptime.local
+                paths:
+                  - path: /
+                    pathType: ImplementationSpecific
+          # Dev-cluster only, both entries below — needed because Node.js
+          # (unlike the OS) bundles its own CA store and doesn't see the
+          # mkcert dev CA trusted via `mkcert -install`. Real bug found via
+          # an actual Matrix notification test, not a dry-run: the Matrix
+          # notification provider failed silently in the UI with
+          # "unable to verify the first certificate" trying to reach
+          # Tuwunel over HTTPS. Same class of gotcha as lk-jwt-service's
+          # SSL_CERT_FILE need. Must be removed once Phase 4 moves to real
+          # Let's Encrypt certs.
+          podEnv:
+            - name: NODE_EXTRA_CA_CERTS
+              value: /etc/ssl/mkcert/ca.pem
+          additionalVolumes:
+            - name: mkcert-ca
+              configMap:
+                name: mkcert-ca
+          additionalVolumeMounts:
+            - name: mkcert-ca
+              mountPath: /etc/ssl/mkcert
+              readOnly: true
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/uptime-kuma-public
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

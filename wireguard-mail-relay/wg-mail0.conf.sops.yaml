@@ -1,0 +1,16 @@
+wg-mail0.conf: ENC[AES256_GCM,data:52qkstrSSG7hOOgelLfq6U8f6CNaQvDqlrVKpSZIqY1YskF8Uf2WvowzMcgZkzkIvDxRZjnpKCYz626Gj+Hd5tTB2rQePbcQFbbRgxZPTxO9xQSVw/5yQkP16UuCD97HTvTA2cgSuGi4SpGckzYzgNs1lRdeSxURIeK3HK5OP/c1dFMIqnyG46V84xov3D7xRA1AotsCYipt3qNjPfBzi7WZ1jM9rlWTafy9ijUmkB/ti9vgpU0DZ7CIyJUvRxH/O8izp765JMESzoeTVfGwwKkkHyLh2NeYZBzo2zJD8W01nd5HUnJZ4mk3xTSb/te0ZNXrMlejT+p/NaspDdojAqpevUaKfE/YBvbpG9kSf433qjSz0qaXdOwIwYE6NJa9GQCUypeZfklBbW2VrOPRerjtCHBRoEruXKAfuxpPAtxy,iv:4syp7w+bzTMG9lqcpA3icC1fSVZxlUerdpkbL+1nLWQ=,tag:b3mkbQjP4TM+5OrHsIjDZQ==,type:str]
+sops:
+    age:
+        - recipient: age1l6tfhv38sf0rdg4kw7l6mjugp7jvsvwrf3zul3ptz43cad2pkucsg5ks42
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBKdG0ralVNWEpUdlNXQWhQ
+            QURvbnV0NlBYUFlPM0hkYkEzdDJHeGVXeldBCnBVYzFNeEJLb1hLNG9YOG8rbHBw
+            ejhpcWFaazQrUGZjOWIxcEFHR3N2dW8KLS0tIDVRT0dQbFNZdkZHWFdDWjNVK2Jt
+            aEZndk4xWHRscUtqWjNFeERzUWw1V2sKNrHzRelzOBAFq6GBoK5SRGjLoORRkAHz
+            NRNP6B1pEC+q3RHnjJK99Td6Unj12xBlSQzwQv5irf1GUwNzY9Yc1w==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-08-24T13:25:41Z"
+    mac: ENC[AES256_GCM,data:Eo+AsRPSqbzVwhC6lCrdybYHTtNoq7AYn5tjFpNYtTn+cPwoQag7SS1UBeNHjwdj/5VCjw9AIkwzLX7f9CAcAtH+jbTKWGzmtqSlU1mnbtZsfdy6qWSW2ETd+WGK0vAnYG8YYfQPhaUoE26a2TpwZtc2zXqcZgr93Ocv8Pdeg4A=,iv:HFP/db5gAwBjb+akC7zyNw084EcLO/EtIor8cBRCxPw=,tag:GwvFLufGd+K3mw84HzZWyw==,type:str]
+    unencrypted_suffix: _unencrypted
+    version: 3.10.2

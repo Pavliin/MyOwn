@@ -1,0 +1,71 @@
+# front needs a real cert file mounted directly (not just a Traefik-terminated
+# TLS Ingress): it terminates its own TLS for SMTP/IMAP STARTTLS and for the
+# HTTPS port Traefik proxies to (see gitops/apps/mailu.yaml,
+# `front.service.annotations` — serversscheme/serverstransport). There is no
+# cert-manager in this cluster (deliberate choice, see
+# traefik-acme-helmchartconfig.yaml), so this reuses Traefik's own acme.json
+# rather than duplicating the DNS-01/Gandi ACME flow for one more consumer —
+# same pattern as livekit-turn-cert-sync.
+#
+# Filters on domain.main=="mailu.offsystem.fr" first, NOT the *.offsystem.fr
+# wildcard other services reuse (livekit-turn-cert-sync, vaultwarden-public,
+# etc.): on the dev cluster, Traefik issued this Ingress its own individual
+# cert rather than serving the existing wildcard (confirmed live, no Ingress
+# in this repo sets the `router.tls.domains` SAN annotation that would
+# explicitly request the wildcard).
+#
+# Real gap found deploying on the mini PC (2026-08-24): this isn't actually
+# stable behavior, it's version-dependent — the mini PC's Traefik (3.7.8)
+# reuses the existing *.offsystem.fr wildcard for on-demand issuance instead
+# of requesting a redundant individual cert, unlike dev's (3.6.13), so no
+# `mailu.offsystem.fr` entry ever appears in the mini PC's acme.json at all
+# (confirmed by dumping both clusters' acme.json directly). Falls back to
+# the wildcard cert (matched by SAN, not by main domain, since the wildcard
+# entry's own `domain.main` is the apex `offsystem.fr`) when no individual
+# cert exists, so this CronJob works correctly under either behavior instead
+# of assuming one.
+#
+# Daily is far more often than needed (Let's Encrypt renews ~30 days before
+# expiry) but costs nothing and keeps the drift window small.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mailu-cert-sync
+  namespace: kube-system
+spec:
+  schedule: "10 5 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: mailu-cert-sync
+          restartPolicy: OnFailure
+          containers:
+            - name: mailu-cert-sync
+              image: alpine/k8s:1.30.0
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  CERT_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.main=="mailu.offsystem.fr") | .certificate' /data/acme.json)
+                  KEY_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.main=="mailu.offsystem.fr") | .key' /data/acme.json)
+                  if [ -z "$CERT_B64" ]; then
+                    CERT_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.sans != null and (.domain.sans | index("*.offsystem.fr"))) | .certificate' /data/acme.json)
+                    KEY_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.sans != null and (.domain.sans | index("*.offsystem.fr"))) | .key' /data/acme.json)
+                  fi
+                  echo "$CERT_B64" | base64 -d > /tmp/tls.crt
+                  echo "$KEY_B64" | base64 -d > /tmp/tls.key
+                  kubectl create secret tls mailu-certificates -n mailu \
+                    --cert=/tmp/tls.crt --key=/tmp/tls.key \
+                    --dry-run=client -o yaml | kubectl apply -f -
+                  shred -u /tmp/tls.crt /tmp/tls.key
+              volumeMounts:
+                - name: traefik-data
+                  mountPath: /data
+                  readOnly: true
+          volumes:
+            - name: traefik-data
+              persistentVolumeClaim:
+                claimName: traefik
+                readOnly: true
