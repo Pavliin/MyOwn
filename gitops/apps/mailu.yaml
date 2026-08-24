@@ -87,6 +87,20 @@ spec:
             enabled: false
           persistence:
             single_pvc: true
+          # Outbound mail must not attempt direct delivery from this dev
+          # machine's own IP (no PTR/SPF/reputation there, and residential
+          # ISPs commonly block outbound :25 anyway) — route everything
+          # through the VPS façade's Postfix relay via the WireGuard
+          # mail-relay tunnel instead (wireguard-mail-relay/,
+          # mail-relay-vps/). 10.100.1.1 is the VPS side of that tunnel.
+          # No username/password: the VPS's own mynetworks already trusts
+          # this tunnel subnet (mail-relay-vps/postfix), so no SMTP AUTH
+          # is needed — confirmed via `helm template` that the chart only
+          # renders RELAYHOST/RELAYNETS from host/networks, doesn't
+          # require credentials to be set.
+          externalRelay:
+            host: "10.100.1.1:25"
+            networks: ["10.100.1.0/24"]
           # SSO via the ForwardAuth mechanism validated in isolation
           # (notes-techniques.md) before ever touching Mailu — the
           # Middleware (gitops/manifests/mailu-forwardauth/) is attached
