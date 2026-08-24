@@ -7,7 +7,7 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/livekit-turn-cert-sync
   destination:
     server: https://kubernetes.default.svc

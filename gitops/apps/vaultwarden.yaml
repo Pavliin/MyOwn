@@ -62,13 +62,13 @@ spec:
             clientSecret:
               existingSecretKey: SSO_CLIENT_SECRET
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/secrets/vaultwarden
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/vaultwarden-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/vaultwarden-public
   destination:
     server: https://kubernetes.default.svc

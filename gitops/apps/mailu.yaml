@@ -137,16 +137,16 @@ spec:
             header: "X-authentik-email"
             create: "true"
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/secrets/mailu
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/mailu-public
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/mailu-forwardauth
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/mailu-backup
   destination:
     server: https://kubernetes.default.svc

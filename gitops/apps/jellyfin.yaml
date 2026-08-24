@@ -64,13 +64,13 @@ spec:
                   - path: /
                     pathType: Prefix
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/secrets/jellyfin
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/jellyfin-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/jellyfin-public
   destination:
     server: https://kubernetes.default.svc

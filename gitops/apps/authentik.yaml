@@ -34,16 +34,16 @@ spec:
               - authentik-blueprint-account-recovery
               - authentik-blueprint-mailu-sso
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/secrets/authentik
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/secrets/authentik-blueprints
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/authentik-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.11
       path: gitops/manifests/authentik-public
   destination:
     server: https://kubernetes.default.svc
