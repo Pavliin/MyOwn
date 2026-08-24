@@ -58,6 +58,21 @@ spec:
           # Traefik's own default is the real production ACME directory.
           dnsChallenge:
             provider: gandiv5
+    # Real gap found deploying Mailu on the mini PC (2026-08-24): the dev
+    # cluster's mailu-outpost-callback IngressRoute (gitops/manifests/
+    # mailu-forwardauth/) routes cross-namespace (mailu -> authentik) and
+    # had always worked there with no explicit flag set anywhere in this
+    # repo — turns out to depend on an undocumented default that isn't
+    # actually identical between the two clusters' bundled Traefik
+    # versions (dev: 3.6.13, mini PC: 3.7.8, confirmed via
+    # `kubectl get helmchart traefik -o jsonpath='{.spec.image.tag}'` on
+    # each). The mini PC's Traefik rejected the route outright ("service
+    # authentik/authentik-server not in the parent resource namespace
+    # mailu"). Setting this explicitly removes the dependency on whatever
+    # each version's default happens to be.
+    providers:
+      kubernetesCRD:
+        allowCrossNamespace: true
     # Added 2026-08-22 specifically to diagnose the MISSING_MATRIX_RTC_TRANSPORT
     # LiveKit investigation (notes-techniques.md) — no request-level visibility
     # existed before this, only Traefik's own internal/error logs. Cheap to
@@ -66,3 +81,18 @@ spec:
       access:
         enabled: true
         format: json
+    # Real gap found migrating a personal video library via rclone/WebDAV
+    # (2026-08-24): Traefik's own default readTimeout on this entrypoint
+    # (60s) caps the total time allowed to read an incoming request body —
+    # confirmed via the access log above (OriginDuration/Duration both
+    # landing at exactly ~60.000s on the failing PUTs, "502 Bad Gateway").
+    # Any upload/download taking longer than 60s at the client's actual
+    # throughput fails regardless of retries — not Nextcloud-specific, this
+    # is the shared entrypoint every HTTPS service goes through. 0 disables
+    # the timeout entirely, matching Apache's own APACHE_BODY_LIMIT=0 fix
+    # applied the same day for the same underlying migration.
+    ports:
+      websecure:
+        transport:
+          respondingTimeouts:
+            readTimeout: 0s
