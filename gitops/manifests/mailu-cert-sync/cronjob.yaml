@@ -7,16 +7,23 @@
 # rather than duplicating the DNS-01/Gandi ACME flow for one more consumer —
 # same pattern as livekit-turn-cert-sync.
 #
-# Filters on domain.main=="mailu.offsystem.fr" specifically, NOT the
-# *.offsystem.fr wildcard other services reuse (livekit-turn-cert-sync,
-# vaultwarden-public, etc.): confirmed live that Traefik issued this Ingress
-# its own individual cert rather than serving the existing wildcard (no
-# Ingress in this repo sets the `router.tls.domains` SAN annotation that
-# would explicitly request the wildcard) — this filter matches what's
-# actually being served today, not a more "ideal" shared-cert setup that
-# isn't actually in effect. Worth unifying later if the wildcard-vs-
-# individual-cert inconsistency across services gets addressed as its own
-# piece of work.
+# Filters on domain.main=="mailu.offsystem.fr" first, NOT the *.offsystem.fr
+# wildcard other services reuse (livekit-turn-cert-sync, vaultwarden-public,
+# etc.): on the dev cluster, Traefik issued this Ingress its own individual
+# cert rather than serving the existing wildcard (confirmed live, no Ingress
+# in this repo sets the `router.tls.domains` SAN annotation that would
+# explicitly request the wildcard).
+#
+# Real gap found deploying on the mini PC (2026-08-24): this isn't actually
+# stable behavior, it's version-dependent — the mini PC's Traefik (3.7.8)
+# reuses the existing *.offsystem.fr wildcard for on-demand issuance instead
+# of requesting a redundant individual cert, unlike dev's (3.6.13), so no
+# `mailu.offsystem.fr` entry ever appears in the mini PC's acme.json at all
+# (confirmed by dumping both clusters' acme.json directly). Falls back to
+# the wildcard cert (matched by SAN, not by main domain, since the wildcard
+# entry's own `domain.main` is the apex `offsystem.fr`) when no individual
+# cert exists, so this CronJob works correctly under either behavior instead
+# of assuming one.
 #
 # Daily is far more often than needed (Let's Encrypt renews ~30 days before
 # expiry) but costs nothing and keeps the drift window small.
@@ -43,6 +50,10 @@ spec:
                   set -eu
                   CERT_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.main=="mailu.offsystem.fr") | .certificate' /data/acme.json)
                   KEY_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.main=="mailu.offsystem.fr") | .key' /data/acme.json)
+                  if [ -z "$CERT_B64" ]; then
+                    CERT_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.sans != null and (.domain.sans | index("*.offsystem.fr"))) | .certificate' /data/acme.json)
+                    KEY_B64=$(jq -r '.letsencrypt.Certificates[] | select(.domain.sans != null and (.domain.sans | index("*.offsystem.fr"))) | .key' /data/acme.json)
+                  fi
                   echo "$CERT_B64" | base64 -d > /tmp/tls.crt
                   echo "$KEY_B64" | base64 -d > /tmp/tls.key
                   kubectl create secret tls mailu-certificates -n mailu \
