@@ -40,7 +40,7 @@ spec:
               mountPath: /etc/ssl/mkcert
               readOnly: true
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.10
       path: gitops/manifests/uptime-kuma-public
   destination:
     server: https://kubernetes.default.svc
