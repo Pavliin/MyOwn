@@ -103,6 +103,28 @@ spec:
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
                   --discoveryuri="https://authentik.offsystem.fr/application/o/nextcloud/.well-known/openid-configuration"
+            # Real bug found live (2026-08-24): .well-known/carddav and
+            # /caldav redirect to http://, not https:// — Apache's own
+            # mod_rewrite builds that redirect's absolute URL itself
+            # (Nextcloud's shipped .htaccess rule has no scheme in its
+            # target), and this vhost genuinely listens on plain :80 (TLS
+            # terminates upstream at Traefik), independent of Nextcloud's
+            # own overwriteprotocol=https setting (PHP-level only). Fixed
+            # by mounting a corrected copy of the base image's own
+            # 000-default.conf — see gitops/manifests/
+            # nextcloud-wellknown-scheme-fix/configmap.yaml for the full
+            # story, including why the obvious fix (a separate
+            # conf-enabled/*.conf file) doesn't work: mod_rewrite rules in
+            # the global server context aren't inherited by a named
+            # VirtualHost without `RewriteOptions Inherit`.
+            extraVolumes:
+              - name: wellknown-scheme-fix
+                configMap:
+                  name: nextcloud-wellknown-scheme-fix
+            extraVolumeMounts:
+              - name: wellknown-scheme-fix
+                mountPath: /etc/apache2/sites-enabled/000-default.conf
+                subPath: 000-default.conf
           # user_oidc refuses to run OIDC login unless Nextcloud believes the
           # request came in over HTTPS. Traefik terminates TLS at the ingress
           # and forwards plain HTTP internally, so without this Nextcloud
@@ -173,6 +195,9 @@ spec:
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/manifests/nextcloud-public
+    - repoURL: https://github.com/Pavliin/MyOwn.git
+      targetRevision: master
+      path: gitops/manifests/nextcloud-wellknown-scheme-fix
   destination:
     server: https://kubernetes.default.svc
     namespace: nextcloud
