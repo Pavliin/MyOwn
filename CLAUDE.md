@@ -19,6 +19,8 @@ A personal self-hosted cloud project (files, photos, passwords, messaging, mail 
 
 Both manuals (plus `docs/index.md`) are also built into a browsable site via MkDocs Material (`mkdocs.yml`, `.github/workflows/docs.yml`), published at `aide.offsystem.fr` — the rest of `docs/` stays plain repo Markdown, not part of that site's nav.
 
+**`manuel-utilisateur.md` had drifted into a de facto technical/admin reference before this split (2026-08-25)** — dev-cluster `.local` URLs, `kubectl`/`occ`/`sops` commands, ArgoCD/Grafana access all used to live there, alongside the family-facing content. Deliberately kept out now: any credential, CLI command, admin panel URL, or debugging detail belongs in `manuel-admin.md` (routine admin actions) or `notes-techniques.md` (technical narrative, bugs, as-built reference) — never back in `manuel-utilisateur.md`, even for a "quick" addition.
+
 **Keep the last four updated as you go, not retroactively**: whenever a service is added or changed in `gitops/apps/`, or a real bug/gotcha is hit and fixed (not a typo — an actual "this didn't work the way the docs/chart suggested" moment), add it to `notes-techniques.md` in the same PR. Same for `manuel-installation.md` (new bootstrap step), `manuel-utilisateur.md` (new service reachable by a human), and `manuel-admin.md` (new admin action or enrollment caveat) whenever they change. Retrofitting these later is much easier to get wrong or skip entirely.
 
 ## Current state
