@@ -116,10 +116,10 @@ Tous les accès ci-dessous supposent l'entrée `/etc/hosts` correspondante ajout
 **À quoi ça sert** : boîte mail complète (webmail, filtres anti-spam/antivirus, alias) sur le domaine `offsystem.fr` — remplace une messagerie type Gmail/Outlook. Envoi/réception réels validés (relais via un VPS façade, voir `notes-techniques.md`).
 
 - **URL (webmail)** : <https://mailu.offsystem.fr>
-- **Adresse mail** : `<utilisateur>@offsystem.fr`
+- **Adresse mail** : celle du champ email du compte Authentik, tant qu'elle est en `@offsystem.fr` (ex. `robin.chartier@offsystem.fr`) — chaque nouvelle adresse est **créée automatiquement à la première connexion SSO**, comme pour Immich ou Nextcloud. Si le compte a encore un email externe (Gmail...), Mailu refuse la connexion (`domain=...` dans l'erreur) tant que l'email Authentik n'a pas été mis à jour vers l'adresse `@offsystem.fr` voulue (admin uniquement, via l'interface Authentik).
 - **Se connecter** : SSO Authentik (un seul compte, comme pour les autres services) — pas de formulaire de connexion Mailu natif visible, la page redirige directement vers Authentik.
 - **Contacts (carnet d'adresses)** : pas encore relié à Nextcloud Contacts (`rcmcarddav`, prévu mais pas encore fait — voir `CLAUDE.md`).
-- **Statut** : déploiement, SSO Authentik et sauvegarde Restic validés en conditions réelles ; relais sortant/entrant validé avec de vrais mails (`notes-techniques.md`). Connexion SSO webmail validée jusqu'à la page de login réelle ; reste à confirmer par un login complet.
+- **Statut** : déploiement, SSO Authentik, connexion webmail réelle et sauvegarde Restic tous validés en conditions réelles ; relais sortant/entrant validé avec de vrais mails (`notes-techniques.md`).
 
 ## À venir
 
