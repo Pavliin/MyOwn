@@ -7,10 +7,10 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/gandi-dyndns
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/secrets/gandi-dyndns
   destination:
     server: https://kubernetes.default.svc

@@ -121,19 +121,19 @@ spec:
           deploymentStrategy:
             type: Recreate
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/secrets/livekit
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/livekit-ingress
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/lk-jwt-service
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/livekit-public
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/lk-jwt-service-public
   destination:
     server: https://kubernetes.default.svc

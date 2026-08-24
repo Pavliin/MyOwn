@@ -157,19 +157,19 @@ spec:
                 mountPath: /etc/snuffleupagus.rules.tpl
                 subPath: snuffleupagus.rules.tpl
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/secrets/mailu
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/mailu-public
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/mailu-forwardauth
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/mailu-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: v0.1.14
       path: gitops/manifests/mailu-webmail-carddav-fix
   destination:
     server: https://kubernetes.default.svc
