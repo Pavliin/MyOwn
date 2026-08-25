@@ -67,6 +67,25 @@ maison de Google Drive.
 !!! example "Capture à venir"
     Écran d'accueil Nextcloud après connexion — vue Fichiers.
 
+### Agenda et contacts sur mobile
+
+L'application Nextcloud ne synchronise pas l'agenda/les contacts elle-même :
+elle renvoie vers une application tierce (par exemple **DAVx5** — payante
+sur le Play Store, gratuite via F-Droid). Cette application ne propose pas
+de connexion via Authentik, mais un **mot de passe d'application** scanné
+par QR code :
+
+1. Sur Nextcloud (navigateur) : **Réglages → Sécurité → « Appareils et
+   sessions »**.
+2. Donnez un nom à l'appareil, puis **« Créer un nouveau mot de passe
+   d'application »**.
+3. Un QR code s'affiche : scannez-le depuis l'application de synchronisation
+   sur votre téléphone — serveur, identifiant et mot de passe se remplissent
+   automatiquement.
+
+!!! example "Capture à venir"
+    QR code de mot de passe d'application dans Nextcloud.
+
 ## 🔑 Vaultwarden — mots de passe
 
 **À quoi ça sert** : un coffre-fort qui retient tous vos mots de passe à
@@ -92,6 +111,19 @@ téléphone, ordinateur).
 
 !!! example "Capture à venir"
     Réglage « Serveur auto-hébergé » dans l'application Bitwarden.
+
+!!! note "Sur mobile : bouton « Use single sign-on »"
+    Une fois votre email saisi, ne cliquez pas sur *Continuer* (qui demande
+    un mot de passe classique) : choisissez plutôt l'option distincte
+    **« Use single sign-on »**. Un « identifiant SSO » est ensuite demandé —
+    n'importe quelle valeur convient (tapez par exemple `offsystem`).
+
+!!! warning "Avertissement Chrome « Dangerous site »"
+    Un avertissement rouge plein écran peut apparaître pendant la
+    redirection — faux positif connu de Chrome, sans rapport avec la
+    sécurité réelle du site. Le bouton pour continuer est caché : cherchez
+    un lien texte (souvent la phrase *« this unsafe site »*) plutôt qu'un
+    vrai bouton, en dépliant les détails de l'avertissement si besoin.
 
 ## 📷 Immich — photos et vidéos
 
