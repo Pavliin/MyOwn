@@ -44,13 +44,61 @@ spec:
             # proxyAuth change) makes the surge pod fail to schedule
             # forever ("didn't have free ports"), same deadlock class
             # already hit and fixed for LiveKit. Disabling hostPort here
-            # is the right call for now regardless: nothing today needs
-            # raw external SMTP/IMAP reachability (all mail-flow testing
-            # so far is internal-only) — real external mail ports are
-            # deliberately deferred to the VPS-relay design, out of scope
-            # for this plan.
+            # stays right regardless of the block below: hostPort is
+            # all-or-nothing (every mail port at once, including 25) and
+            # ties every future `front` rollout to the same deadlock risk.
             hostPort:
               enabled: false
+            # Real IMAP/SMTP client access (Android app validation, Phase 4)
+            # needs raw port reachability that neither the HTTPS Ingress
+            # above nor the disabled hostPort provide. `externalService` is
+            # the chart's other exposure mechanism — a plain Service, so no
+            # interaction with front's rollout strategy at all (sidesteps
+            # the hostPort deadlock class entirely), and each port is
+            # individually toggleable (hostPort has no such granularity).
+            # LoadBalancer, not ClusterIP: same k3s ServiceLB mechanism
+            # already proven for Traefik's own 80/443 — binds on the node's
+            # real interface, reachable from the LAN. LAN-only for now,
+            # deliberately: nothing forwards these ports from the Freebox
+            # to the internet yet (same staged validate-then-expose order
+            # already followed for every other service in this project).
+            externalService:
+              enabled: true
+              type: LoadBalancer
+              ports:
+                # smtp (25) remains false: inbound relay from the VPS
+                # tunnel already reaches this same Service on :25 via a
+                # separate, already-working mechanism (the persistent
+                # `kubectl port-forward` systemd service from
+                # scripts/mailu-portforward-setup.sh). Enabling it here too
+                # would have kubelet's hostPort-less Service binding and
+                # that port-forward both wanting the node's port 25 —
+                # untested, avoided rather than risking the existing relay.
+                smtp: false
+                # imaps (993) and smtps (465, implicit TLS) are the two
+                # protocols an Android client actually needs, and the only
+                # two validated live before this change: a temporary
+                # `kubectl port-forward` to this same Service on the dev
+                # cluster, real IMAP login + real SMTP AUTH+send, both
+                # confirmed working with the admin account's own password
+                # (notes-techniques.md has the full trace). Left at the
+                # chart's own defaults (both already true) — no override
+                # needed.
+                #
+                # submission (587, STARTTLS) is NOT a viable alternative:
+                # confirmed live (`/etc/dovecot/proxy.conf` inside the
+                # front pod) that this image hardcodes
+                # `inet_listener submission { port = 0 }` — nothing listens
+                # there at all, regardless of this chart's values. 465 is
+                # the only working submission port on this image build.
+                pop3: false
+                pop3s: false
+                # ManageSieve (4190) left off: only needed for an external
+                # Sieve-editing client (a desktop Thunderbird add-on, a CLI
+                # tool) — Roundcube's own managesieve plugin already
+                # reaches Dovecot over the ClusterIP internally, unaffected
+                # by this Service being off.
+                manageSieve: false
             service:
               annotations:
                 # `front` terminates its own TLS on the `https` (443) port
