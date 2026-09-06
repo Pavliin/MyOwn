@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.15](https://github.com/Pavliin/MyOwn/compare/v0.1.14...v0.1.15) (2026-09-06)
+
+### Fonctionnalités
+
+* **mailu:** expose IMAP/SMTPS on the LAN for Android mail clients ([9981965](https://github.com/Pavliin/MyOwn/commit/99819651e198cb43589616c080c44bf878e642e7))
+* publish the manuals as a MkDocs Material site on aide.offsystem.fr ([5ba11e7](https://github.com/Pavliin/MyOwn/commit/5ba11e796715270df5bbe0fcc9233658f3738d41))
+* **scripts:** generate the family bookmarks file from the deployed domain ([f07e8e1](https://github.com/Pavliin/MyOwn/commit/f07e8e13810f18dff554dff17a8f53e4b557162a))
+
+### Correctifs
+
+* **docs:** actually host the bookmarks file instead of linking to a page about it ([885c3ac](https://github.com/Pavliin/MyOwn/commit/885c3ac446a1d579cf26ad8650f1bd7bb3b82dcc))
+* **docs:** force a direct download on the bookmarks-file links ([573c3d3](https://github.com/Pavliin/MyOwn/commit/573c3d3dee9ed4bc3ac497747fdb5fc7a8202848))
+* **docs:** stop mkdocs --strict from failing on a link outside docs_dir ([2f711e9](https://github.com/Pavliin/MyOwn/commit/2f711e9de5cf6137bc766fe678432f3a63c99515))
+
+### Documentation
+
+* **claude:** record why manuel-utilisateur.md's role changed ([8089f9d](https://github.com/Pavliin/MyOwn/commit/8089f9d8422d961245e2175e8d77e77d4c0bca67))
+* document Android SSO/CalDAV findings from Phase 4 app validation ([345f077](https://github.com/Pavliin/MyOwn/commit/345f0770a42ae1b6665e314abbc93cd5ce722c3f)), references [dani-garcia/vaultwarden#4182](https://github.com/Pavliin/MyOwn/issues/4182)
+* record the v0.1.14 release and mini PC re-pin ([23548a9](https://github.com/Pavliin/MyOwn/commit/23548a9b6e7b99e4a6f9dc74b667969ae2f64ad8)), closes [#143](https://github.com/Pavliin/MyOwn/issues/143)
+* split manuel-utilisateur into family and admin manuals ([a1df35d](https://github.com/Pavliin/MyOwn/commit/a1df35dd28db6218d72636bbce1bb54e85ba4ba2))
 ## [0.1.14](https://github.com/Pavliin/MyOwn/compare/v0.1.13...v0.1.14) (2026-08-24)
 
 ### Correctifs
