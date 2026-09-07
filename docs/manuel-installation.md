@@ -376,3 +376,34 @@ Réglable via `MYOWN_WD_THRESHOLD`, `MYOWN_WD_MAX_REMEDIATIONS_PER_HOUR`, `MYOWN
 journalctl -t myown-watchdog -f
 sudo systemctl status myown-watchdog.timer
 ```
+
+## 19. Mailu — vérifier la clé DKIM, pas seulement la publier
+
+**Piège réel déjà rencontré** (2026-09-07) : un enregistrement DNS DKIM publié ne veut pas dire qu'une clé privée existe réellement sur le volume persistant de Mailu — le bouton "Generate keys" de l'admin (ou l'appel API équivalent) peut avoir été cliqué à un moment donné puis la clé perdue (recréation de volume, etc.) sans qu'aucune erreur ne le signale ; chaque envoi part alors silencieusement non signé. Voir `notes-techniques.md` pour l'investigation complète.
+
+Après le premier déploiement de Mailu (et à chaque fois qu'un doute existe sur la signature DKIM), lancez, dans l'ordre :
+
+```bash
+# 1. Active l'API admin de Mailu si ce n'est pas déjà fait — voir le bloc
+#    admin.extraEnvVars de gitops/apps/mailu.yaml (API_TOKEN, secret SOPS
+#    gitops/secrets/mailu/mailu.sops.yaml).
+export MAILU_API_TOKEN=$(sops -d gitops/secrets/mailu/mailu.sops.yaml | yq '.stringData.API_TOKEN')
+
+# 2. Génère la clé si absente, la relit pour de vrai depuis le disque avant
+#    de la considérer valide, affiche l'enregistrement DNS exact à publier.
+python3 scripts/mailu-dkim-setup.py offsystem.fr
+```
+
+Le script n'écrit rien côté DNS lui-même. Mettez à jour `DKIM_PUBKEY` dans `scripts/gandi-mail-dns-setup.sh` avec la valeur affichée (uniquement le contenu de `p=`), puis lancez-le pour publier chez Gandi. Vérifiez la propagation avant de faire confiance à la signature :
+
+```bash
+dig +short TXT dkim._domainkey.offsystem.fr
+```
+
+**Promotion d'un compte SSO en admin Mailu** — même API, même contournement du ForwardAuth : le compte bootstrap `admin@<domaine>` (chart `initialAccount`) est le seul admin par défaut, complètement déconnecté de l'identité SSO. Une fois qu'un utilisateur s'est connecté au moins une fois via SSO (mailbox auto-provisionnée par `proxyAuth`) :
+
+```bash
+python3 scripts/mailu-promote-admin.py robin.chartier@offsystem.fr
+```
+
+Idempotent — ne fait rien si le compte est déjà admin, échoue explicitement si le compte n'existe pas encore (pas encore connecté via SSO).

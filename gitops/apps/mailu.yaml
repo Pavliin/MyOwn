@@ -23,6 +23,21 @@ spec:
             existingSecret: mailu-secrets
             existingSecretPasswordKey: initial-account-password
             mode: create
+          # Enables the admin REST API (/api/v1/...) — unregistered entirely
+          # otherwise ("API_TOKEN is not configured", 500). Needed for
+          # scripts/mailu-promote-admin.py and scripts/mailu-dkim-setup.py:
+          # ForwardAuth SSO gates the whole public Ingress including this
+          # API, so no browser-authenticated flow can reach it externally —
+          # both scripts reach mailu-admin directly via a port-forward,
+          # bypassing Traefik/Authentik entirely, the same way the manual
+          # admin-account workaround did tonight.
+          admin:
+            extraEnvVars:
+              - name: API_TOKEN
+                valueFrom:
+                  secretKeyRef:
+                    name: mailu-secrets
+                    key: API_TOKEN
           global:
             database:
               roundcube:
