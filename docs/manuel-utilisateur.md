@@ -224,6 +224,38 @@ ajoutés en libre-service, comme l'authentificateur plus haut.
 !!! example "Capture à venir"
     Formulaire d'ajout CardDAV dans le webmail Mailu.
 
+### Sur mobile (application FairEmail)
+
+Mailu ne propose pas de connexion via Authentik pour les applis mail (IMAP/SMTP — technologie différente du web, non prise en charge ici). On utilise à la place un **jeton d'authentification**, propre à chaque appareil.
+
+**1. Créer le jeton** (dans le webmail, une seule fois par appareil) :
+
+1. `https://mailu.offsystem.fr` → menu de gauche, section **« Mon compte »** → **« Jetons d'authentification »**.
+2. Bouton **« Nouveau jeton »** en haut à droite.
+3. Champ **« Commentaire »** : un nom pour vous y retrouver (ex. « Téléphone »). Le champ « Adresse IP autorisée » reste vide.
+4. **« Enregistrer »** — le jeton ne s'affiche qu'une seule fois : copiez-le immédiatement.
+
+**2. Configurer FairEmail** — installez [FairEmail](https://f-droid.org/en/packages/eu.faircode.email/) (F-Droid ou Play Store), puis configuration **manuelle** (pas l'assistant automatique, qui ne connaît pas Mailu) :
+
+1. Écran principal des réglages → **« Manual setup and account options »** (sous l'assistant) → **« Accounts »** → **« + »**.
+2. Choisissez **« Custom »** dans la liste des fournisseurs, puis renseignez :
+      - **Host** : `mailu.offsystem.fr`
+      - **Port** : `993`
+      - **Encryption** : SSL/TLS
+      - **User name** : votre adresse complète `@offsystem.fr`
+      - **Password** : le jeton créé à l'étape précédente
+3. **« Check »**, vérifiez les dossiers détectés, puis **« Save »** en laissant **« Add related identity »** coché.
+4. FairEmail tente ensuite une configuration automatique de l'envoi (SMTP), qui échoue pour Mailu — un écran d'**identité** s'affiche pour la suite en manuel :
+      - **Host** : `mailu.offsystem.fr`
+      - **Port** : `465`
+      - **Encryption** : SSL/TLS
+      - **User name** : la même adresse `@offsystem.fr`
+      - **Password** : le même jeton
+      - Renseignez aussi le nom d'expéditeur demandé sur cet écran.
+
+!!! example "Capture à venir"
+    Écran de création d'un jeton d'authentification dans Mailu.
+
 ## 🎬 Jellyfin — films et musique
 
 **À quoi ça sert** : votre bibliothèque de films, séries et musique, en
