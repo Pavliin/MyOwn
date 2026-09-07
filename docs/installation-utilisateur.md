@@ -27,6 +27,7 @@ Un vrai installeur graphique bootable resterait une évolution possible **plus t
 | Vaultwarden (`/admin`) | Jeton partagé (`ADMIN_TOKEN`), pas un compte |
 | Nextcloud | Compte local `admin` pré-défini dans le secret de déploiement |
 | Immich, Tuwunel | Premier compte inscrit devient admin ("premier arrivé, premier servi") |
+| Mailu | Compte bootstrap `admin@<domaine>` (secret de déploiement), totalement séparé de l'identité SSO — celle-ci n'obtient les droits admin qu'après une promotion manuelle |
 
 **Problème identifié** : rien ne garantit que la bonne identité récupère les bons droits, et les secrets d'infrastructure (ArgoCD, Grafana, clé privée SOPS) ne sont accessibles qu'à l'opérateur technique (Robin) — pas à l'utilisateur final, propriétaire réel de sa solution. Contraire au principe fondamental du projet ("reprendre possession de ses données", `architecture.md` §1).
 
@@ -64,6 +65,7 @@ Le mécanisme ci-dessus (push des secrets, auto-enregistrement admin sur Immich/
 ### À valider techniquement avant implémentation
 
 - Mapping groupe Authentik → groupe admin Nextcloud via `user_oidc` (piste pour remplacer le compte local `admin` par une identité SSO à terme — pas encore implémenté, le compte local resterait alors un filet de secours plutôt que l'identité admin courante).
+- **Promotion automatique de l'identité SSO en admin Mailu** : Mailu expose une vraie API REST pour ça (`PATCH /api/v1/user/<email>` avec `{"global_admin": true}`), protégée par un jeton (`API_TOKEN`, désactivé par défaut — à générer comme secret SOPS). Un script dans l'esprit de `scripts/jellyfin-sso-setup.py`/`scripts/authentik-outpost-config.sh` attendrait que le compte SSO cible existe réellement (auto-provisionné par `proxyAuth` à sa première connexion) avant d'appeler cette API — évite le contournement actuel (port-forward direct vers `mailu-admin`, connexion avec le compte bootstrap `admin@<domaine>`, promotion manuelle via l'UI). Existe aussi une commande CLI (`flask mailu admin`) côté conteneur, mais elle est pensée pour créer/mettre à jour un compte (exige un mot de passe en argument) — pas adaptée pour ne toucher que `global_admin` sur un compte existant sans effet de bord sur son mot de passe.
 - Intégration du push de secrets et de l'auto-enregistrement admin (Immich/Tuwunel) dans `scripts/install.sh`, avec le mécanisme de cadencement (poll + navigateur) décrit ci-dessus.
 
 ## Onboarding / dashboard familial — fusionnés

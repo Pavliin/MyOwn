@@ -21,7 +21,18 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DOMAIN="offsystem.fr"
 VPS_IP="51.178.46.161"
-DKIM_PUBKEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4b8snminDdyMHBfVqpXVU8SSeEsr7jGKuc4OUxANkZ1t1PLe7DDkSbl7SDaJHlZPwJHB+Nx8fiTkgLdbiQ7syZiUuNo2APYfV90RruXLL2a/oxyY+SG6mnkPbdC9/0X+B2iHYFPWsSkGVFgfZId4FF/8Ohj7asJwCLNIaNg0h208i4BChb7j8NvF7uJnkYAGHQz8M7l9MY4K/uWsB9hCkfwmi3HC8UiXTBBlY4ZhOjdnlyKUJTfo2ErWmis9QtLtgwuwRe4M4YKpxeKgjAUGRlrcxdjMXwZVnI1ac875610z2zbQNFyAEXhRIvW6il8l6SJ9QpHxn6UPwnEaoWj0nwIDAQAB"
+# Regenerated 2026-09-07: the original key (extracted when this script was
+# first written) had never actually been written to Mailu's persistent
+# /dkim/ path — the admin pod's DKIM_PATH lookup returned nothing, so every
+# outbound message sent through the client-facing submission ports (Android
+# app validation) was going out completely unsigned despite this DNS record
+# existing. Real domain-details-page crash traced to the same underlying
+# gap (ValueError on an unrelated empty PORTS config, found while
+# investigating) forced a pod restart, which is what surfaced the missing
+# key in the first place. New key generated via the admin UI's own
+# "Generate keys" button (Domains -> offsystem.fr) rather than by hand, so
+# it's written to the correct on-disk path automatically.
+DKIM_PUBKEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtIhCVnD77B2f3/+8ppUJfhJN4kS3fmcnx0XnbqRahqIOOrOtD9OgFy1/3EVnvGl3fHNhPhnqcidrCcinb+Wzrqhujy//eDmGVR/LpReZL04cn7zrPvTfgEh/mmdfT9Iwcedn3mxxopZm7UccE85am6Gg/kitzdNRUzL2CS+AKKHPdl9IHmNKUM+tehJ9R92+H38BTOCL4n9wDqqkOew8oJJLwXZIXQyqoNKaTE4yuVxGD2UY3mk1GU0eMrcZLtzolI1/DCoyZO89nbM4+QQF3ziEDfhDEtUYHKvX4Nr9Xc9B1BRTs/wo9cPUScpu9hvrbherBRjreZMulf6fFp+54QIDAQAB"
 DMARC_RUA="admin@${DOMAIN}"
 
 step() { echo -e "\n\033[1;34m==> $1\033[0m"; }
