@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.16](https://github.com/Pavliin/MyOwn/compare/v0.1.15...v0.1.16) (2026-09-07)
+
+### Fonctionnalités
+
+* **mailu:** enable admin API, add promotion and DKIM setup scripts ([f8a6edb](https://github.com/Pavliin/MyOwn/commit/f8a6edb0aaee9222bbdcac2a9068ce80957f1023))
+
+### Correctifs
+
+* **mail:** update the DKIM public key after a real key regeneration ([183b254](https://github.com/Pavliin/MyOwn/commit/183b25455509c54fb773dd94cd23e6cbd8f71008))
+
+### Documentation
+
+* add FairEmail Android setup to the user manual ([5d6bec1](https://github.com/Pavliin/MyOwn/commit/5d6bec1be263f1de708d7ee0c2e4e75399fc8e8f))
+* record tonight's Mailu DKIM/admin/crash investigation ([82c68af](https://github.com/Pavliin/MyOwn/commit/82c68afd2db7a8111497b2aab9e46b5d9678d1fc))
 ## [0.1.15](https://github.com/Pavliin/MyOwn/compare/v0.1.14...v0.1.15) (2026-09-06)
 
 ### Fonctionnalités
