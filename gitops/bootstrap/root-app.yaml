@@ -12,9 +12,19 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
+  # Deliberately manual, not an oversight: `root` decides when a pinned
+  # release tag's full tree gets (re)asserted onto the live cluster. If this
+  # were automated, root's own periodic reconciliation would clobber any
+  # live-tested-but-not-yet-committed fix on a child Application the moment
+  # it ran — root resyncing reasserts every child's spec (targetRevision,
+  # sources), which cascades into that child's own manifests too if its
+  # selfHeal is true. Hit for real at least twice (2026-08-15, 2026-08-22)
+  # before this was fixed here — see CLAUDE.md "Current state" and
+  # notes-techniques.md for both incidents. Sensitive-service child
+  # Applications stay on `automated.selfHeal: true` for now (deferred until
+  # real family usage exists, see docs/architecture.md §6) — only `root`
+  # itself needs to be the manual checkpoint, since it's the single gate
+  # that decides whether a pinned tag's content reaches production at all.
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
