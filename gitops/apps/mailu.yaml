@@ -237,6 +237,23 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: mailu
+  ignoreDifferences:
+    # Same well-known ArgoCD/StatefulSet limitation already fixed for
+    # Vaultwarden (see gitops/apps/vaultwarden.yaml) — never applied here
+    # for mailu-clamav specifically, spotted first as a real, reproduced
+    # `OutOfSync` on both dev and the mini PC (2026-09-12), confirmed by
+    # diffing the rendered manifest directly against the live object:
+    # Kubernetes normalizes each volumeClaimTemplate once the PVC is
+    # provisioned (adds apiVersion/kind, defaults spec.volumeMode,
+    # populates status) — none of which the desired manifest has.
+    - group: apps
+      kind: StatefulSet
+      name: mailu-clamav
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates[].status
+        - .spec.volumeClaimTemplates[].apiVersion
+        - .spec.volumeClaimTemplates[].kind
+        - .spec.volumeClaimTemplates[].spec.volumeMode
   syncPolicy:
     automated:
       prune: true
