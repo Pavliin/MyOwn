@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.17](https://github.com/Pavliin/MyOwn/compare/v0.1.16...v0.1.17) (2026-09-12)
+
+### Correctifs
+
+* **argocd:** make root's sync fully manual, matching real practice ([986b2a3](https://github.com/Pavliin/MyOwn/commit/986b2a3360f03fc7e19da72b626a90c5a90a5638))
+* **mailu:** stop mailu-clamav StatefulSet showing OutOfSync forever ([f8519f7](https://github.com/Pavliin/MyOwn/commit/f8519f74b6cc3f79a0c82c490fd596b356d584fd))
+
+### Documentation
+
+* **claude:** record tonight's Android/mail/selfHeal session ([68ebb70](https://github.com/Pavliin/MyOwn/commit/68ebb701d9f6854f15aebd5f25c301dc817652c8))
 ## [0.1.16](https://github.com/Pavliin/MyOwn/compare/v0.1.15...v0.1.16) (2026-09-07)
 
 ### Fonctionnalités
