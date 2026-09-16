@@ -100,11 +100,28 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
 
 Objectif : premier cas d'usage concret de la couche d'intégration IA, une fois le mail stable. Assistant en tâche de fond, pas de chat — dans l'esprit des fonctionnalités d'assistant ambiant type Apple Intelligence. Principe appliqué à toute action qui modifie une donnée : **l'IA propose, l'utilisateur valide**, jamais d'écriture automatique silencieuse.
 
-- Déploiement Ollama (fait en Phase 3.5, dev cluster) — modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B sur tri/résumé multilingue et extraction structurée, détail dans `notes-techniques.md`
-- Connecteur IMAP → tri/résumé automatique des mails
-- Extraction d'événements/tâches depuis les mails → proposition d'ajout au Calendrier/Tasks Nextcloud (CalDAV), écriture uniquement après validation explicite
+**Prérequis déjà validés (Phase 3.5), rien à revalider avant de démarrer** — détail complet dans `notes-techniques.md` section "Ollama (IA locale)" :
+
+- Ollama déployé sur le cluster (chart `otwld/ollama-helm`), modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B (9/12 champs corrects en extraction structurée vs 6/12 et 5/12) — `"think": false` dans chaque requête (sinon 40-130s de raisonnement caché inutile), `OLLAMA_MAX_LOADED_MODELS: "1"` (sinon OOM au chargement d'un second modèle).
+- Chaîne complète prototypée et validée bout en bout, chaque maillon vérifié indépendamment plutôt que supposé : IMAP (`imaplib`) → extraction Qwen3 → proposition en DM Matrix (`@alertbot`, `createRoom` avec `is_direct: true` + `preset: trusted_private_chat` — **créée à la demande, pas pré-provisionnée** : pas besoin d'un mécanisme d'adhésion par défaut comme pour le salon `#etat-du-systeme`, le bot crée le DM au moment où il a une proposition à faire) → confirmation humaine réelle → écriture CalDAV dans Nextcloud (uniquement après confirmation).
+- **Le prototype lui-même (scripts) n'est volontairement pas dans le dépôt** — outil de test jetable comme les scripts de comparatif de modèles, jamais commité. L'implémentation réelle repart de zéro côté code ; ce qui est acquis, c'est la conception validée et les bugs déjà trouvés (liste ci-dessous), pas du code réutilisable.
+
+**Bugs déjà trouvés en prototype, à ne pas re-découvrir en vrai implémentation** :
+
+- `DTSTART`/`DTEND` sans fuseau (floating time, RFC 5545) s'enregistrent et se relisent sans erreur via l'API, mais restent invisibles dans l'app Calendrier de Nextcloud — toujours écrire en UTC explicite (`Z`).
+- Un compte Nextcloud provisionné par `user_oidc` a un identifiant opaque distinct du compte SSO visible par l'utilisateur (confirmé via `occ user:info`/l'API OCS) et refuse l'auth par mot de passe local — le connecteur doit résoudre cet identifiant par utilisateur (pas de nom supposé) et écrire via un jeton d'application (`occ user:auth-tokens:add`), jamais un mot de passe.
+- Même logique d'identité à construire côté Matrix : l'ID Tuwunel d'un utilisateur est désormais fiable (`@username:offsystem.fr`, cf. le correctif du 2026-09-16 sur les usernames à un seul mot) mais reste à résoudre par utilisateur, pas à supposer.
+
+**Reste à faire pour une vraie implémentation** (hors scope du prototype, volontairement) :
+
+- Connecteur IMAP → tri/résumé automatique des mails, branché sur le vrai Mailu (plus GreenMail)
+- Extraction d'événements/tâches → proposition d'ajout au Calendrier/Tasks Nextcloud (CalDAV), écriture uniquement après validation explicite
 - Rappels basés sur les événements du calendrier
-- Canal de proposition/validation pour ces deux derniers points : réutilise le bot Tuwunel mis en place en Phase 4 pour l'alerting admin, mais en DM privé à chaque utilisateur — strictement séparé du salon partagé "État du système", propositions personnelles jamais visibles des autres
+- Remplacement du polling d'historique par un vrai `/sync` Matrix en long-polling
+- Ordonnancement récurrent (CronJob plutôt qu'un script lancé à la main)
+- Gestion des cas d'erreur : mail déjà traité, réponse ambiguë, timeout de confirmation
+- Un vrai annuaire utilisateur→identifiants (Matrix, compte Nextcloud, boîte mail) — à construire une fois, probablement via l'API Authentik (source de vérité identité unique du projet) plutôt qu'à improviser par utilisateur au fil de l'eau
+- Canal de proposition/validation : réutilise le bot Tuwunel de Phase 4 (alerting admin), mais en DM privé à chaque utilisateur — strictement séparé du salon partagé "État du système", propositions personnelles jamais visibles des autres (déjà le comportement du prototype, rien à changer)
 - Évaluation de l'extension à d'autres automatisations (classement de documents Nextcloud, etc.) — piste concrète notée en testant le tri de mail : un mail "colis livré" ou "colis disponible en point relais" pourrait devenir une **tâche** Nextcloud plutôt qu'un événement calendrier — pas de créneau horaire fixe, mais un état fait/pas fait naturel (cochable), avec échéance optionnelle (date limite de retrait) qui la ferait aussi apparaître dans le Calendrier. Nextcloud Tasks déployé en Phase 3.5 (`gitops/apps/nextcloud.yaml`), le mécanisme CalDAV pour l'écrire est le même que celui déjà validé pour les événements dans le prototype du pipeline mail — juste une collection VTODO plutôt que VEVENT. Envisager aussi une question de suivi proactive de l'IA ("dois-je te le rappeler quand tu seras chez toi ?", "à quelle heure ?") plutôt qu'une simple confirmation oui/non — un pattern différent de la validation binaire déjà posée, à explorer
 
 **Critère de sortie** : tri automatique des mails opérationnel et jugé utile par l'auteur en usage réel.
