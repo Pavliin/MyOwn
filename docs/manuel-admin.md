@@ -147,6 +147,14 @@ choix délibéré, pas un oubli.
   restant orphelin à supprimer à la main si besoin. À vérifier avant la
   première connexion de chaque nouvel utilisateur, pas après (voir
   `notes-techniques.md` pour le détail du mécanisme côté code).
+- **Salon `#etat-du-systeme` rejoint automatiquement** (`auto_join_rooms`
+  dans `tuwunel.toml`, depuis 2026-09-16) : rien à faire à l'enrôlement, la
+  première connexion SSO y ajoute le compte tout seul. Ne s'applique
+  qu'aux comptes créés **après** l'activation de ce réglage — un compte déjà
+  existant avant cette date doit encore rejoindre via le lien `matrix.to`
+  donné dans `manuel-utilisateur.md`, ou être invité à la main
+  (`POST /_matrix/client/v3/rooms/{roomId}/invite` avec le token de
+  `alertbot`).
 - Sauvegarde/restauration : voir `notes-techniques.md` (même mécanisme
   Restic que Vaultwarden, base RocksDB embarquée).
 
