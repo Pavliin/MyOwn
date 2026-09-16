@@ -23,7 +23,10 @@ choix délibéré, pas un oubli.
 1. **Authentik** (<https://authentik.offsystem.fr/if/admin/>) → Répertoire →
    Utilisateurs → Créer. Si un accès Mailu est prévu, saisir directement
    l'email définitif en `@offsystem.fr` — le changer plus tard demande une
-   manipulation admin en plus (voir Mailu ci-dessous).
+   manipulation admin en plus (voir Mailu ci-dessous). **Username : un seul
+   mot, sans espace** (ex. `prenomnom`, pas `Prénom Nom`) — sert tel quel
+   d'identifiant Tuwunel/LiveKit à la première connexion SSO, voir la section
+   Tuwunel ci-dessous si ce point est raté.
 2. Générer un **lien de récupération** pour ce compte (jamais choisir le mot
    de passe à sa place) et le transmettre à la personne.
 3. Elle définit son propre mot de passe via ce lien, puis se connecte en SSO
@@ -133,6 +136,17 @@ choix délibéré, pas un oubli.
   automatiquement un salon d'administration où des commandes serveur
   peuvent être envoyées comme des messages (voir la documentation Tuwunel
   pour la liste).
+- **Identifiant Matrix illisible après la première connexion SSO**
+  (`@ai2f-xt4jrh-vxtx:offsystem.fr` au lieu de `@prenomnom:offsystem.fr`) :
+  le username Authentik contenait un espace (ou un caractère non permis dans
+  un ID Matrix — accent, ponctuation…). Tuwunel rejette silencieusement ce
+  claim et retombe sur un identifiant généré à partir d'un hash, sans erreur
+  visible pour l'utilisateur. Correction : éditer le username Authentik en
+  un seul mot, puis faire refaire la connexion SSO — ça crée un **nouveau**
+  compte Matrix propre (pas de renommage possible du côté Matrix), l'ancien
+  restant orphelin à supprimer à la main si besoin. À vérifier avant la
+  première connexion de chaque nouvel utilisateur, pas après (voir
+  `notes-techniques.md` pour le détail du mécanisme côté code).
 - Sauvegarde/restauration : voir `notes-techniques.md` (même mécanisme
   Restic que Vaultwarden, base RocksDB embarquée).
 
