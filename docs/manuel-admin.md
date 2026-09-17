@@ -189,10 +189,38 @@ choix délibéré, pas un oubli.
   `scripts/uptime-kuma-setup.py` plutôt qu'à la main, pour rester
   reproductible après une recréation du cluster.
 
+## Pi-hole — DNS filtrant
+
+- **Admin** (LAN/VPN) : `http://<IP LAN du mini PC>:8081/admin` — pas de
+  panneau public, outil admin-only comme Grafana/ArgoCD.
+- **Mot de passe** : authentification par mot de passe seul, pas de
+  username. Généré à l'installation, transféré dans le Vaultwarden admin
+  (voir `manuel-installation.md` §20) — si perdu, réinitialiser avec
+  `sudo docker exec pihole-myown pihole setpassword`.
+- **Actions courantes** :
+  - Liste blanche d'un domaine faussement bloqué : onglet **Domains** →
+    ajouter en `Allow` (exact ou regex).
+  - Journal des requêtes en direct : onglet **Query Log**, filtrable par
+    appareil (IP) — utile pour vérifier qu'un appareil du foyer utilise
+    bien Pi-hole et voir ce qui lui est réellement bloqué.
+  - Si un utilisateur signale "le blocage ne fait pas grand-chose" alors
+    que le DNS est correctement configuré côté appareil : vérifier le
+    "DNS sécurisé" (DoH) du navigateur (Edge/Chrome), qui contourne le
+    DNS système par défaut sur beaucoup d'installations Windows récentes
+    — pas un problème Pi-hole.
+- Volontairement **hors GitOps et hors k3s** (conteneur Docker sur l'hôte,
+  `scripts/pihole-setup.sh`) — voir `architecture.md` §6. Pas de
+  sauvegarde Restic dédiée (décision explicite, voir `notes-techniques.md`).
+- **Limitation connue** : le DNS IPv6 annoncé par la Freebox (RA) n'est
+  pas redirigé — les appareils IPv6 natifs peuvent échapper au filtrage
+  pour les domaines avec enregistrement AAAA.
+
 ## Sauvegardes (Restic)
 
 Chaque service avec état a son propre `CronJob` de sauvegarde et son propre
-`RESTIC_PASSWORD` dans son secret (`gitops/manifests/<service>-backup/`).
-Procédure de sauvegarde/restauration manuelle détaillée, service par
-service, dans `notes-techniques.md` — pas dupliquée ici pour éviter la
-dérive entre les deux documents.
+`RESTIC_PASSWORD` dans son secret (`gitops/manifests/<service>-backup/`) —
+seule exception, Pi-hole (hors k3s, contenu jugé quasi entièrement
+reproductible, voir `notes-techniques.md`). Procédure de sauvegarde/
+restauration manuelle détaillée, service par service, dans
+`notes-techniques.md` — pas dupliquée ici pour éviter la dérive entre les
+deux documents.
