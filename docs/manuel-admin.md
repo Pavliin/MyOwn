@@ -177,6 +177,12 @@ choix délibéré, pas un oubli.
   preset admin possible : les identifiants Nextcloud provisionnés par
   `user_oidc` sont opaques par personne, pas substituables par un preset
   commun.
+- **"Le webmail n'affiche plus le contenu des mails" après un
+  rafraîchissement de session Authentik** : gotcha connu (2026-09-17,
+  `notes-techniques.md`) — la session IMAP interne de Roundcube peut se
+  désynchroniser. Un simple rechargement de page ne suffit pas : demander
+  une **déconnexion explicite du webmail** (menu utilisateur → Déconnexion)
+  puis une reconnexion.
 
 ## Uptime Kuma — supervision
 
