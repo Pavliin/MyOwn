@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.18](https://github.com/Pavliin/MyOwn/compare/v0.1.17...v0.1.18) (2026-09-17)
+
+### Fonctionnalités
+
+* **pihole:** add DNS ad-blocking as a host-level Docker container ([ed3dfef](https://github.com/Pavliin/MyOwn/commit/ed3dfefda3f1866dddd558dd14bfb0775ab6227d))
+
+### Documentation
+
+* **roadmap:** flesh out Phase 5 kickoff prerequisites and remaining work ([3c2796b](https://github.com/Pavliin/MyOwn/commit/3c2796bb2a94a92a78253980bd25eaf004ef878e))
+* **tuwunel:** document username-with-space gotcha breaking Matrix IDs ([eb43b1e](https://github.com/Pavliin/MyOwn/commit/eb43b1ea6301f6894b1e9dda748454aac57c2d30))
+
 ## [0.1.17](https://github.com/Pavliin/MyOwn/compare/v0.1.16...v0.1.17) (2026-09-12)
 
 ### Correctifs
