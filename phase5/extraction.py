@@ -107,7 +107,8 @@ Analyse ce mail et réponds uniquement avec le JSON demandé :
 - has_event / event : un événement avec horaire précis (rendez-vous, réservation) à ajouter au calendrier ? \
 title est obligatoire dès que has_event est vrai (jamais vide). \
 start_local/end_local en heure locale France, telle qu'écrite dans le mail — NE PAS convertir en UTC, \
-juste recopier l'heure locale du mail au format YYYY-MM-DDTHH:MM:SS.
+juste recopier l'heure locale du mail au format YYYY-MM-DDTHH:MM:SS. Si le mail ne précise pas l'année, \
+choisis toujours la prochaine occurrence future par rapport à la date actuelle ci-dessus, jamais une date déjà passée.
 - has_reminder / reminder : une tâche à faire sans horaire fixe (ex: colis à récupérer, réponse attendue) ? \
 title obligatoire dès que has_reminder est vrai. due_local optionnel si pas de date limite, même format, même consigne (heure locale, pas d'UTC).
 - important / important_reason : ce mail mérite-t-il une notification immédiate ?
@@ -128,6 +129,28 @@ def to_utc_z(local_iso: str) -> str:
     return aware_local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _normalize(extracted: dict) -> dict:
+    """Reconciles a real inconsistency found live: the model can return
+    has_event=true with event=null (or an event with no usable title),
+    same for has_reminder/reminder — schema `required` inside the nested
+    object doesn't stop the model from omitting the object entirely while
+    the top-level flag stays true. A caller trusting has_event alone would
+    build an empty, confusing proposal ("Dois-je ajouter ? (oui/non)",
+    the exact bug a live run hit). The object's actual content is the
+    source of truth here, not the flag next to it — corrected once,
+    centrally, so every caller of extract_from_email() gets consistent
+    flags rather than re-deriving this check itself."""
+    event = extracted.get("event")
+    if not (event and event.get("title")):
+        extracted["has_event"] = False
+        extracted["event"] = None
+    reminder = extracted.get("reminder")
+    if not (reminder and reminder.get("title")):
+        extracted["has_reminder"] = False
+        extracted["reminder"] = None
+    return extracted
+
+
 def _add_utc_fields(extracted: dict) -> dict:
     """Post-processing pass: adds *_utc alongside every *_local field the
     model returned, for the CalDAV writer — the model itself never
@@ -141,6 +164,27 @@ def _add_utc_fields(extracted: dict) -> dict:
     reminder = extracted.get("reminder")
     if reminder and reminder.get("due_local"):
         reminder["due_utc"] = to_utc_z(reminder["due_local"])
+    return extracted
+
+
+def _reject_past_events(extracted: dict) -> dict:
+    """Real bug found live: a mail mentioning a recurring annual event
+    ("le 8 octobre", no year) with today's date given in the prompt still
+    got extracted a year in the past (2025 instead of 2026) — proposed,
+    approved, and written to the real calendar before anyone noticed the
+    year. A proposal to add an already-past event to a calendar is never
+    legitimate for this use case (nobody wants a reminder for something
+    that already happened), so this is a hard backstop in code rather
+    than a prompt tweak asking the model to be more careful: any event
+    whose start is in the past gets dropped here, unconditionally, rather
+    than trusted through to a human who might not double-check the year."""
+    event = extracted.get("event")
+    if event and event.get("start_utc"):
+        start = datetime.strptime(event["start_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        if start < datetime.now(timezone.utc):
+            info(f"Rejecting event {event.get('title')!r}: start {event['start_utc']} is in the past — likely a bad year, not a real event to propose.")
+            extracted["has_event"] = False
+            extracted["event"] = None
     return extracted
 
 
@@ -158,7 +202,12 @@ def extract_from_email(sender: str, subject: str, body: str, current_date: str |
                 "think": False,
                 "stream": False,
             },
-            timeout=120,
+            # Real timeout hit live: the mini PC's Ollama runs CPU-only
+            # (~3.4 tokens/s, confirmed in its own logs) — 120s was too
+            # short for a longer mail body (a newsletter's full text is a
+            # couple thousand tokens of context). 600s covers it with
+            # margin; still bounded, not infinite.
+            timeout=600,
         )
         r.raise_for_status()
         raw_response = r.json()["response"]
@@ -167,7 +216,7 @@ def extract_from_email(sender: str, subject: str, body: str, current_date: str |
         parsed = json.loads(raw_response)
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Model didn't return valid JSON despite format schema: {raw_response!r}") from e
-    return _add_utc_fields(parsed)
+    return _reject_past_events(_add_utc_fields(_normalize(parsed)))
 
 
 def main() -> None:
