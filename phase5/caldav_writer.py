@@ -37,7 +37,7 @@ Usage:
 import sys
 import uuid
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -71,8 +71,27 @@ def _to_ics_utc(iso_z: str) -> str:
     return dt.strftime("%Y%m%dT%H%M%SZ")
 
 
-def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, start_utc: str, end_utc: str) -> str:
-    """Returns the new event's iCalendar UID."""
+DEFAULT_DURATION_MINUTES = {"rdv": 60, "action": 20}
+
+
+def _default_end(start_utc: str, duration_kind: str) -> str:
+    """Real gap found live: events with no end_local ended up with
+    DTEND == DTSTART (a zero-duration calendar entry) — silently correct
+    per the ICS spec but useless to look at. duration_kind ("rdv" vs
+    "action", extraction.py) picks a sensible default instead of assuming
+    one size fits all: an hour for an appointment-style event, ~20 min
+    for a quick errand."""
+    minutes = DEFAULT_DURATION_MINUTES.get(duration_kind, DEFAULT_DURATION_MINUTES["rdv"])
+    dt = datetime.strptime(start_utc, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return (dt + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, start_utc: str, end_utc: str | None = None, duration_kind: str = "rdv") -> str:
+    """Returns the new event's iCalendar UID. end_utc defaults via
+    _default_end() when not given, instead of collapsing to a
+    zero-duration event."""
+    if not end_utc:
+        end_utc = _default_end(start_utc, duration_kind)
     event_uid = str(uuid.uuid4())
     ics = (
         "BEGIN:VCALENDAR\r\n"

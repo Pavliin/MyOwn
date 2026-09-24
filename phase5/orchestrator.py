@@ -201,7 +201,7 @@ def process_user(matrix_id: str, nc_uid: str, mailbox: str, imap_password: str, 
             if decision:
                 if result.get("has_event") and result.get("event"):
                     ev = result["event"]
-                    write_event(nc_base, nc_auth, nc_uid, ev["title"], ev["start_utc"], ev.get("end_utc") or ev["start_utc"])
+                    write_event(nc_base, nc_auth, nc_uid, ev["title"], ev["start_utc"], ev.get("end_utc"), ev.get("duration_kind", "rdv"))
                 if result.get("has_reminder") and result.get("reminder"):
                     rem = result["reminder"]
                     write_task(nc_base, nc_auth, nc_uid, rem["title"], rem.get("due_utc"), task_list=task_list_segment)

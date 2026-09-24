@@ -69,8 +69,13 @@ RESPONSE_SCHEMA = {
                 "title": {"type": "string"},
                 "start_local": {"type": "string", "description": "YYYY-MM-DDTHH:MM:SS, heure locale France, SANS fuseau ni Z"},
                 "end_local": {"type": ["string", "null"], "description": "YYYY-MM-DDTHH:MM:SS, heure locale France, ou null si inconnue"},
+                "duration_kind": {
+                    "type": "string",
+                    "enum": ["rdv", "action"],
+                    "description": "rdv = rendez-vous/réservation avec une vraie durée (repas, visite, consultation...); action = geste ponctuel et rapide (retrait, dépôt, appel...). Sert de durée par défaut quand end_local est inconnu.",
+                },
             },
-            "required": ["title", "start_local"],
+            "required": ["title", "start_local", "duration_kind"],
         },
         "has_reminder": {"type": "boolean"},
         "reminder": {
@@ -108,7 +113,9 @@ Analyse ce mail et réponds uniquement avec le JSON demandé :
 title est obligatoire dès que has_event est vrai (jamais vide). \
 start_local/end_local en heure locale France, telle qu'écrite dans le mail — NE PAS convertir en UTC, \
 juste recopier l'heure locale du mail au format YYYY-MM-DDTHH:MM:SS. Si le mail ne précise pas l'année, \
-choisis toujours la prochaine occurrence future par rapport à la date actuelle ci-dessus, jamais une date déjà passée.
+choisis toujours la prochaine occurrence future par rapport à la date actuelle ci-dessus, jamais une date déjà passée. \
+duration_kind obligatoire : "rdv" pour un rendez-vous/réservation avec une vraie durée (repas, visite, consultation), \
+"action" pour un geste ponctuel et rapide (retrait, dépôt, appel) — sert à choisir une durée par défaut si end_local est inconnu.
 - has_reminder / reminder : une tâche à faire sans horaire fixe (ex: colis à récupérer, réponse attendue) ? \
 title obligatoire dès que has_reminder est vrai. due_local optionnel si pas de date limite, même format, même consigne (heure locale, pas d'UTC).
 - important / important_reason : ce mail mérite-t-il une notification immédiate ?
