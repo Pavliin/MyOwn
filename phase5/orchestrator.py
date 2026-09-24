@@ -43,7 +43,7 @@ import re
 import sys
 from datetime import datetime
 
-from caldav_writer import CALENDAR_DISPLAY_NAME, write_event, write_task
+from caldav_writer import CALENDAR_DISPLAY_NAME, find_or_create_task_list, write_event, write_task
 from extraction import extract_from_email
 from imap_connector import fetch_message_text, list_recent_messages
 from matrix_dm import get_or_create_dm, send_proposal, wait_for_reply
@@ -79,7 +79,7 @@ def _human_local(local_iso: str | None) -> str | None:
     return datetime.strptime(local_iso, "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y à %Hh%M")
 
 
-def _format_proposal(message: dict, extracted: dict) -> str:
+def _format_proposal(message: dict, extracted: dict, task_list_display_name: str | None = None) -> str:
     """Only for the has_event/has_reminder case — there's something to
     write, so the closing question names exactly what and where, and asks
     for consent to write it. _format_notification (below) handles the
@@ -92,7 +92,7 @@ def _format_proposal(message: dict, extracted: dict) -> str:
     timestamp (and once, literally "None" when the model omitted a
     field entirely — extraction.py's schema now requires title, this
     formats the human-readable *_local time instead of *_utc either way)."""
-    lines = [f"🤖 Mail de {message['from']} — « {message['subject']} »"]
+    lines = [f"🤖 Mail du {message.get('date', '?')}\nDe : {message['from']}\nSujet : « {message['subject']} »"]
     asks_for = []
     if extracted.get("has_event") and extracted.get("event"):
         ev = extracted["event"]
@@ -103,7 +103,8 @@ def _format_proposal(message: dict, extracted: dict) -> str:
         due = _human_local(rem.get("due_local"))
         due_str = f" (échéance {due})" if due else ""
         lines.append(f"✅ Tâche suggérée : {rem.get('title')}{due_str}")
-        asks_for.append("une tâche")
+        target = f" dans la liste « {task_list_display_name} »" if task_list_display_name else ""
+        asks_for.append(f"une tâche{target}")
     if extracted.get("important"):
         lines.append(f"⚠️ Par ailleurs, ce mail a été jugé important : {extracted.get('important_reason')}")
     lines.append(f"\nDois-je ajouter {' et '.join(asks_for)} ? (oui/non)")
@@ -117,7 +118,8 @@ def _format_notification(message: dict, extracted: dict) -> str:
     la réception d'un mail important" is its own thing, separate from
     "proposition d'ajout")."""
     return (
-        f"🤖 Mail important reçu, {message['from']} — « {message['subject']} »\n"
+        f"🤖 Mail important reçu du {message.get('date', '?')}\n"
+        f"De : {message['from']}\nSujet : « {message['subject']} »\n"
         f"⚠️ {extracted.get('important_reason')}"
     )
 
@@ -182,7 +184,15 @@ def process_user(matrix_id: str, nc_uid: str, mailbox: str, imap_password: str, 
                 _mark_processed(nc_base, nc_auth, nc_uid, m["uid"])
                 continue
 
-            send_proposal(room_id, _format_proposal(m, result))
+            # Resolved up front (not just at write time) so the proposal
+            # itself can name the real target list — a reminder proposal
+            # that doesn't say which list it'd land in has the same gap
+            # already fixed for events.
+            task_list_segment = task_list_display_name = None
+            if result.get("has_reminder") and result.get("reminder"):
+                task_list_segment, task_list_display_name = find_or_create_task_list(nc_base, nc_auth, nc_uid)
+
+            send_proposal(room_id, _format_proposal(m, result, task_list_display_name))
             decision = _confirm(room_id)
 
             if decision is None:
@@ -194,7 +204,7 @@ def process_user(matrix_id: str, nc_uid: str, mailbox: str, imap_password: str, 
                     write_event(nc_base, nc_auth, nc_uid, ev["title"], ev["start_utc"], ev.get("end_utc") or ev["start_utc"])
                 if result.get("has_reminder") and result.get("reminder"):
                     rem = result["reminder"]
-                    write_task(nc_base, nc_auth, nc_uid, rem["title"], rem.get("due_utc"))
+                    write_task(nc_base, nc_auth, nc_uid, rem["title"], rem.get("due_utc"), task_list=task_list_segment)
                 append_history(nc_base, nc_auth, nc_uid, {"kind": "mail_proposal_accepted", "subject": m["subject"], "uid": m["uid"]})
             else:
                 append_history(nc_base, nc_auth, nc_uid, {"kind": "mail_proposal_declined", "subject": m["subject"], "uid": m["uid"]})

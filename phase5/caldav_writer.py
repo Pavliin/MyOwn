@@ -94,15 +94,22 @@ def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, 
     return event_uid
 
 
-def find_or_create_task_list(base: str, nc_auth: tuple[str, str], nc_uid: str) -> str:
-    """Returns the path segment of a VTODO-capable calendar collection
-    under nc_uid's calendar home, creating one (MKCALENDAR) if none
-    exists yet — see this module's docstring for why `personal` alone
-    can't be assumed."""
+TASK_LIST_FALLBACK_DISPLAY_NAME = "Tâches (Phase 5)"
+
+
+def find_or_create_task_list(base: str, nc_auth: tuple[str, str], nc_uid: str) -> tuple[str, str]:
+    """Returns (path_segment, display_name) of a VTODO-capable calendar
+    collection under nc_uid's calendar home, creating one (MKCALENDAR) if
+    none exists yet — see this module's docstring for why `personal`
+    alone can't be assumed. The display name matters beyond cosmetics:
+    the orchestrator needs it to tell the person which list a proposed
+    task would actually land in (a real gap found live — the reminder
+    proposal named no target at all, same bug class already fixed for
+    events)."""
     body = (
         '<?xml version="1.0"?>'
         '<d:propfind xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">'
-        '<d:prop><d:resourcetype/><cal:supported-calendar-component-set/></d:prop>'
+        '<d:prop><d:resourcetype/><d:displayname/><cal:supported-calendar-component-set/></d:prop>'
         '</d:propfind>'
     )
     home = f"{base}/remote.php/dav/calendars/{nc_uid}/"
@@ -117,15 +124,16 @@ def find_or_create_task_list(base: str, nc_auth: tuple[str, str], nc_uid: str) -
         if "VTODO" in comp_names:
             # href looks like /remote.php/dav/calendars/<uid>/<segment>/
             segment = href.rstrip("/").rsplit("/", 1)[-1]
-            info(f"Found existing VTODO-capable list: {segment!r}")
-            return segment
+            display_name = response.findtext(f".//{{{DAV_NS}}}displayname") or segment
+            info(f"Found existing VTODO-capable list: {segment!r} ({display_name!r})")
+            return segment, display_name
 
     info(f"No VTODO-capable list found, creating {TASK_LIST_FALLBACK_NAME!r}...")
     mkcalendar_body = (
         '<?xml version="1.0"?>'
         '<c:mkcalendar xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">'
         '<d:set><d:prop>'
-        '<d:displayname>Tâches (Phase 5)</d:displayname>'
+        f'<d:displayname>{TASK_LIST_FALLBACK_DISPLAY_NAME}</d:displayname>'
         '<c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>'
         '</d:prop></d:set>'
         '</c:mkcalendar>'
@@ -135,14 +143,14 @@ def find_or_create_task_list(base: str, nc_auth: tuple[str, str], nc_uid: str) -
         headers={"Content-Type": "application/xml"}, timeout=10,
     )
     r.raise_for_status()
-    return TASK_LIST_FALLBACK_NAME
+    return TASK_LIST_FALLBACK_NAME, TASK_LIST_FALLBACK_DISPLAY_NAME
 
 
 def write_task(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, due_utc: str | None = None, task_list: str | None = None) -> str:
     """Returns the new task's iCalendar UID. Resolves a VTODO-capable list
     via find_or_create_task_list() if task_list isn't given explicitly."""
     if task_list is None:
-        task_list = find_or_create_task_list(base, nc_auth, nc_uid)
+        task_list, _ = find_or_create_task_list(base, nc_auth, nc_uid)
 
     task_uid = str(uuid.uuid4())
     due_line = f"DUE:{_to_ics_utc(due_utc)}\r\n" if due_utc else ""
