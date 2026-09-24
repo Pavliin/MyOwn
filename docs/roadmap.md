@@ -98,33 +98,21 @@ Objectif : quitter le cluster de dev pour la vraie infrastructure (mini PC + dom
 
 ## Phase 5 — Intelligence locale (Ollama)
 
-Objectif : premier cas d'usage concret de la couche d'intégration IA, une fois le mail stable. Assistant en tâche de fond, pas de chat — dans l'esprit des fonctionnalités d'assistant ambiant type Apple Intelligence. Principe appliqué à toute action qui modifie une donnée : **l'IA propose, l'utilisateur valide**, jamais d'écriture automatique silencieuse.
+Objectif : premier cas d'usage concret de la couche d'intégration IA. Assistant en tâche de fond, pas de chat — dans l'esprit des fonctionnalités d'assistant ambiant type Apple Intelligence. Principe appliqué à toute action qui modifie une donnée : **l'IA propose, l'utilisateur valide**, jamais d'écriture automatique silencieuse.
 
-**Prérequis déjà validés (Phase 3.5), rien à revalider avant de démarrer** — détail complet dans `notes-techniques.md` section "Ollama (IA locale)" :
+**Pipeline mail implémenté et validé de bout en bout sur données réelles (2026-09-24)** — cadrage produit collaborativement dans un doc dédié avant tout code, puis neuf modules Python (`phase5/`, PR [#167](https://github.com/Pavliin/MyOwn/pull/167)) livrés en une session, chacun testé contre de vrais services avant de passer au suivant. Détail complet, bug par bug, dans `notes-techniques.md` section "Ollama (IA locale)" → "Pipeline réel implémenté et validé de bout en bout". Socle Ollama toujours valide sans changement : chart `otwld/ollama-helm`, **Qwen3 8B**, `"think": false`, `OLLAMA_MAX_LOADED_MODELS: "1"`.
 
-- Ollama déployé sur le cluster (chart `otwld/ollama-helm`), modèle **Qwen3 8B** retenu après comparatif réel contre Mistral 7B/Llama 3.1 8B (9/12 champs corrects en extraction structurée vs 6/12 et 5/12) — `"think": false` dans chaque requête (sinon 40-130s de raisonnement caché inutile), `OLLAMA_MAX_LOADED_MODELS: "1"` (sinon OOM au chargement d'un second modèle).
-- Chaîne complète prototypée et validée bout en bout, chaque maillon vérifié indépendamment plutôt que supposé : IMAP (`imaplib`) → extraction Qwen3 → proposition en DM Matrix (`@alertbot`, `createRoom` avec `is_direct: true` + `preset: trusted_private_chat` — **créée à la demande, pas pré-provisionnée** : pas besoin d'un mécanisme d'adhésion par défaut comme pour le salon `#etat-du-systeme`, le bot crée le DM au moment où il a une proposition à faire) → confirmation humaine réelle → écriture CalDAV dans Nextcloud (uniquement après confirmation).
-- **Le prototype lui-même (scripts) n'est volontairement pas dans le dépôt** — outil de test jetable comme les scripts de comparatif de modèles, jamais commité. L'implémentation réelle repart de zéro côté code ; ce qui est acquis, c'est la conception validée et les bugs déjà trouvés (liste ci-dessous), pas du code réutilisable.
+- ~~Connecteur IMAP → tri/résumé automatique des mails, branché sur le vrai Mailu~~ — fait, `phase5/imap_connector.py`, strictement lecture seule (`readonly=True` + `BODY.PEEK`).
+- ~~Extraction d'événements/tâches → proposition d'ajout au Calendrier/Tasks Nextcloud (CalDAV)~~ — fait, `phase5/extraction.py` (Qwen3, schéma JSON structuré, conversion de fuseau horaire faite en code plutôt que confiée au modèle, rejet des dates extraites dans le passé) + `phase5/caldav_writer.py` (VEVENT/VTODO, calendrier et liste de tâches résolus dynamiquement, jamais un nom supposé, durée par défaut 1h/20min).
+- ~~Remplacement du polling d'historique par un vrai `/sync` Matrix en long-polling~~ — fait, `phase5/matrix_dm.py`.
+- ~~Ordonnancement récurrent~~ — **partiel** : `phase5/orchestrator.py` gère les 3 cas d'erreur (mail déjà traité, réponse ambiguë, timeout de confirmation), validé en conditions réelles, mais reste lancé à la main — la bascule en CronJob (image de conteneur, `Application` GitOps, câblage de secrets) est un chantier à part de la logique métier, pas encore fait.
+- ~~Un vrai annuaire utilisateur→identifiants~~ — fait, `phase5/user_directory.py`, via l'API Authentik + l'API OCS Nextcloud (matché par email, dérive détectée plutôt que devinée).
+- ~~Canal de proposition/validation en DM privé~~ — fait, `phase5/matrix_dm.py`, réutilise `@alertbot` (affiché "Myo") strictement en DM, jamais le salon partagé.
+- **Nouveau, pas prévu au départ** : opt-in explicite par service (`phase5/opt_in.py`) avant toute automatisation sur un service réel — ajouté suite à une revue du doc de cadrage, jamais d'action par défaut sur une réponse ambiguë.
+- Classement de mail (règle Sieve) — **reporté**, bloqué sur une authentification ManageSieve qui échoue contre le Dovecot du mini PC (cause exacte non trouvée, investigation arrêtée pour ne pas continuer à générer des échecs d'auth contre un vrai compte ; détail dans `notes-techniques.md`). Le reste du pipeline n'en dépend pas.
+- Évaluation de l'extension à d'autres automatisations (classement de documents Nextcloud, question de suivi proactive plutôt qu'un oui/non binaire) — toujours pas commencé.
 
-**Bugs déjà trouvés en prototype, à ne pas re-découvrir en vrai implémentation** :
-
-- `DTSTART`/`DTEND` sans fuseau (floating time, RFC 5545) s'enregistrent et se relisent sans erreur via l'API, mais restent invisibles dans l'app Calendrier de Nextcloud — toujours écrire en UTC explicite (`Z`).
-- Un compte Nextcloud provisionné par `user_oidc` a un identifiant opaque distinct du compte SSO visible par l'utilisateur (confirmé via `occ user:info`/l'API OCS) et refuse l'auth par mot de passe local — le connecteur doit résoudre cet identifiant par utilisateur (pas de nom supposé) et écrire via un jeton d'application (`occ user:auth-tokens:add`), jamais un mot de passe.
-- Même logique d'identité à construire côté Matrix : l'ID Tuwunel d'un utilisateur est désormais fiable (`@username:offsystem.fr`, cf. le correctif du 2026-09-16 sur les usernames à un seul mot) mais reste à résoudre par utilisateur, pas à supposer.
-
-**Reste à faire pour une vraie implémentation** (hors scope du prototype, volontairement) :
-
-- Connecteur IMAP → tri/résumé automatique des mails, branché sur le vrai Mailu (plus GreenMail)
-- Extraction d'événements/tâches → proposition d'ajout au Calendrier/Tasks Nextcloud (CalDAV), écriture uniquement après validation explicite
-- Rappels basés sur les événements du calendrier
-- Remplacement du polling d'historique par un vrai `/sync` Matrix en long-polling
-- Ordonnancement récurrent (CronJob plutôt qu'un script lancé à la main)
-- Gestion des cas d'erreur : mail déjà traité, réponse ambiguë, timeout de confirmation
-- Un vrai annuaire utilisateur→identifiants (Matrix, compte Nextcloud, boîte mail) — à construire une fois, probablement via l'API Authentik (source de vérité identité unique du projet) plutôt qu'à improviser par utilisateur au fil de l'eau
-- Canal de proposition/validation : réutilise le bot Tuwunel de Phase 4 (alerting admin), mais en DM privé à chaque utilisateur — strictement séparé du salon partagé "État du système", propositions personnelles jamais visibles des autres (déjà le comportement du prototype, rien à changer)
-- Évaluation de l'extension à d'autres automatisations (classement de documents Nextcloud, etc.) — piste concrète notée en testant le tri de mail : un mail "colis livré" ou "colis disponible en point relais" pourrait devenir une **tâche** Nextcloud plutôt qu'un événement calendrier — pas de créneau horaire fixe, mais un état fait/pas fait naturel (cochable), avec échéance optionnelle (date limite de retrait) qui la ferait aussi apparaître dans le Calendrier. Nextcloud Tasks déployé en Phase 3.5 (`gitops/apps/nextcloud.yaml`), le mécanisme CalDAV pour l'écrire est le même que celui déjà validé pour les événements dans le prototype du pipeline mail — juste une collection VTODO plutôt que VEVENT. Envisager aussi une question de suivi proactive de l'IA ("dois-je te le rappeler quand tu seras chez toi ?", "à quelle heure ?") plutôt qu'une simple confirmation oui/non — un pattern différent de la validation binaire déjà posée, à explorer
-
-**Critère de sortie** : tri automatique des mails opérationnel et jugé utile par l'auteur en usage réel.
+**Critère de sortie** : tri automatique des mails opérationnel et jugé utile par l'auteur en usage réel — le pipeline événements/tâches est validé techniquement de bout en bout (y compris par une relecture humaine attentive qui a trouvé et fait corriger plusieurs bugs réels), mais le jugement "utile en usage réel" sur la durée reste à établir, et le classement de mail (une partie du "tri") reste bloqué sur Sieve.
 
 ## Phase 6 — Post-MVP : montée en échelle
 
