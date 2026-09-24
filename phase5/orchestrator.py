@@ -41,8 +41,9 @@ Usage:
 import os
 import re
 import sys
+from datetime import datetime
 
-from caldav_writer import write_event, write_task
+from caldav_writer import CALENDAR_DISPLAY_NAME, write_event, write_task
 from extraction import extract_from_email
 from imap_connector import fetch_message_text, list_recent_messages
 from matrix_dm import get_or_create_dm, send_proposal, wait_for_reply
@@ -69,25 +70,43 @@ def _mark_processed(nc_base: str, nc_auth: tuple[str, str], nc_uid: str, uid: st
     write_memory(nc_base, nc_auth, nc_uid, data)
 
 
+def _human_local(local_iso: str | None) -> str | None:
+    """'2026-09-18T12:15:00' -> '18/09/2026 à 12h15' — for display only,
+    never for the actual CalDAV write (that uses the UTC conversion in
+    extraction.py's to_utc_z())."""
+    if not local_iso:
+        return None
+    return datetime.strptime(local_iso, "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y à %Hh%M")
+
+
 def _format_proposal(message: dict, extracted: dict) -> str:
     """Only for the has_event/has_reminder case — there's something to
-    write, so the closing question asks for consent to write it.
-    _format_notification (below) handles the important-only case, where
-    nothing gets written and there's nothing to "add" — a real bug found
-    live: asking "j'ajoute ça ?" for a plain importance flag confused the
-    person it was sent to, correctly, since nothing was actually being
-    proposed for addition."""
+    write, so the closing question names exactly what and where, and asks
+    for consent to write it. _format_notification (below) handles the
+    important-only case, where nothing gets written and there's nothing
+    to "add".
+
+    Two real bugs found live, both fixed here: (1) "j'ajoute ça ?" named
+    neither what nor where — now says explicitly "un événement dans
+    l'agenda « Personnel »"; (2) the event line showed the raw UTC
+    timestamp (and once, literally "None" when the model omitted a
+    field entirely — extraction.py's schema now requires title, this
+    formats the human-readable *_local time instead of *_utc either way)."""
     lines = [f"🤖 Mail de {message['from']} — « {message['subject']} »"]
+    asks_for = []
     if extracted.get("has_event") and extracted.get("event"):
         ev = extracted["event"]
-        lines.append(f"📅 Événement détecté : {ev.get('title')} — {ev.get('start_utc')}")
+        lines.append(f"📅 Événement détecté : {ev.get('title')} le {_human_local(ev.get('start_local'))}")
+        asks_for.append(f"un événement dans l'agenda « {CALENDAR_DISPLAY_NAME} »")
     if extracted.get("has_reminder") and extracted.get("reminder"):
         rem = extracted["reminder"]
-        due = f" (échéance {rem['due_utc']})" if rem.get("due_utc") else ""
-        lines.append(f"✅ Tâche suggérée : {rem.get('title')}{due}")
+        due = _human_local(rem.get("due_local"))
+        due_str = f" (échéance {due})" if due else ""
+        lines.append(f"✅ Tâche suggérée : {rem.get('title')}{due_str}")
+        asks_for.append("une tâche")
     if extracted.get("important"):
         lines.append(f"⚠️ Par ailleurs, ce mail a été jugé important : {extracted.get('important_reason')}")
-    lines.append("\nJ'ajoute ça (oui/non) ?")
+    lines.append(f"\nDois-je ajouter {' et '.join(asks_for)} ? (oui/non)")
     return "\n".join(lines)
 
 

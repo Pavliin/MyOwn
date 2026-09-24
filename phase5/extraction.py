@@ -23,10 +23,20 @@ sitting in a real inbox is not a hypothetical for a mail-reading bot).
 
 DTSTART/DTEND real gotcha from the mail-pipeline prototype
 (notes-techniques.md): floating time (no `Z`) saves and reads back fine
-via CalDAV but silently never renders in Nextcloud's own Calendar UI.
-The prompt asks for explicit UTC (`Z`-suffixed) timestamps for exactly
-this reason — this script only asks for it; the CalDAV writer (step 7)
-is what actually has to get it right.
+via CalDAV but silently never renders in Nextcloud's own Calendar UI —
+the CalDAV writer (step 7) still needs explicit UTC.
+
+Real bug found on the first live orchestrator run, not in review: the
+original prompt asked the model to produce the UTC time directly, and
+Qwen3 just echoed the mail's local wall-clock time ("12h15") with a "Z"
+slapped on — correct-looking, wrong by up to 2 hours (France is
+UTC+1/+2 depending on DST), since the model never actually converted
+anything. Fixed by moving the conversion out of the model entirely: it
+now reports the LOCAL time exactly as written in the mail (no
+conversion, nothing to get wrong), and `to_utc_z()` below does the actual
+Europe/Paris → UTC conversion in code with `zoneinfo`, correctly handling
+CET/CEST — the same "don't trust LLM arithmetic for something code can
+do exactly" judgment call already applied elsewhere in this project.
 
 Usage:
     export PHASE5_SSH_HOST=192.168.1.143   # mini PC; unset = dev cluster
@@ -36,10 +46,13 @@ Usage:
 import json
 import sys
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 
 import cluster_target as cluster
+
+LOCAL_TZ = ZoneInfo("Europe/Paris")
 
 OLLAMA_NAMESPACE = "ollama"
 OLLAMA_SERVICE = "svc/ollama"
@@ -54,17 +67,19 @@ RESPONSE_SCHEMA = {
             "type": ["object", "null"],
             "properties": {
                 "title": {"type": "string"},
-                "start_utc": {"type": "string", "description": "ISO 8601, UTC, must end in Z"},
-                "end_utc": {"type": "string", "description": "ISO 8601, UTC, must end in Z"},
+                "start_local": {"type": "string", "description": "YYYY-MM-DDTHH:MM:SS, heure locale France, SANS fuseau ni Z"},
+                "end_local": {"type": ["string", "null"], "description": "YYYY-MM-DDTHH:MM:SS, heure locale France, ou null si inconnue"},
             },
+            "required": ["title", "start_local"],
         },
         "has_reminder": {"type": "boolean"},
         "reminder": {
             "type": ["object", "null"],
             "properties": {
                 "title": {"type": "string"},
-                "due_utc": {"type": ["string", "null"], "description": "ISO 8601 UTC with Z, or null if no deadline"},
+                "due_local": {"type": ["string", "null"], "description": "YYYY-MM-DDTHH:MM:SS, heure locale France, ou null si pas de date limite"},
             },
+            "required": ["title"],
         },
         "important": {"type": "boolean"},
         "important_reason": {"type": ["string", "null"]},
@@ -90,9 +105,11 @@ Sujet : {subject}
 
 Analyse ce mail et réponds uniquement avec le JSON demandé :
 - has_event / event : un événement avec horaire précis (rendez-vous, réservation) à ajouter au calendrier ? \
-Les dates doivent être en UTC ISO 8601 avec un "Z" final (jamais d'heure flottante sans fuseau).
+title est obligatoire dès que has_event est vrai (jamais vide). \
+start_local/end_local en heure locale France, telle qu'écrite dans le mail — NE PAS convertir en UTC, \
+juste recopier l'heure locale du mail au format YYYY-MM-DDTHH:MM:SS.
 - has_reminder / reminder : une tâche à faire sans horaire fixe (ex: colis à récupérer, réponse attendue) ? \
-due_utc optionnel si pas de date limite.
+title obligatoire dès que has_reminder est vrai. due_local optionnel si pas de date limite, même format, même consigne (heure locale, pas d'UTC).
 - important / important_reason : ce mail mérite-t-il une notification immédiate ?
 - suggested_classification : catégorie suggérée pour classer ce mail (newsletter, administratif, personnel, pro, ...).
 """
@@ -100,6 +117,31 @@ due_utc optionnel si pas de date limite.
 
 def info(msg: str) -> None:
     print(f"[extraction] {msg}", file=sys.stderr)
+
+
+def to_utc_z(local_iso: str) -> str:
+    """'2026-09-18T12:15:00' (Europe/Paris wall-clock) -> '2026-09-18T10:15:00Z'
+    (true UTC) — real conversion via zoneinfo, correctly DST-aware, done
+    in code rather than trusted to the model (see module docstring)."""
+    naive = datetime.strptime(local_iso, "%Y-%m-%dT%H:%M:%S")
+    aware_local = naive.replace(tzinfo=LOCAL_TZ)
+    return aware_local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _add_utc_fields(extracted: dict) -> dict:
+    """Post-processing pass: adds *_utc alongside every *_local field the
+    model returned, for the CalDAV writer — the model itself never
+    touches UTC at all now."""
+    event = extracted.get("event")
+    if event:
+        if event.get("start_local"):
+            event["start_utc"] = to_utc_z(event["start_local"])
+        if event.get("end_local"):
+            event["end_utc"] = to_utc_z(event["end_local"])
+    reminder = extracted.get("reminder")
+    if reminder and reminder.get("due_local"):
+        reminder["due_utc"] = to_utc_z(reminder["due_local"])
+    return extracted
 
 
 def extract_from_email(sender: str, subject: str, body: str, current_date: str | None = None) -> dict:
@@ -122,9 +164,10 @@ def extract_from_email(sender: str, subject: str, body: str, current_date: str |
         raw_response = r.json()["response"]
 
     try:
-        return json.loads(raw_response)
+        parsed = json.loads(raw_response)
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Model didn't return valid JSON despite format schema: {raw_response!r}") from e
+    return _add_utc_fields(parsed)
 
 
 def main() -> None:

@@ -44,6 +44,7 @@ import requests
 from user_directory import nextcloud_port_forward
 
 CALENDAR = "personal"
+CALENDAR_DISPLAY_NAME = "Personnel"  # confirmed via PROPFIND displayname, not guessed
 TASK_LIST_FALLBACK_NAME = "phase5-taches"
 
 DAV_NS = "DAV:"
