@@ -66,14 +66,12 @@ Read-only: this module only ever reads from Authentik/Nextcloud, never
 writes. Safe to run repeatedly.
 """
 
-import base64
 import json
-import subprocess
 import sys
-import time
-from contextlib import contextmanager
 
 import requests
+
+import cluster_target as cluster
 
 AUTHENTIK_NAMESPACE = "authentik"
 AUTHENTIK_DEPLOY = "deploy/authentik-server"
@@ -99,17 +97,6 @@ def info(msg: str) -> None:
     print(f"[user-directory] {msg}", file=sys.stderr)
 
 
-def _kubectl_secret_value(namespace: str, secret: str, key: str) -> str:
-    out = subprocess.run(
-        [
-            "kubectl", "get", "secret", "-n", namespace, secret,
-            "-o", f"jsonpath={{.data.{key}}}",
-        ],
-        capture_output=True, text=True, check=True,
-    ).stdout
-    return base64.b64decode(out).decode()
-
-
 def fetch_authentik_users() -> list[dict]:
     """Real Authentik accounts (username, email, display name)."""
     py = (
@@ -119,10 +106,8 @@ def fetch_authentik_users() -> list[dict]:
         "'username', 'email', 'name', 'type'))\n"
         "print('###JSON###' + json.dumps(users))\n"
     )
-    result = subprocess.run(
-        ["kubectl", "exec", "-n", AUTHENTIK_NAMESPACE, AUTHENTIK_DEPLOY,
-         "--", "ak", "shell", "-c", py],
-        capture_output=True, text=True, check=True,
+    result = cluster.kubectl(
+        ["exec", "-n", AUTHENTIK_NAMESPACE, AUTHENTIK_DEPLOY, "--", "ak", "shell", "-c", py]
     )
     marker = "###JSON###"
     idx = result.stdout.find(marker)
@@ -137,42 +122,23 @@ def fetch_authentik_users() -> list[dict]:
     ]
 
 
-@contextmanager
 def nextcloud_port_forward():
-    """Yields Nextcloud's base URL over a live `kubectl port-forward`.
+    """Yields Nextcloud's base URL over a live port-forward to the current
+    Phase 5 target cluster (see cluster_target.py) — Nextcloud isn't
+    reachable directly from the dev machine outside the cluster's own
+    Ingress hostnames, and those require the mkcert/Let's Encrypt TLS dance
+    this kind of short-lived script doesn't need.
 
-    Shared by every Phase 5 module that needs to reach Nextcloud's HTTP API
-    (OCS here, WebDAV in user_memory.py) — Nextcloud isn't reachable
-    directly from the dev machine outside the cluster's own Ingress
-    hostnames, and those require the mkcert/Let's Encrypt TLS dance this
-    kind of short-lived script doesn't need.
+    Shared by every Phase 5 module that needs Nextcloud's HTTP API (OCS
+    here, WebDAV in user_memory.py).
     """
-    base = f"http://127.0.0.1:{NEXTCLOUD_LOCAL_PORT}"
-    info(f"Port-forwarding {NEXTCLOUD_SERVICE} in namespace {NEXTCLOUD_NAMESPACE} on :{NEXTCLOUD_LOCAL_PORT}...")
-    pf = subprocess.Popen(
-        ["kubectl", "port-forward", "-n", NEXTCLOUD_NAMESPACE, NEXTCLOUD_SERVICE,
-         f"{NEXTCLOUD_LOCAL_PORT}:8080"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    try:
-        for _ in range(30):
-            try:
-                requests.get(f"{base}/status.php", timeout=2)
-                break
-            except requests.exceptions.ConnectionError:
-                time.sleep(0.5)
-        else:
-            raise RuntimeError("Port-forward to Nextcloud never became reachable.")
-        yield base
-    finally:
-        pf.terminate()
-        pf.wait()
+    return cluster.port_forward(NEXTCLOUD_NAMESPACE, NEXTCLOUD_SERVICE, 8080, NEXTCLOUD_LOCAL_PORT)
 
 
 def fetch_nextcloud_oidc_users_by_email() -> dict[str, str]:
     """email -> opaque Nextcloud user_oidc uid, for every SSO-provisioned account."""
-    nc_user = _kubectl_secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_USERNAME")
-    nc_pass = _kubectl_secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_PASSWORD")
+    nc_user = cluster.secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_USERNAME")
+    nc_pass = cluster.secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_PASSWORD")
     auth = (nc_user, nc_pass)
     headers = {"OCS-APIRequest": "true"}
 
@@ -202,10 +168,29 @@ def build_directory() -> list[dict]:
     for u in authentik_users:
         username = u["username"]
         email = u["email"]
+        matrix_id = f"@{username}:{MATRIX_SERVER_NAME}"
+        if "@" in username:
+            # Real case found live against the mini PC: one Authentik
+            # account has its username set to a full email address
+            # (likely an onboarding mistake — every other real account has
+            # a short, plain username). Matrix's historical user ID
+            # grammar doesn't allow "@" in the localpart, so
+            # f"@{username}:{server}" here would silently produce a
+            # malformed, unusable ID (e.g. "@chris22@offsystem.fr:offsystem.fr")
+            # instead of failing loudly. Flag it instead of guessing — not
+            # something this script should try to fix (it'd mean renaming
+            # a real person's Authentik account).
+            matrix_id = None
+            info(
+                f"WARNING: Authentik username {username!r} contains '@' — can't form a "
+                "valid Matrix ID from it (Matrix localparts don't allow '@'). Likely an "
+                "onboarding mistake (username set to an email address); needs a real "
+                "fix on the Authentik account, not resolved here."
+            )
         entry = {
             "authentik_username": username,
             "email": email or None,
-            "matrix_id": f"@{username}:{MATRIX_SERVER_NAME}",
+            "matrix_id": matrix_id,
             "nextcloud_uid": None,
             "mailu_mailbox": None,
         }
