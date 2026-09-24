@@ -71,6 +71,7 @@ import json
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 
 import requests
 
@@ -136,14 +137,17 @@ def fetch_authentik_users() -> list[dict]:
     ]
 
 
-def fetch_nextcloud_oidc_users_by_email() -> dict[str, str]:
-    """email -> opaque Nextcloud user_oidc uid, for every SSO-provisioned account."""
-    nc_user = _kubectl_secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_USERNAME")
-    nc_pass = _kubectl_secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_PASSWORD")
-    auth = (nc_user, nc_pass)
-    headers = {"OCS-APIRequest": "true"}
-    base = f"http://127.0.0.1:{NEXTCLOUD_LOCAL_PORT}"
+@contextmanager
+def nextcloud_port_forward():
+    """Yields Nextcloud's base URL over a live `kubectl port-forward`.
 
+    Shared by every Phase 5 module that needs to reach Nextcloud's HTTP API
+    (OCS here, WebDAV in user_memory.py) — Nextcloud isn't reachable
+    directly from the dev machine outside the cluster's own Ingress
+    hostnames, and those require the mkcert/Let's Encrypt TLS dance this
+    kind of short-lived script doesn't need.
+    """
+    base = f"http://127.0.0.1:{NEXTCLOUD_LOCAL_PORT}"
     info(f"Port-forwarding {NEXTCLOUD_SERVICE} in namespace {NEXTCLOUD_NAMESPACE} on :{NEXTCLOUD_LOCAL_PORT}...")
     pf = subprocess.Popen(
         ["kubectl", "port-forward", "-n", NEXTCLOUD_NAMESPACE, NEXTCLOUD_SERVICE,
@@ -159,7 +163,20 @@ def fetch_nextcloud_oidc_users_by_email() -> dict[str, str]:
                 time.sleep(0.5)
         else:
             raise RuntimeError("Port-forward to Nextcloud never became reachable.")
+        yield base
+    finally:
+        pf.terminate()
+        pf.wait()
 
+
+def fetch_nextcloud_oidc_users_by_email() -> dict[str, str]:
+    """email -> opaque Nextcloud user_oidc uid, for every SSO-provisioned account."""
+    nc_user = _kubectl_secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_USERNAME")
+    nc_pass = _kubectl_secret_value(NEXTCLOUD_NAMESPACE, "nextcloud-secrets", "NEXTCLOUD_PASSWORD")
+    auth = (nc_user, nc_pass)
+    headers = {"OCS-APIRequest": "true"}
+
+    with nextcloud_port_forward() as base:
         r = requests.get(f"{base}/ocs/v2.php/cloud/users?format=json", auth=auth, headers=headers, timeout=10)
         r.raise_for_status()
         uids = r.json()["ocs"]["data"]["users"]
@@ -175,9 +192,6 @@ def fetch_nextcloud_oidc_users_by_email() -> dict[str, str]:
             if email:
                 by_email[email] = uid
         return by_email
-    finally:
-        pf.terminate()
-        pf.wait()
 
 
 def build_directory() -> list[dict]:
