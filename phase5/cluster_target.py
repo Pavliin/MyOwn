@@ -98,6 +98,15 @@ def port_forward(namespace: str, service: str, remote_port: int, local_port: int
                 time.sleep(0.5)
         else:
             raise RuntimeError(f"Port-forward to {service} never became reachable.")
+        # Real bug hit live: a bare successful TCP connect here isn't
+        # enough over the SSH-tunneled path — the very first real request
+        # right after would sometimes get a mid-response
+        # ConnectionResetError, reproducibly, even though this readiness
+        # probe had just succeeded. The remote `kubectl port-forward`
+        # accepts the TCP connection before its own tunnel to the pod is
+        # fully wired up; a short settle delay avoids racing that.
+        if SSH_HOST:
+            time.sleep(1.5)
         yield base
     finally:
         proc.terminate()
