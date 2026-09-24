@@ -63,6 +63,17 @@ def port_forward(namespace: str, service: str, remote_port: int, local_port: int
     own loopback, which the SSH tunnel then re-exposes on ours)."""
     base = f"http://127.0.0.1:{local_port}"
     if SSH_HOST:
+        # Real bug hit live: an earlier run's remote `kubectl port-forward`
+        # survived (killed by a signal — e.g. `timeout` — that never let
+        # this function's own `finally` run), left port_forward listening
+        # on the mini PC, and blocked every later attempt at the same port
+        # with a confusing "never became reachable". Best-effort pkill of
+        # any matching leftover before starting a fresh one, so a stale
+        # process from one run can't block the next.
+        subprocess.run(
+            ["ssh", SSH_HOST, f"sudo pkill -f {shlex.quote(f'port-forward -n {namespace} {service} {local_port}:{remote_port}')}"],
+            capture_output=True,
+        )
         info(f"SSH tunnel to {SSH_HOST}: port-forwarding {service} ({namespace}) on :{local_port}...")
         cmd = [
             "ssh", "-L", f"{local_port}:127.0.0.1:{local_port}", SSH_HOST,
