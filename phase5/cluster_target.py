@@ -1,0 +1,113 @@
+"""Talks to whichever cluster Phase 5 is currently targeting.
+
+Every other Phase 5 module goes through this instead of calling `kubectl`
+directly, so switching target is one env var, not a per-module edit.
+
+Default: local `kubectl` context (the dev k3d cluster, `k3d-myown-dev`).
+Set `PHASE5_SSH_HOST` to route every call through
+`ssh <host> sudo kubectl ...` instead — needed for the mini PC, which has
+no local kubectl context on this machine, only SSH (confirmed working,
+passwordless sudo already granted per the mini PC bootstrap). Real reason
+this exists: dev's own Mailu started crash-looping partway through Phase 5
+step 3 testing, so steps 4 onward target the mini PC's already-working
+Mailu/Nextcloud/Tuwunel instead — this module is what makes that a one-line
+switch rather than a rewrite.
+
+Usage:
+    export PHASE5_SSH_HOST=192.168.1.143   # mini PC; unset = local dev cluster
+"""
+
+import base64
+import os
+import shlex
+import socket
+import subprocess
+import sys
+import time
+from contextlib import contextmanager
+
+SSH_HOST = os.environ.get("PHASE5_SSH_HOST")
+
+
+def info(msg: str) -> None:
+    print(f"[cluster] {msg}", file=sys.stderr)
+
+
+def kubectl(args: list[str]) -> subprocess.CompletedProcess:
+    """Runs `kubectl <args>`, locally or via SSH to PHASE5_SSH_HOST."""
+    if SSH_HOST:
+        # SSH takes a single remote command string, not argv — shlex.quote
+        # each arg individually (real bug found live: the Authentik ak-shell
+        # Python snippets passed via `-c` contain spaces, quotes and
+        # newlines, which a naive " ".join() silently mangled into a
+        # different, broken command on the remote shell).
+        remote_cmd = "sudo kubectl " + " ".join(shlex.quote(a) for a in args)
+        cmd = ["ssh", SSH_HOST, remote_cmd]
+    else:
+        cmd = ["kubectl"] + args
+    return subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+
+def secret_value(namespace: str, secret: str, key: str) -> str:
+    out = kubectl(["get", "secret", "-n", namespace, secret, "-o", f"jsonpath={{.data.{key}}}"]).stdout
+    return base64.b64decode(out).decode()
+
+
+@contextmanager
+def port_forward(namespace: str, service: str, remote_port: int, local_port: int):
+    """Yields http://127.0.0.1:<local_port>, tunneled to <service>:<remote_port>
+    in the target cluster — via a plain `kubectl port-forward` locally, or an
+    SSH `-L` tunnel wrapping a remote `kubectl port-forward` when
+    PHASE5_SSH_HOST is set (the remote side binds the same local_port on its
+    own loopback, which the SSH tunnel then re-exposes on ours).
+
+    The returned string is always an "http://" URL for convenience (most
+    callers are HTTP), but readiness itself is checked with a plain TCP
+    connect, not an HTTP request — this also tunnels non-HTTP protocols
+    (ManageSieve in sieve_writer.py), which would never complete an HTTP
+    GET at all."""
+    base = f"http://127.0.0.1:{local_port}"
+    if SSH_HOST:
+        # Real bug hit live: an earlier run's remote `kubectl port-forward`
+        # survived (killed by a signal — e.g. `timeout` — that never let
+        # this function's own `finally` run), left port_forward listening
+        # on the mini PC, and blocked every later attempt at the same port
+        # with a confusing "never became reachable". Best-effort pkill of
+        # any matching leftover before starting a fresh one, so a stale
+        # process from one run can't block the next.
+        subprocess.run(
+            ["ssh", SSH_HOST, f"sudo pkill -f {shlex.quote(f'port-forward -n {namespace} {service} {local_port}:{remote_port}')}"],
+            capture_output=True,
+        )
+        info(f"SSH tunnel to {SSH_HOST}: port-forwarding {service} ({namespace}) on :{local_port}...")
+        cmd = [
+            "ssh", "-L", f"{local_port}:127.0.0.1:{local_port}", SSH_HOST,
+            f"sudo kubectl port-forward -n {namespace} {service} {local_port}:{remote_port}",
+        ]
+    else:
+        info(f"Port-forwarding {service} ({namespace}) on :{local_port}...")
+        cmd = ["kubectl", "port-forward", "-n", namespace, service, f"{local_port}:{remote_port}"]
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(30):
+            try:
+                with socket.create_connection(("127.0.0.1", local_port), timeout=2):
+                    break
+            except OSError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError(f"Port-forward to {service} never became reachable.")
+        # Real bug hit live: a bare successful TCP connect here isn't
+        # enough over the SSH-tunneled path — the very first real request
+        # right after would sometimes get a mid-response
+        # ConnectionResetError, reproducibly, even though this readiness
+        # probe had just succeeded. The remote `kubectl port-forward`
+        # accepts the TCP connection before its own tunnel to the pod is
+        # fully wired up; a short settle delay avoids racing that.
+        if SSH_HOST:
+            time.sleep(1.5)
+        yield base
+    finally:
+        proc.terminate()
+        proc.wait()
