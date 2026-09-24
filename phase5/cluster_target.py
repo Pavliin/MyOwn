@@ -20,12 +20,11 @@ Usage:
 import base64
 import os
 import shlex
+import socket
 import subprocess
 import sys
 import time
 from contextlib import contextmanager
-
-import requests
 
 SSH_HOST = os.environ.get("PHASE5_SSH_HOST")
 
@@ -60,7 +59,13 @@ def port_forward(namespace: str, service: str, remote_port: int, local_port: int
     in the target cluster — via a plain `kubectl port-forward` locally, or an
     SSH `-L` tunnel wrapping a remote `kubectl port-forward` when
     PHASE5_SSH_HOST is set (the remote side binds the same local_port on its
-    own loopback, which the SSH tunnel then re-exposes on ours)."""
+    own loopback, which the SSH tunnel then re-exposes on ours).
+
+    The returned string is always an "http://" URL for convenience (most
+    callers are HTTP), but readiness itself is checked with a plain TCP
+    connect, not an HTTP request — this also tunnels non-HTTP protocols
+    (ManageSieve in sieve_writer.py), which would never complete an HTTP
+    GET at all."""
     base = f"http://127.0.0.1:{local_port}"
     if SSH_HOST:
         # Real bug hit live: an earlier run's remote `kubectl port-forward`
@@ -87,13 +92,9 @@ def port_forward(namespace: str, service: str, remote_port: int, local_port: int
     try:
         for _ in range(30):
             try:
-                # allow_redirects=False: some backends (Nextcloud) redirect
-                # "/" to an https:// URL on the same port, which a plain
-                # HTTP port-forward can never follow — any response at all,
-                # redirect included, proves the tunnel itself is up.
-                requests.get(base, timeout=2, allow_redirects=False)
-                break
-            except requests.exceptions.ConnectionError:
+                with socket.create_connection(("127.0.0.1", local_port), timeout=2):
+                    break
+            except OSError:
                 time.sleep(0.5)
         else:
             raise RuntimeError(f"Port-forward to {service} never became reachable.")
