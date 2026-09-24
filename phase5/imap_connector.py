@@ -99,6 +99,50 @@ def list_recent_messages(mailbox: str, password: str, folder: str = "INBOX", lim
             pass
 
 
+def fetch_message_text(mailbox: str, password: str, uid: str, folder: str = "INBOX") -> str:
+    """Plain-text body of one message, still read-only (BODY.PEEK[]) —
+    needed by the extraction pipeline (step 6), which list_recent_messages
+    alone (headers only) can't feed. Falls back to the first text/html
+    part, stripped of tags, if no text/plain part exists."""
+    conn = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
+    try:
+        conn.login(mailbox, password)
+        conn.select(folder, readonly=True)
+
+        status, data = conn.fetch(uid.encode() if isinstance(uid, str) else uid, "(BODY.PEEK[])")
+        if status != "OK" or not data or data[0] is None:
+            raise RuntimeError(f"IMAP FETCH failed for uid {uid}: {status} {data}")
+        raw = data[0][1]
+        msg = email.message_from_bytes(raw)
+
+        text_part = None
+        html_part = None
+        for part in msg.walk():
+            if part.get_content_maintype() == "multipart":
+                continue
+            charset = part.get_content_charset() or "utf-8"
+            payload = part.get_payload(decode=True)
+            if payload is None:
+                continue
+            content = payload.decode(charset, errors="replace")
+            if part.get_content_type() == "text/plain" and text_part is None:
+                text_part = content
+            elif part.get_content_type() == "text/html" and html_part is None:
+                html_part = content
+
+        if text_part:
+            return text_part.strip()
+        if html_part:
+            import re
+            return re.sub(r"<[^>]+>", " ", html_part).strip()
+        return ""
+    finally:
+        try:
+            conn.logout()
+        except Exception:
+            pass
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         raise SystemExit("Usage: imap_connector.py <mailbox-email>")
