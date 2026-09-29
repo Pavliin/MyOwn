@@ -63,6 +63,22 @@ spec:
                 paths:
                   - path: /
                     pathType: Prefix
+          # Real bug hit live: the Android TV app's manual server-address
+          # field only reaches Jellyfin by probing its native ports
+          # (8096 http / 8920 https) directly against the hostname — it
+          # never goes through Traefik's 443, and double-prefixes any
+          # scheme typed into the field (confirmed: "https://https://..."),
+          # so there's no client-side workaround. LoadBalancer, not
+          # ClusterIP: same k3s ServiceLB mechanism already proven for
+          # Traefik (80/443) and Mailu's externalService (imaps/smtps) —
+          # binds 8096 on the node's real interface. LAN-only, deliberately:
+          # nothing forwards 8096 from the Freebox to the internet, and
+          # Pi-hole's local DNS override already resolves
+          # jellyfin.offsystem.fr straight to the mini PC's LAN IP for LAN
+          # clients, so the TV's own port probe succeeds on the very first
+          # candidate (http/8096) without any app-side configuration.
+          service:
+            type: LoadBalancer
     - repoURL: https://github.com/Pavliin/MyOwn.git
       targetRevision: master
       path: gitops/secrets/jellyfin
