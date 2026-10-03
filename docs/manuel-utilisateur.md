@@ -176,10 +176,13 @@ la messagerie).
 3. Connectez-vous via Authentik.
 
 !!! note "État du système du foyer"
-    Le salon [#etat-du-systeme](https://matrix.to/#/#etat-du-systeme:offsystem.fr)
-    prévient en cas de panne d'un service — cliquez sur le lien pour le
-    rejoindre directement (la recherche de salon dans Element ne trouve pas
-    toujours les alias existants).
+    Vous êtes ajouté automatiquement au salon
+    [#etat-du-systeme](https://matrix.to/#/#etat-du-systeme:offsystem.fr) dès
+    votre première connexion — il prévient en cas de panne d'un service. Si
+    votre compte existait déjà avant la mise en place de cet ajout
+    automatique, cliquez sur le lien pour le rejoindre manuellement (la
+    recherche de salon dans Element ne trouve pas toujours les alias
+    existants).
 
 !!! warning "Appels vidéo de groupe sur mobile"
     Les appels de groupe fonctionnent bien depuis un ordinateur. Sur mobile,
