@@ -407,3 +407,41 @@ python3 scripts/mailu-promote-admin.py robin.chartier@offsystem.fr
 ```
 
 Idempotent — ne fait rien si le compte est déjà admin, échoue explicitement si le compte n'existe pas encore (pas encore connecté via SSO).
+
+## 20. Pi-hole — DNS filtrant pour tout le foyer
+
+Pertinent à partir du vrai déploiement (mini PC). Volontairement **hors GitOps et hors k3s** — conteneur Docker sur l'hôte, pas un manifeste k8s (cf. `architecture.md` §6 : le DNS de toute la maison ne doit pas dépendre de la santé du cluster, même raisonnement de dépendance circulaire que le VPN WireGuard et le watchdog). Nécessite Docker (nouvelle dépendance sur l'hôte, indépendante du containerd embarqué de k3s) :
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+```
+
+Puis :
+
+```bash
+scripts/pihole-setup.sh
+```
+
+Nécessite `sudo` (gestion de conteneur, répertoire de données sous `/opt`) — à lancer directement dans votre terminal. Idempotent : un second passage ne recrée pas le conteneur, mais réapplique toujours les overrides DNS locaux (utile après un `git pull` qui ajoute un nouveau service public).
+
+**Piège réel rencontré au premier déploiement** : `systemd-resolved` occupe par défaut le port 53 sur Ubuntu (stub listener, `127.0.0.53`/`127.0.0.54`) — sous Linux, un bind en wildcard (`0.0.0.0:53`, ce que fait Docker en mode bridge avec un port publié) échoue en `EADDRINUSE` dès qu'une adresse spécifique est déjà bindée sur ce port, même sans recouvrement littéral. Le script détecte cette situation et corrige automatiquement (désactive le stub listener, repointe `/etc/resolv.conf` vers le fichier non-stub de `systemd-resolved`) — rien à faire manuellement, mais utile de savoir pourquoi si un diagnostic est nécessaire.
+
+Une fois le conteneur démarré, le mot de passe admin généré est écrit hors dépôt (`~/myown-pihole-admin-password.txt` sur l'hôte cible, jamais commité) — à transférer dans le Vaultwarden admin puis supprimer.
+
+**Garde-fou non négociable avant toute bascule réseau complète** : configurez un DNS secondaire de repli au niveau du DHCP du routeur (ex. `1.1.1.1`) en plus de l'IP de cet hôte en primaire, pour qu'une panne de Pi-hole dégrade le blocage de pub plutôt que de couper l'accès internet de toute la maison. Testez-le pour de vrai avant de considérer l'installation terminée (coupure temporaire du conteneur, vérification que la résolution continue de fonctionner sur un appareil de test).
+
+Vérification :
+
+```bash
+dig @<IP LAN de l'hôte> github.com +short        # résolution normale
+dig @<IP LAN de l'hôte> doubleclick.net +short   # doit renvoyer 0.0.0.0 (bloqué)
+sudo docker logs -f pihole-myown
+```
