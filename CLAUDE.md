@@ -102,7 +102,7 @@ Local k3d dev cluster (`myown-dev`) only — no mini PC or domain yet. Two acces
 
 ## Repository conventions (decided, not yet all implemented)
 
-- **Structure**: monorepo — docs, GitOps manifests (once they exist, ArgoCD will watch this repo directly), and any custom integration code all live here. No plan to split repos at this stage.
+- **Structure**: monorepo — docs, GitOps manifests (once they exist, ArgoCD will watch this repo directly), and any custom integration code all live here. Exception: a component that is a real software product rather than integration glue gets its own repo and is consumed here like any other brick (image + `Application` in `gitops/apps/`) — first case: the Solid-based social network, split out as [Archipel](https://github.com/Pavliin/Archipel) (2026-10-03).
 - **License**: AGPL-3.0 (`LICENSE`) — network-copyleft, chosen deliberately so a third party can't wrap this project into a closed SaaS.
 - **Git platform**: GitHub.
 - **Secrets**: SOPS + age, decrypted automatically at ArgoCD sync time via KSOPS (chosen over manual `sops -d | kubectl apply` to keep disaster recovery fully automatic once the age key is restored — see `docs/vision-long-terme.md`-style reasoning: worth the extra setup cost for a project meant to be reproducible by others). `.sops.yaml` holds the real public key — never commit an unencrypted secret or the age private key.

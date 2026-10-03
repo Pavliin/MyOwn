@@ -69,7 +69,7 @@ Deux familles de solutions étudiées pour un vrai réseau social auto-hébergé
 - Le déploiement multi-tenant des Pods (un Pod par utilisateur sur une instance Community Solid Server partagée).
 - Une éventuelle passerelle avec Immich/Nextcloud si on veut réutiliser du contenu qui y existe déjà (aucun pont natif — partager une photo Immich sur ce RS impliquerait une copie dédiée dans le Pod, pas une réutilisation directe).
 
-Un projet à part entière, pas une brique de plus à assembler dans le POC actuel. **Le jour où ce chantier est engagé pour de vrai, il commence par un cahier des charges précis de ce que ce réseau social doit et ne doit pas faire** — volontairement non défini à ce stade.
+Un projet à part entière, pas une brique de plus à assembler dans le POC actuel. **Il vit désormais dans son propre dépôt, [Archipel](https://github.com/Pavliin/Archipel) (2026-10-03)**, qui porte son cahier des charges (premier jet, plusieurs sections encore à trancher). MyOwn reste le projet d'agrégation : il intégrera Archipel comme n'importe quelle autre brique (image versionnée, `Application` ArgoCD, câblage SSO Authentik).
 
 ## Piste 3 — Diffusion publique en deux temps
 
