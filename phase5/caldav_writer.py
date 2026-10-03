@@ -86,13 +86,18 @@ def _default_end(start_utc: str, duration_kind: str) -> str:
     return (dt + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, start_utc: str, end_utc: str | None = None, duration_kind: str = "rdv") -> str:
-    """Returns the new event's iCalendar UID. end_utc defaults via
+def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, start_utc: str, end_utc: str | None = None, duration_kind: str = "rdv", uid: str | None = None) -> str:
+    """Returns the event's iCalendar UID. end_utc defaults via
     _default_end() when not given, instead of collapsing to a
-    zero-duration event."""
+    zero-duration event.
+
+    `uid`: pass a deterministic one when the caller may retry (the CronJob
+    does, after a crash between "write" and "remember I wrote"). The
+    resource URL is derived from it, so a retry overwrites the same event
+    instead of creating a second one."""
     if not end_utc:
         end_utc = _default_end(start_utc, duration_kind)
-    event_uid = str(uuid.uuid4())
+    event_uid = uid or str(uuid.uuid4())
     ics = (
         "BEGIN:VCALENDAR\r\n"
         "VERSION:2.0\r\n"
@@ -165,13 +170,14 @@ def find_or_create_task_list(base: str, nc_auth: tuple[str, str], nc_uid: str) -
     return TASK_LIST_FALLBACK_NAME, TASK_LIST_FALLBACK_DISPLAY_NAME
 
 
-def write_task(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, due_utc: str | None = None, task_list: str | None = None) -> str:
-    """Returns the new task's iCalendar UID. Resolves a VTODO-capable list
-    via find_or_create_task_list() if task_list isn't given explicitly."""
+def write_task(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, due_utc: str | None = None, task_list: str | None = None, uid: str | None = None) -> str:
+    """Returns the task's iCalendar UID. Resolves a VTODO-capable list
+    via find_or_create_task_list() if task_list isn't given explicitly.
+    `uid`: deterministic when the caller may retry — see write_event()."""
     if task_list is None:
         task_list, _ = find_or_create_task_list(base, nc_auth, nc_uid)
 
-    task_uid = str(uuid.uuid4())
+    task_uid = uid or str(uuid.uuid4())
     due_line = f"DUE:{_to_ics_utc(due_utc)}\r\n" if due_utc else ""
     ics = (
         "BEGIN:VCALENDAR\r\n"
