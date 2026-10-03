@@ -3,18 +3,26 @@
 Every other Phase 5 module goes through this instead of calling `kubectl`
 directly, so switching target is one env var, not a per-module edit.
 
-Default: local `kubectl` context (the dev k3d cluster, `k3d-myown-dev`).
-Set `PHASE5_SSH_HOST` to route every call through
-`ssh <host> sudo kubectl ...` instead — needed for the mini PC, which has
-no local kubectl context on this machine, only SSH (confirmed working,
-passwordless sudo already granted per the mini PC bootstrap). Real reason
-this exists: dev's own Mailu started crash-looping partway through Phase 5
-step 3 testing, so steps 4 onward target the mini PC's already-working
-Mailu/Nextcloud/Tuwunel instead — this module is what makes that a one-line
-switch rather than a rewrite.
+Three modes, all resolved from env vars so no module ever branches on
+"where am I running":
+- Default: local `kubectl` context (the dev k3d cluster, `k3d-myown-dev`).
+- `PHASE5_SSH_HOST` set: routes every call through `ssh <host> sudo
+  kubectl ...` instead — needed for the mini PC, which has no local
+  kubectl context on this machine, only SSH (confirmed working,
+  passwordless sudo already granted per the mini PC bootstrap). Real
+  reason this exists: dev's own Mailu started crash-looping partway
+  through Phase 5 step 3 testing, so steps 4 onward target the mini PC's
+  already-working Mailu/Nextcloud/Tuwunel instead.
+- `PHASE5_IN_CLUSTER=true`: for the CronJob pod itself (step 8's
+  scheduling half) — running *inside* the cluster, `kubectl
+  port-forward` (local or SSH-tunneled) makes no sense at all; this
+  mode skips it entirely and returns the in-cluster Service DNS name
+  directly (`<service>.<namespace>.svc.cluster.local:<port>`), no
+  subprocess, no port, no readiness polling beyond a normal TCP connect.
 
 Usage:
     export PHASE5_SSH_HOST=192.168.1.143   # mini PC; unset = local dev cluster
+    export PHASE5_IN_CLUSTER=true          # CronJob pod; overrides PHASE5_SSH_HOST
 """
 
 import base64
@@ -27,6 +35,7 @@ import time
 from contextlib import contextmanager
 
 SSH_HOST = os.environ.get("PHASE5_SSH_HOST")
+IN_CLUSTER = os.environ.get("PHASE5_IN_CLUSTER") == "true"
 
 
 def info(msg: str) -> None:
@@ -66,6 +75,11 @@ def port_forward(namespace: str, service: str, remote_port: int, local_port: int
     connect, not an HTTP request — this also tunnels non-HTTP protocols
     (ManageSieve in sieve_writer.py), which would never complete an HTTP
     GET at all."""
+    if IN_CLUSTER:
+        service_name = service.split("/", 1)[-1]  # "svc/nextcloud" -> "nextcloud"
+        yield f"http://{service_name}.{namespace}.svc.cluster.local:{remote_port}"
+        return
+
     base = f"http://127.0.0.1:{local_port}"
     if SSH_HOST:
         # Real bug hit live: an earlier run's remote `kubectl port-forward`
