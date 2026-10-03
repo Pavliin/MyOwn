@@ -14,11 +14,17 @@ a docs read: a calendar collection isn't a generic bucket for any
 component type. `personal`'s own `supported-calendar-component-set`
 (checked via PROPFIND) is VEVENT-only — writing a VTODO there 403s.
 Nextcloud only creates a VTODO-capable list once someone opens the Tasks
-app for the first time (nothing forces that before this pipeline exists);
-`find_or_create_task_list()` looks for an existing VTODO-capable
-collection under the user's calendar home and creates one via MKCALENDAR
-if none exists, rather than assuming `personal` (or any fixed name) works
-for tasks.
+app for the first time, so a list has to be found or created anyway.
+
+Tasks go in a **dedicated list, "Myo's help"**, never in whichever
+VTODO-capable list happens to exist. The first version took the first one
+it found, which on the real account was the user's own personal packing
+list ("to take to bretagne") — a "pick up your parcel" task has no business
+there, and a decision made by the user on seeing it in a real proposal.
+`find_or_create_task_list()` therefore only ever returns that one list,
+creating it (MKCALENDAR, VTODO-only) if absent. The proposal names it
+up front from the constant below, without touching Nextcloud: *creating*
+the list is a write, and nothing is written before the person says yes.
 
 Real gotcha already documented, applied here rather than rediscovered:
 floating time (no timezone) saves and reads back fine via the API but
@@ -37,6 +43,7 @@ Usage:
 import sys
 import uuid
 import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape as xml_escape
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -45,7 +52,8 @@ from user_directory import nextcloud_port_forward
 
 CALENDAR = "personal"
 CALENDAR_DISPLAY_NAME = "Personnel"  # confirmed via PROPFIND displayname, not guessed
-TASK_LIST_FALLBACK_NAME = "phase5-taches"
+TASK_LIST_SEGMENT = "myo-help"
+TASK_LIST_DISPLAY_NAME = "Myo's help"
 
 DAV_NS = "DAV:"
 CAL_NS = "urn:ietf:params:xml:ns:caldav"
@@ -86,13 +94,18 @@ def _default_end(start_utc: str, duration_kind: str) -> str:
     return (dt + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, start_utc: str, end_utc: str | None = None, duration_kind: str = "rdv") -> str:
-    """Returns the new event's iCalendar UID. end_utc defaults via
+def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, start_utc: str, end_utc: str | None = None, duration_kind: str = "rdv", uid: str | None = None) -> str:
+    """Returns the event's iCalendar UID. end_utc defaults via
     _default_end() when not given, instead of collapsing to a
-    zero-duration event."""
+    zero-duration event.
+
+    `uid`: pass a deterministic one when the caller may retry (the CronJob
+    does, after a crash between "write" and "remember I wrote"). The
+    resource URL is derived from it, so a retry overwrites the same event
+    instead of creating a second one."""
     if not end_utc:
         end_utc = _default_end(start_utc, duration_kind)
-    event_uid = str(uuid.uuid4())
+    event_uid = uid or str(uuid.uuid4())
     ics = (
         "BEGIN:VCALENDAR\r\n"
         "VERSION:2.0\r\n"
@@ -113,18 +126,10 @@ def write_event(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, 
     return event_uid
 
 
-TASK_LIST_FALLBACK_DISPLAY_NAME = "Tâches (Phase 5)"
-
-
 def find_or_create_task_list(base: str, nc_auth: tuple[str, str], nc_uid: str) -> tuple[str, str]:
-    """Returns (path_segment, display_name) of a VTODO-capable calendar
-    collection under nc_uid's calendar home, creating one (MKCALENDAR) if
-    none exists yet — see this module's docstring for why `personal`
-    alone can't be assumed. The display name matters beyond cosmetics:
-    the orchestrator needs it to tell the person which list a proposed
-    task would actually land in (a real gap found live — the reminder
-    proposal named no target at all, same bug class already fixed for
-    events)."""
+    """Returns (path_segment, display_name) of the dedicated task list,
+    creating it if it doesn't exist yet. Only ever that list — see the
+    module docstring for why not "any VTODO-capable list"."""
     body = (
         '<?xml version="1.0"?>'
         '<d:propfind xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">'
@@ -138,40 +143,44 @@ def find_or_create_task_list(base: str, nc_auth: tuple[str, str], nc_uid: str) -
     root = ET.fromstring(r.text)
     for response in root.findall(f"{{{DAV_NS}}}response"):
         href = response.findtext(f"{{{DAV_NS}}}href")
+        segment = href.rstrip("/").rsplit("/", 1)[-1]
+        display_name = response.findtext(f".//{{{DAV_NS}}}displayname")
+        if segment != TASK_LIST_SEGMENT and display_name != TASK_LIST_DISPLAY_NAME:
+            continue
         comps = response.findall(f".//{{{CAL_NS}}}supported-calendar-component-set/{{{CAL_NS}}}comp")
-        comp_names = {c.get("name") for c in comps}
-        if "VTODO" in comp_names:
-            # href looks like /remote.php/dav/calendars/<uid>/<segment>/
-            segment = href.rstrip("/").rsplit("/", 1)[-1]
-            display_name = response.findtext(f".//{{{DAV_NS}}}displayname") or segment
-            info(f"Found existing VTODO-capable list: {segment!r} ({display_name!r})")
-            return segment, display_name
+        if "VTODO" not in {c.get("name") for c in comps}:
+            raise RuntimeError(
+                f"{segment!r} exists but doesn't accept tasks (VTODO) — won't write into it, "
+                "and can't create the dedicated list over it."
+            )
+        return segment, display_name or TASK_LIST_DISPLAY_NAME
 
-    info(f"No VTODO-capable list found, creating {TASK_LIST_FALLBACK_NAME!r}...")
+    info(f"Dedicated task list not found, creating {TASK_LIST_DISPLAY_NAME!r}...")
     mkcalendar_body = (
         '<?xml version="1.0"?>'
         '<c:mkcalendar xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">'
         '<d:set><d:prop>'
-        f'<d:displayname>{TASK_LIST_FALLBACK_DISPLAY_NAME}</d:displayname>'
+        f'<d:displayname>{xml_escape(TASK_LIST_DISPLAY_NAME)}</d:displayname>'
         '<c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>'
         '</d:prop></d:set>'
         '</c:mkcalendar>'
     )
     r = requests.request(
-        "MKCALENDAR", f"{home}{TASK_LIST_FALLBACK_NAME}/", auth=nc_auth, data=mkcalendar_body,
+        "MKCALENDAR", f"{home}{TASK_LIST_SEGMENT}/", auth=nc_auth, data=mkcalendar_body,
         headers={"Content-Type": "application/xml"}, timeout=10,
     )
     r.raise_for_status()
-    return TASK_LIST_FALLBACK_NAME, TASK_LIST_FALLBACK_DISPLAY_NAME
+    return TASK_LIST_SEGMENT, TASK_LIST_DISPLAY_NAME
 
 
-def write_task(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, due_utc: str | None = None, task_list: str | None = None) -> str:
-    """Returns the new task's iCalendar UID. Resolves a VTODO-capable list
-    via find_or_create_task_list() if task_list isn't given explicitly."""
+def write_task(base: str, nc_auth: tuple[str, str], nc_uid: str, summary: str, due_utc: str | None = None, task_list: str | None = None, uid: str | None = None) -> str:
+    """Returns the task's iCalendar UID. Resolves a VTODO-capable list
+    via find_or_create_task_list() if task_list isn't given explicitly.
+    `uid`: deterministic when the caller may retry — see write_event()."""
     if task_list is None:
         task_list, _ = find_or_create_task_list(base, nc_auth, nc_uid)
 
-    task_uid = str(uuid.uuid4())
+    task_uid = uid or str(uuid.uuid4())
     due_line = f"DUE:{_to_ics_utc(due_utc)}\r\n" if due_utc else ""
     ics = (
         "BEGIN:VCALENDAR\r\n"

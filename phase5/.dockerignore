@@ -1,0 +1,5 @@
+# Tests and caches don't belong in the runtime image (the Dockerfile only
+# copies *.py, which would otherwise include test_*.py).
+test_*.py
+__pycache__/
+*.pyc

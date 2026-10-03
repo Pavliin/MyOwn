@@ -105,16 +105,148 @@ def get_or_create_dm(target_user_id: str) -> str:
     return room_id
 
 
-def send_proposal(room_id: str, text: str) -> str:
-    txn_id = str(int(time.time() * 1000))
+def send_proposal(room_id: str, text: str, txn_id: str | None = None, reply_to: str | None = None) -> str:
+    """Sends a message, returns its event_id.
+
+    `txn_id`: pass a deterministic one for anything an unattended job might
+    retry. The Matrix send endpoint is idempotent per transaction id — a
+    second PUT with the same id returns the *same* event instead of posting
+    a second message — so a job killed between "send" and "remember I sent
+    it" can't produce a duplicate DM on its next run. Defaults to a
+    timestamp (fine for the interactive CLI, never repeated on purpose).
+
+    `reply_to`: an event_id, sent as a proper Matrix reply so Element shows
+    which message this answers (used for the "didn't understand" nudge)."""
+    txn_id = txn_id or str(int(time.time() * 1000))
+    content: dict = {"msgtype": "m.text", "body": text}
+    if reply_to:
+        content["m.relates_to"] = {"m.in_reply_to": {"event_id": reply_to}}
     r = requests.put(
         f"{BASE}/_matrix/client/v3/rooms/{_room_id_path(room_id)}/send/m.room.message/{txn_id}",
         headers=_headers(),
-        json={"msgtype": "m.text", "body": text},
+        json=content,
         timeout=10,
     )
     r.raise_for_status()
     return r.json()["event_id"]
+
+
+# Polls (MSC3381). The unstable-prefixed names are what Element Web and
+# Element X actually emit and render today — confirmed against a real vote
+# from the user's own client (`org.matrix.msc3381.poll.response`, answers
+# carried as ids under the same key, linked to the poll via an
+# `m.reference` relation). The stable `m.poll.response` / `m.selections`
+# shape is also read, in case a client sends that instead.
+POLL_START = "org.matrix.msc3381.poll.start"
+POLL_END = "org.matrix.msc3381.poll.end"
+POLL_RESPONSE_TYPES = ("org.matrix.msc3381.poll.response", "m.poll.response")
+
+
+def _send_event(room_id: str, event_type: str, content: dict, txn_id: str | None = None) -> str:
+    """PUT any event type; idempotent per transaction id (see send_proposal)."""
+    txn_id = txn_id or str(int(time.time() * 1000))
+    r = requests.put(
+        f"{BASE}/_matrix/client/v3/rooms/{_room_id_path(room_id)}/send/{event_type}/{txn_id}",
+        headers=_headers(), json=content, timeout=10,
+    )
+    r.raise_for_status()
+    return r.json()["event_id"]
+
+
+def send_poll(room_id: str, question: str, answers: dict[str, str], txn_id: str | None = None) -> str:
+    """A one-choice, disclosed poll; `answers` maps answer id -> label.
+    Returns the poll's event_id. The plain-text fallback is what a client
+    without poll support shows (and, with Reply, can still answer)."""
+    fallback = question + "\n" + "\n".join(f"{i}. {label}" for i, label in enumerate(answers.values(), 1))
+    return _send_event(room_id, POLL_START, {
+        "org.matrix.msc1767.text": fallback,
+        POLL_START: {
+            "kind": "org.matrix.msc3381.poll.disclosed",
+            "max_selections": 1,
+            "question": {"org.matrix.msc1767.text": question},
+            "answers": [{"id": aid, "org.matrix.msc1767.text": label} for aid, label in answers.items()],
+        },
+    }, txn_id)
+
+
+def end_poll(room_id: str, poll_id: str, txn_id: str | None = None) -> str:
+    """Closes a poll so a late or changed vote can't alter an answer that was
+    already acted on."""
+    return _send_event(room_id, POLL_END, {
+        "m.relates_to": {"rel_type": "m.reference", "event_id": poll_id},
+        "org.matrix.msc1767.text": "Sondage clos.",
+        POLL_END: {},
+    }, txn_id)
+
+
+def get_poll_vote(room_id: str, poll_id: str, max_pages: int = 5) -> str | None:
+    """The answer id currently selected on a poll by a human, or None if
+    nobody voted (or they cleared their vote). The latest vote wins, so a
+    changed mind counts. Raises LookupError if the poll itself isn't found
+    in the history scanned — "can't tell", never "no vote"."""
+    token = None
+    for _ in range(max_pages):
+        params: dict = {"dir": "b", "limit": 100}
+        if token:
+            params["from"] = token
+        r = requests.get(
+            f"{BASE}/_matrix/client/v3/rooms/{_room_id_path(room_id)}/messages",
+            headers=_headers(), params=params, timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+        chunk = data.get("chunk", [])
+        for event in chunk:  # newest first, so the first matching vote is the latest
+            if event.get("event_id") == poll_id:
+                return None
+            if event.get("type") in POLL_RESPONSE_TYPES and event.get("sender") != BOT_USER_ID:
+                rel = event.get("content", {}).get("m.relates_to", {})
+                if rel.get("event_id") == poll_id:
+                    content = event.get("content", {})
+                    answers = (content.get("org.matrix.msc3381.poll.response", {}).get("answers")
+                               or content.get("m.selections") or [])
+                    return answers[0] if answers else None
+        token = data.get("end")
+        if not token or not chunk:
+            break
+    raise LookupError(f"poll {poll_id} not found in the last {max_pages * 100} events of {room_id}")
+
+
+def get_replies_after(room_id: str, event_id: str, max_pages: int = 5) -> list[dict] | None:
+    """Human messages posted after `event_id` in the room, oldest first.
+
+    Walks the room history backwards from the newest message until it
+    reaches `event_id`, so "after" is decided by position in the room, not
+    by comparing clocks (a local timestamp against the homeserver's would
+    be one more thing to get subtly wrong). Messages from the bot itself
+    are skipped. Returns None if `event_id` isn't found within `max_pages`
+    pages (100 events each) — the caller must treat that as "can't tell",
+    not as "no reply".
+
+    This is what lets the CronJob stop blocking on a reply: each tick just
+    asks "has anyone answered since my proposal?" and moves on."""
+    collected: list[dict] = []
+    token = None
+    for _ in range(max_pages):
+        params: dict = {"dir": "b", "limit": 100}
+        if token:
+            params["from"] = token
+        r = requests.get(
+            f"{BASE}/_matrix/client/v3/rooms/{_room_id_path(room_id)}/messages",
+            headers=_headers(), params=params, timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+        chunk = data.get("chunk", [])
+        for event in chunk:  # newest first
+            if event.get("event_id") == event_id:
+                return list(reversed(collected))
+            if event.get("type") == "m.room.message" and event.get("sender") != BOT_USER_ID:
+                collected.append(event)
+        token = data.get("end")
+        if not token or not chunk:
+            break
+    return None
 
 
 def wait_for_reply(room_id: str, timeout_s: int = 300) -> dict:

@@ -29,10 +29,10 @@ Usage:
 """
 
 import os
-import re
 import sys
 
 from matrix_dm import get_or_create_dm, send_proposal, wait_for_reply
+from replies import parse_yes_no
 from user_directory import nextcloud_port_forward
 from user_memory import append_history, read_memory, write_memory
 
@@ -45,14 +45,23 @@ SERVICE_DESCRIPTIONS = {
     ),
 }
 
-# Real natural-language answers only, no button — deliberately narrow: an
-# unmatched reply must fall through to "ask again", never guess.
-YES_PATTERN = re.compile(r"\b(oui|ok|d'accord|daccord|yes|go)\b", re.IGNORECASE)
-NO_PATTERN = re.compile(r"\b(non|no|pas maintenant|jamais)\b", re.IGNORECASE)
-
-
 def info(msg: str) -> None:
     print(f"[opt-in] {msg}", file=sys.stderr)
+
+
+def build_question(service: str, include_question: bool = True) -> str:
+    """The opt-in DM text. Its own function so the asynchronous
+    orchestrator (which never blocks on the answer) sends the same words as
+    this module's blocking CLI. `include_question=False` drops the closing
+    "(oui/non) ?" line for the poll-based flow, where the poll itself asks."""
+    description = SERVICE_DESCRIPTIONS.get(service, service)
+    text = (
+        f"🤖 Avant de commencer : je peux t'aider avec {description}\n\n"
+        "Ce traitement tourne en local, sur le serveur — rien n'en sort jamais."
+    )
+    if include_question:
+        text += "\n\nTu es d'accord pour que j'active ça (oui/non) ?"
+    return text
 
 
 def has_opted_in(base: str, nc_auth: tuple[str, str], nc_uid: str, service: str) -> bool | None:
@@ -80,29 +89,18 @@ def request_opt_in(
         info(f"{matrix_id} already answered for {service!r}: {existing}")
         return existing
 
-    description = SERVICE_DESCRIPTIONS.get(service, service)
     room_id = get_or_create_dm(matrix_id)
-
-    question = (
-        f"🤖 Avant de commencer : je peux t'aider avec {description}\n\n"
-        "Ce traitement tourne en local, sur le serveur — rien n'en sort jamais.\n\n"
-        "Tu es d'accord pour que j'active ça (oui/non) ?"
-    )
+    question = build_question(service)
     for attempt in range(max_attempts):
         send_proposal(room_id, question if attempt == 0 else
                        "Je n'ai pas compris — réponds simplement oui ou non.")
         reply = wait_for_reply(room_id)
         body = reply["content"].get("body", "")
-        is_yes = bool(YES_PATTERN.search(body))
-        is_no = bool(NO_PATTERN.search(body))
-        if is_yes and not is_no:
-            _record_decision(base, nc_auth, nc_uid, service, True, body)
-            info(f"{matrix_id} opted in to {service!r}")
-            return True
-        if is_no and not is_yes:
-            _record_decision(base, nc_auth, nc_uid, service, False, body)
-            info(f"{matrix_id} declined {service!r}")
-            return False
+        decision = parse_yes_no(body)
+        if decision is not None:
+            _record_decision(base, nc_auth, nc_uid, service, decision, body)
+            info(f"{matrix_id} {'opted in to' if decision else 'declined'} {service!r}")
+            return decision
         info(f"Ambiguous reply {body!r}, asking again ({attempt + 1}/{max_attempts})")
 
     raise RuntimeError(f"No clear answer from {matrix_id} for {service!r} after {max_attempts} attempts")

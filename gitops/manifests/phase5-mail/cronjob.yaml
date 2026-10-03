@@ -1,0 +1,68 @@
+# Runs the Phase 5 mail pipeline (phase5/cron_runner.py -> orchestrator.py)
+# on a schedule — the scheduling half of implementation step 8,
+# deliberately left out of the PR that built the pipeline itself
+# (notes-techniques.md, "Ollama (IA locale)").
+#
+# concurrencyPolicy Forbid + activeDeadlineSeconds under the schedule
+# interval: Ollama on the mini PC runs CPU-only (~3.4 tokens/s, confirmed
+# live) and a single mail extraction can already take minutes — two
+# overlapping runs would contend for the same model and make both slower,
+# not faster.
+#
+# PHASE5_IN_CLUSTER=true routes every Nextcloud/Ollama call through
+# in-cluster Service DNS instead of kubectl port-forward (cluster_target.py)
+# — makes no sense to shell out to kubectl from inside the cluster it's
+# already running in. TUWUNEL_URL/MAILU_IMAP_HOST point at their own
+# in-cluster Services for the same reason (no LAN hostname, no external
+# LoadBalancer hop needed from here).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: phase5-mail
+spec:
+  # Shipped suspended on purpose. Two defects that only appear when nobody
+  # is watching were found rereading this manifest, and are now handled in
+  # orchestrator.py (asynchronous; up to 5 open proposals per user, 10 for
+  # urgent mails, each answered by a vote on its own Matrix poll; state
+  # persisted in the user's memory file; unit-tested offline, poll/vote
+  # calls checked against the real homeserver):
+  #  1. An unanswered proposal used to be re-proposed on every run —
+  #     every 15 min this would have re-sent the same DM.
+  #  2. A late "oui" meant for mail A could be consumed by the wait for
+  #     mail B and write the wrong event.
+  # Still suspended until the new flow has been watched over several REAL
+  # ticks (unit tests prove the logic, not the behaviour on live Matrix /
+  # Nextcloud). Run one by hand with:
+  #   kubectl create job --from=cronjob/phase5-mail phase5-mail-test -n phase5-mail
+  suspend: true
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 840
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: phase5-mail
+              image: ghcr.io/pavliin/myown-phase5:latest
+              env:
+                - name: PHASE5_IN_CLUSTER
+                  value: "true"
+                - name: TUWUNEL_URL
+                  value: "http://tuwunel.tuwunel.svc.cluster.local:8008"
+                - name: MAILU_IMAP_HOST
+                  value: "mailu-front.mailu.svc.cluster.local"
+                - name: TUWUNEL_ALERTBOT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: phase5-mail-secrets
+                      key: TUWUNEL_ALERTBOT_TOKEN
+                - name: PHASE5_USERS_JSON
+                  valueFrom:
+                    secretKeyRef:
+                      name: phase5-mail-secrets
+                      key: USERS_JSON
