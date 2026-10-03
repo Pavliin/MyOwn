@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.19](https://github.com/Pavliin/MyOwn/compare/v0.1.18...v0.1.19) (2026-10-03)
+
+### Fonctionnalités
+
+* **phase5:** add CalDAV writer for events and tasks ([1f8667b](https://github.com/Pavliin/MyOwn/commit/1f8667bfdc94d2491a4f957c93e249b5e5277fbe))
+* **phase5:** add explicit per-service opt-in gate ([93fd85e](https://github.com/Pavliin/MyOwn/commit/93fd85eec5035869110418396d2d1ca221c8fe14))
+* **phase5:** add Matrix DM proposal channel with real /sync long-poll ([1300886](https://github.com/Pavliin/MyOwn/commit/1300886c283abb3b20bba1f6c4cc665b27276c7b)), references [#etat-du-systeme](https://github.com/Pavliin/MyOwn/issues/etat-du-systeme)
+* **phase5:** add orchestrator tying every connector together ([a87da93](https://github.com/Pavliin/MyOwn/commit/a87da93161538a4e01d8dff1dcf929f8b04a1d66))
+* **phase5:** add per-user IA memory file over Nextcloud WebDAV ([b922897](https://github.com/Pavliin/MyOwn/commit/b9228979812b4b25b8e366972dfcfcb608785d83))
+* **phase5:** add real IMAP connector to Mailu (read-only) ([3c4c4f6](https://github.com/Pavliin/MyOwn/commit/3c4c4f6158388d706deb2b972c656d6fe7aa4cd5))
+* **phase5:** add structured extraction pipeline (Qwen3/Ollama) ([3758fc3](https://github.com/Pavliin/MyOwn/commit/3758fc3db001c2380e92786717ead0aa3cba2e94))
+* **phase5:** add user directory resolver (Authentik -> Matrix/Nextcloud/Mailu) ([deacadd](https://github.com/Pavliin/MyOwn/commit/deacaddf7872edf03adef039602ad895424c635b))
+* **tuwunel:** auto-join new accounts to the [#etat](https://github.com/Pavliin/MyOwn/issues/etat)-du-systeme room ([f3ee85e](https://github.com/Pavliin/MyOwn/commit/f3ee85e16ea195c9c9b6f6742b7dffef6e6ee9d3)), references [#etat-du-systeme](https://github.com/Pavliin/MyOwn/issues/etat-du-systeme)
+
+### Correctifs
+
+* **jellyfin:** expose native port 8096 on LAN for Android TV clients ([a83479c](https://github.com/Pavliin/MyOwn/commit/a83479c0b95de996c507fe1c25e16dbcf4b9de40))
+* **phase5:** correct timezone conversion and vague proposal wording ([93f718f](https://github.com/Pavliin/MyOwn/commit/93f718f5388d54905498e8f507ec3bfd42ad6614))
+* **phase5:** default event duration instead of zero-length entries ([c7cadde](https://github.com/Pavliin/MyOwn/commit/c7caddeecd12f3ade99b9d8c1b397023e6949180))
+* **phase5:** name the target task list, add mail date to proposals ([0f98ec2](https://github.com/Pavliin/MyOwn/commit/0f98ec2d18371258c2c6e84056f52c8dbedc48e7))
+* **phase5:** reject inconsistent/past-dated extractions, longer Ollama timeout ([f4110a9](https://github.com/Pavliin/MyOwn/commit/f4110a990435e1c2e3078a011d82197ae892a5ca))
+* **phase5:** support the mini PC as a target, fix malformed matrix_id ([1cc47aa](https://github.com/Pavliin/MyOwn/commit/1cc47aaa889ba54a186478c4d044ea91b620b038))
+
+### Documentation
+
+* **mailu:** document Roundcube IMAP session gotcha, prepare Phase 5 handoff ([a61bc42](https://github.com/Pavliin/MyOwn/commit/a61bc423543e5b4a2728c3f58a613d0bafd943e5))
+* **phase5:** document the real mail pipeline implementation and bugs ([5292dcd](https://github.com/Pavliin/MyOwn/commit/5292dcdfb1f29fdeaed14010ac0482617a86a4a4)), references [#167](https://github.com/Pavliin/MyOwn/issues/167)
 ## [0.1.18](https://github.com/Pavliin/MyOwn/compare/v0.1.17...v0.1.18) (2026-09-17)
 
 ### Fonctionnalités
