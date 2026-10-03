@@ -20,6 +20,20 @@ kind: CronJob
 metadata:
   name: phase5-mail
 spec:
+  # Shipped suspended on purpose — do not flip to false before the two
+  # gaps below are closed (both invisible in attended manual runs):
+  #  1. An unanswered proposal is left "unprocessed" (orchestrator.py,
+  #     timeout case) and re-proposed on the next run — fine by hand,
+  #     but on a 15 min schedule it would re-send the same DM every tick.
+  #     Needs a "proposal pending, don't re-ask before N hours" state.
+  #  2. All proposals share one DM room and wait_for_reply() accepts any
+  #     non-bot message after its baseline, so a late "oui" meant for mail
+  #     A can be consumed by the wait for mail B and write the wrong event.
+  #     Needs replies matched to a specific proposal (Matrix reply
+  #     relation / one thread per mail), not just "the next message".
+  # Test meanwhile with a one-off run:
+  #   kubectl create job --from=cronjob/phase5-mail phase5-mail-test -n phase5-mail
+  suspend: true
   schedule: "*/15 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
