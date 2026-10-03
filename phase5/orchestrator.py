@@ -51,6 +51,7 @@ Usage (one tick; run it again to see the next step — this no longer waits):
 import hashlib
 import os
 import sys
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -75,6 +76,17 @@ MAX_PENDING_URGENT = 10
 # still waiting for a slot is dropped after DEFERRED_TTL.
 PENDING_TTL = {"mail_proposal": timedelta(hours=48), "opt_in": timedelta(days=7)}
 DEFERRED_TTL = timedelta(days=7)
+
+# Wall-clock budget for *analysing new mail* in one tick; once spent, the
+# tick stops analysing, still proposes from the queue, and the rest is
+# picked up by the next tick. Found on the first real tick: ten new mails
+# took 14m39s on the mini PC's CPU-only Ollama, past the CronJob's 14 min
+# deadline (activeDeadlineSeconds: 840). 540s leaves room for the analysis
+# in flight when the budget runs out plus the sends. Nothing is lost
+# either way (each analysis is persisted as it completes), this just makes
+# a tick finish and be useful instead of being killed right before it
+# sends.
+SCAN_BUDGET_S = 540
 
 ANSWERS = {"yes": "Oui", "no": "Non"}
 
@@ -109,6 +121,14 @@ def _human_local(local_iso: str | None) -> str | None:
     return datetime.strptime(local_iso, "%Y-%m-%dT%H:%M:%S").strftime("%d/%m/%Y à %Hh%M")
 
 
+def _reason_suffix(extracted: dict) -> str:
+    """" : <reason>" when the model gave one, else just a full stop — it can
+    flag a mail "important" with important_reason null, and a literal
+    "None" in a message to a person is a bug found live on a real tick."""
+    reason = extracted.get("important_reason")
+    return f" : {reason}" if reason else "."
+
+
 def _format_proposal(message: dict, extracted: dict, task_list_display_name: str | None = None) -> tuple[str, str]:
     """(details, poll_question) for the has_event/has_reminder case.
 
@@ -132,7 +152,7 @@ def _format_proposal(message: dict, extracted: dict, task_list_display_name: str
         target = f" dans la liste « {task_list_display_name} »" if task_list_display_name else ""
         asks_for.append(f"une tâche{target}")
     if extracted.get("important"):
-        lines.append(f"⚠️ Par ailleurs, ce mail a été jugé important : {extracted.get('important_reason')}")
+        lines.append("⚠️ Par ailleurs, ce mail a été jugé important" + _reason_suffix(extracted))
 
     subject = message["subject"]
     short = subject if len(subject) <= 50 else subject[:47] + "…"
@@ -148,7 +168,7 @@ def _format_notification(message: dict, extracted: dict) -> str:
     return (
         f"🤖 Mail important reçu du {message.get('date', '?')}\n"
         f"De : {message['from']}\nSujet : « {message['subject']} »\n"
-        f"⚠️ {extracted.get('important_reason')}"
+        "⚠️ Ce mail a été jugé important" + _reason_suffix(extracted)
     )
 
 
@@ -356,7 +376,7 @@ class _Session:
                             build_question(service, include_question=False),
                             "Activer l'aide sur tes mails ?", {"service": service})
 
-    def _analyse_new_mail(self) -> None:
+    def _analyse_new_mail(self, started: float) -> None:
         """Read recent mail; anything not seen before is analysed once. What
         needs no confirmation is finished on the spot; what needs one goes
         into the `deferred` queue (persisted immediately, so a job killed
@@ -371,6 +391,9 @@ class _Session:
         for m in messages:
             if m["uid"] in known:
                 continue
+            if time.monotonic() - started >= SCAN_BUDGET_S:
+                info("Analysis budget for this tick is spent; the remaining mail waits for the next tick.")
+                break
             body = fetch_message_text(self.mailbox, self.imap_password, m["uid"])
             result = extract_from_email(m["from"], m["subject"], body)
             needs_write = bool(result.get("has_event") or result.get("has_reminder"))
@@ -434,6 +457,7 @@ class _Session:
 
 def process_user(matrix_id: str, nc_uid: str, mailbox: str, imap_password: str, nc_app_password: str) -> None:
     """One tick for one user. Never blocks waiting for a person."""
+    started = time.monotonic()
     with nextcloud_port_forward() as nc_base:
         s = _Session(nc_base, (nc_uid, nc_app_password), nc_uid, matrix_id, mailbox, imap_password)
 
@@ -449,7 +473,7 @@ def process_user(matrix_id: str, nc_uid: str, mailbox: str, imap_password: str, 
             info(f"{matrix_id} has not opted in to mail, skipping.")
             return
 
-        s._analyse_new_mail()
+        s._analyse_new_mail(started)
         s._propose_from_queue()
 
 

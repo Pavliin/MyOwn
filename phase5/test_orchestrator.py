@@ -488,6 +488,40 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(len(self.room.messages()), 1, "notification posted twice after a crash")
         self.assertIn("5", self.mem.memory["processed_mail_uids"])
 
+    # --- found on the first real tick -----------------------------------------
+
+    def test_important_without_a_reason_never_prints_none(self):
+        """Real: the model flagged a mail important with important_reason
+        null and the proposal said "jugé important : None"."""
+        result = event_result(important=True)
+        result["important_reason"] = None
+        self.add_mail(5, "Commande", result)
+        self.add_mail(6, "Alerte", dict(IMPORTANT_ONLY, important_reason=None))
+        self.tick()
+        for message in self.room.messages():
+            self.assertNotIn("None", message["content"]["body"])
+            if "jugé important" in message["content"]["body"]:
+                self.assertTrue(message["content"]["body"].rstrip().endswith("important.")
+                                or "important." in message["content"]["body"])
+
+    def test_the_analysis_budget_stops_scanning_but_still_proposes_from_the_queue(self):
+        """Real: ten new mails took longer than the job's deadline. Once the
+        budget is spent no further mail is analysed, but what is already
+        queued is still proposed, and the rest is picked up next tick."""
+        self.mem.data["memory"]["deferred"] = {"9": {
+            "mail": {"uid": "9", "from": "x", "subject": "Déjà analysé", "date": ""}, "result": event_result(),
+            "task_list_name": None, "urgent": False, "queued_at": orch._now().isoformat(),
+        }}
+        self.add_mail(10, "Pas encore analysé", event_result())
+        with mock.patch.object(orch, "SCAN_BUDGET_S", 0):
+            self.tick()
+        self.assertEqual(self.extract_calls, [], "analysed a mail with no budget left")
+        self.assertEqual(len(self.room.polls()), 1)
+        self.room.poll_for("Déjà analysé")
+        self.tick()                                       # next tick has budget again
+        self.assertEqual(self.extract_calls, ["Pas encore analysé"])
+        self.assertEqual(len(self.room.polls()), 2)
+
     def test_non_actionable_mail_is_marked_processed_silently_with_no_history(self):
         self.add_mail(5, "Newsletter", NOTHING)
         self.tick()
