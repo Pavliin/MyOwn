@@ -55,7 +55,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from caldav_writer import CALENDAR_DISPLAY_NAME, find_or_create_task_list, write_event, write_task
+from caldav_writer import CALENDAR_DISPLAY_NAME, TASK_LIST_DISPLAY_NAME, write_event, write_task
 from extraction import extract_from_email
 from imap_connector import fetch_message_text, list_recent_messages
 from matrix_dm import end_poll, get_or_create_dm, get_poll_vote, get_replies_after, send_poll, send_proposal
@@ -348,8 +348,11 @@ class _Session:
                             uid=_caldav_uid(self.mailbox, mail["uid"], "event"))
             if result.get("has_reminder") and result.get("reminder"):
                 rem = result["reminder"]
+                # task_list=None: write_task resolves (creating on first use) the
+                # dedicated list itself. Never a segment remembered in an older
+                # proposal — one sent before the dedicated list existed would
+                # otherwise still point at the user's personal list.
                 write_task(self.nc_base, self.nc_auth, self.nc_uid, rem["title"], rem.get("due_utc"),
-                           task_list=p["payload"].get("task_list"),
                            uid=_caldav_uid(self.mailbox, mail["uid"], "task"))
         self._finish_mail(mail["uid"], {
             "kind": "mail_proposal_accepted" if decision else "mail_proposal_declined",
@@ -412,14 +415,15 @@ class _Session:
                 self._finish_mail(m["uid"], {"kind": "mail_notification", "subject": m["subject"], "uid": m["uid"]})
                 continue
 
-            task_list = task_list_name = None
-            if result.get("has_reminder") and result.get("reminder"):
-                task_list, task_list_name = find_or_create_task_list(self.nc_base, self.nc_auth, self.nc_uid)
+            # The proposal names the dedicated list from a constant. Looking it
+            # up (or worse, creating it) here would touch Nextcloud before the
+            # person has said anything; the list is only created on a "oui".
+            task_list_name = TASK_LIST_DISPLAY_NAME if (result.get("has_reminder") and result.get("reminder")) else None
 
-            def enqueue(data, m=m, result=result, task_list=task_list, task_list_name=task_list_name):
+            def enqueue(data, m=m, result=result, task_list_name=task_list_name):
                 data["memory"].setdefault("deferred", {})[m["uid"]] = {
                     "mail": {k: m.get(k) for k in ("uid", "from", "subject", "date")},
-                    "result": result, "task_list": task_list, "task_list_name": task_list_name,
+                    "result": result, "task_list_name": task_list_name,
                     "urgent": bool(result.get("important")), "queued_at": _now().isoformat(),
                 }
             self._update(enqueue)
@@ -449,8 +453,14 @@ class _Session:
                 continue  # stays queued, already analysed
 
             details, question = _format_proposal(mail, result, item.get("task_list_name"))
-            self._start_pending("mail_proposal", f"{self.mailbox}:{mail['uid']}", details, question,
-                                {"mail": mail, "result": result, "task_list": item.get("task_list")},
+            # `attempt` is part of the transaction id on purpose: ids are
+            # deterministic per mail (that is what makes a crash-retry a
+            # no-op), so a deliberate *re*-proposal of the same mail — e.g.
+            # after the target list changed — needs its own, or the send
+            # endpoint would hand back the old, already-closed messages.
+            attempt = item.get("attempt", 1)
+            self._start_pending("mail_proposal", f"{self.mailbox}:{mail['uid']}:{attempt}", details, question,
+                                {"mail": mail, "result": result},
                                 drop_deferred_uid=mail["uid"])
             open_count += 1
 

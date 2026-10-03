@@ -177,7 +177,6 @@ class OrchestratorTests(unittest.TestCase):
             "list_recent_messages": lambda mb, pw, limit=10: list(self.mailbox_messages),
             "fetch_message_text": lambda mb, pw, uid: "corps",
             "extract_from_email": fake_extract,
-            "find_or_create_task_list": lambda b, a, u: ("liste", "Ma liste"),
             "write_event": lambda *a, **k: self.event_writes.append({"args": a, "kwargs": k}),
             "write_task": lambda *a, **k: self.task_writes.append({"args": a, "kwargs": k}),
         }
@@ -309,14 +308,44 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(self.event_writes, [])
         self.assertEqual(len(self.pendings()), 1)
 
-    def test_reminder_goes_to_the_resolved_list_and_the_poll_names_it(self):
+    def test_reminder_goes_to_the_dedicated_list_and_the_poll_names_it(self):
         self.add_mail(5, "Colis", REMINDER_RESULT)
         self.tick()
         question = self.room.polls()[0]["content"]["org.matrix.msc3381.poll.start"]["question"]["org.matrix.msc1767.text"]
-        self.assertIn("Ma liste", question)
+        self.assertIn("Myo's help", question)
+        self.assertEqual(self.task_writes, [], "wrote (or created the list) before any answer")
         self.room.human_votes(self.room.poll_for("Colis"), "yes")
         self.tick()
-        self.assertEqual(self.task_writes[0]["kwargs"]["task_list"], "liste")
+        # write_task resolves the dedicated list itself; no list is passed in
+        self.assertNotIn("task_list", self.task_writes[0]["kwargs"])
+
+    def test_a_deliberate_reproposal_sends_new_messages_not_the_old_closed_ones(self):
+        """Transaction ids are deterministic per mail, so re-proposing the same
+        mail must carry a new attempt number — otherwise Matrix's idempotence
+        returns the first, already-closed messages and nothing new is sent."""
+        self.add_mail(5, "Colis", REMINDER_RESULT)
+        self.tick()
+        first_poll = self.room.poll_for("Colis")
+        pending = self.mem.data["memory"]["pending_proposals"].pop()
+        self.room.end_poll(ROOM, first_poll)
+        self.mem.data["memory"].setdefault("deferred", {})["5"] = {
+            "mail": pending["payload"]["mail"], "result": pending["payload"]["result"],
+            "task_list_name": "Myo's help", "urgent": False, "attempt": 2,
+            "queued_at": orch._now().isoformat(),
+        }
+        self.tick()
+        self.assertEqual(len(self.room.polls()), 2, "re-proposal reused the old poll")
+        self.assertNotEqual(self.pendings()[0]["poll_event_id"], first_poll)
+
+    def test_a_list_remembered_by_an_older_proposal_is_never_written_to(self):
+        """A proposal sent before the dedicated list existed carries the
+        user's personal list in its state; accepting it must not write there."""
+        self.add_mail(5, "Colis", REMINDER_RESULT)
+        self.tick()
+        self.mem.data["memory"]["pending_proposals"][0]["payload"]["task_list"] = "ddf7f632-personal-list"
+        self.room.human_votes(self.room.poll_for("Colis"), "yes")
+        self.tick()
+        self.assertNotIn("ddf7f632-personal-list", str(self.task_writes))
 
     def test_poll_question_names_the_mail_and_the_target(self):
         self.add_mail(5, "Réservation du 18", event_result())
@@ -385,7 +414,7 @@ class OrchestratorTests(unittest.TestCase):
     def test_a_mail_stuck_in_the_queue_too_long_is_dropped(self):
         self.mem.data["memory"]["deferred"] = {"5": {
             "mail": {"uid": "5", "from": "x", "subject": "Vieux", "date": ""}, "result": event_result(),
-            "task_list": None, "task_list_name": None, "urgent": False,
+            "task_list_name": None, "urgent": False,
             "queued_at": (orch._now() - orch.DEFERRED_TTL - timedelta(hours=1)).isoformat(),
         }}
         self.tick()
