@@ -43,38 +43,25 @@ spec:
                   name: livekit-secrets
                   key: LIVEKIT_SECRET
             # Grants Tuwunel-authenticated users full access (can create
-            # new LiveKit rooms, not just join existing ones) — the only
-            # homeserver this deployment serves.
+            # new LiveKit rooms and delegate delayed leave events, not
+            # just join existing rooms) — matched against the Matrix
+            # *server_name* of the requesting user (the part after ':' in
+            # @robin:offsystem.fr), not the hosting domain
+            # (tuwunel.offsystem.fr). Was still myown-tuwunel.local after
+            # the 2026-08-23 server_name migration, silently downgrading
+            # every real user to "restricted".
             - name: LIVEKIT_FULL_ACCESS_HOMESERVERS
-              value: myown-tuwunel.local
-            # Dev cluster only, both entries below — needed because the
-            # container's default CA trust store doesn't include our
-            # mkcert dev CA (only the host machine has it, via
-            # `mkcert -install`). Real bug found via an actual Element
-            # Call join, not curl (curl's -k flag masked it in every
-            # earlier check): the federation client's .well-known/matrix/
-            # server lookup failed its TLS handshake and silently fell
-            # back to SRV lookup (nothing) then the hardcoded default
-            # port 8448 — timing out since nothing listens there. Setting
-            # LIVEKIT_INSECURE_SKIP_VERIFY_TLS alone did NOT fix this —
-            # traced into gomatrixserverlib/fclient's source: that flag
-            # only skips verification on the actual federation request
-            # transport, but LookupWellKnown() uses its own separate,
-            # hardcoded http.Client with no such override. SSL_CERT_FILE
-            # (Go's standard override for the system cert pool) is what
-            # actually fixes the well-known lookup itself. Must be
-            # removed once Phase 4 moves to real Let's Encrypt certs.
-            - name: LIVEKIT_INSECURE_SKIP_VERIFY_TLS
-              value: "YES_I_KNOW_WHAT_I_AM_DOING"
-            - name: SSL_CERT_FILE
-              value: /etc/ssl/mkcert/ca.pem
+              value: offsystem.fr
+            # No CA override, no TLS-verify bypass: offsystem.fr and
+            # tuwunel.offsystem.fr serve the Let's Encrypt wildcard, which
+            # the image's own system bundle trusts. The dev-era
+            # SSL_CERT_FILE (mkcert CA) would now *break* verification —
+            # it replaces the system roots rather than adding to them
+            # (rustls-native-certs, same as Go's behaviour before the
+            # Rust rewrite). See notes-techniques.md, LiveKit section.
           ports:
             - containerPort: 8080
               name: http
-          volumeMounts:
-            - name: mkcert-ca
-              mountPath: /etc/ssl/mkcert
-              readOnly: true
           readinessProbe:
             httpGet:
               path: /healthz
@@ -87,7 +74,3 @@ spec:
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 20
-      volumes:
-        - name: mkcert-ca
-          configMap:
-            name: mkcert-ca
