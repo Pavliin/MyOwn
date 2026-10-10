@@ -28,6 +28,11 @@ spec:
           # Tuwunel over HTTPS. Same class of gotcha as lk-jwt-service's
           # SSL_CERT_FILE need. Must be removed once Phase 4 moves to real
           # Let's Encrypt certs.
+          # `optional: true`: on a fresh real-domain install (scripts/install.sh,
+          # k3s target) no mkcert CA exists at all — without this the pod
+          # stayed ContainerCreating forever (FailedMount), found in the
+          # installer's VM test 2026-10-10. Node.js only warns when
+          # NODE_EXTRA_CA_CERTS points to a missing file.
           podEnv:
             - name: NODE_EXTRA_CA_CERTS
               value: /etc/ssl/mkcert/ca.pem
@@ -35,6 +40,7 @@ spec:
             - name: mkcert-ca
               configMap:
                 name: mkcert-ca
+                optional: true
           additionalVolumeMounts:
             - name: mkcert-ca
               mountPath: /etc/ssl/mkcert
