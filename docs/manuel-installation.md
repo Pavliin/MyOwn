@@ -252,9 +252,21 @@ Le nœud répond alors directement sur son IP LAN réelle (`k3s`'s ServiceLB/kli
 
 LiveKit n'a besoin d'aucun ajustement : ses ports RTC (`podHostNetwork: true`) se bindent directement sur la vraie interface du nœud, sans la couche de port-mapping Docker qu'il fallait pour k3d.
 
-### 14.3 Étapes identiques
+### 14.3 Installeur automatique et choix des services
 
-Sections 5 (ArgoCD), 6 (KSOPS — la clé age doit être **restaurée** depuis sa sauvegarde sur cette nouvelle machine, jamais régénérée), 7 (health check Prometheus Operator), 8 (bootstrap GitOps), 9 (mkcert) s'appliquent telles quelles. `scripts/install.sh` automatise ce chemin **k3d** uniquement à ce stade — pas encore adapté pour créer un vrai cluster k3s bare-metal (section 14.1 ci-dessus), à faire à la main jusqu'à ce que le script soit étendu et testé sur ce chemin.
+`scripts/install.sh` automatise tout ce chemin bare-metal (cible par défaut, `MYOWN_TARGET=k3s`) : installation de k3s, Services Traefik et CoreDNS de la section 14.2, ArgoCD, KSOPS, health check, dossier `hostPath` de Nextcloud (section 14.4) et bootstrap GitOps. La clé age doit être **restaurée** à l'avance dans `~/.config/sops/age/keys.txt` sur la nouvelle machine, jamais régénérée. Le cluster de dev reste accessible avec `MYOWN_TARGET=k3d`.
+
+```bash
+scripts/install.sh
+```
+
+**Choix des services** : seul le socle est imposé, Authentik (identité) et Vaultwarden (reçoit les secrets générés, cf. `installation-utilisateur.md`). Le reste se coche dans une liste (Tuwunel, Uptime Kuma, Nextcloud, Immich, Jellyfin, LiveKit, Mailu, Ollama, supervision). Les dépendances sont ajoutées d'office (Jellyfin → Nextcloud, LiveKit → Tuwunel). Sans question : `MYOWN_SERVICES=nextcloud,immich` (ou `all`, ou `none` pour le socle seul).
+
+**Relancer le script** ajoute les services nouvellement cochés et **arrête** ceux décochés, après confirmation (`MYOWN_ASSUME_YES=1` en non interactif). Un service arrêté perd ses pods, jamais ses données : ses volumes sont marqués `Delete=false` avant suppression de son `Application`, et une réactivation les retrouve tels quels. Les dossiers `hostPath` ne sont jamais touchés. L'état installé n'est stocké nulle part ailleurs que dans le cluster (filtre `directory.include` de l'Application `root`). Une relance ne change jamais la version d'ArgoCD en place, ni la révision suivie par `root` (sauf `MYOWN_ARGOCD_VERSION` / `MYOWN_REVISION` explicites).
+
+**Domaine réel** : la section 16 (Let's Encrypt via Gandi, DynDNS) n'est activée qu'avec `MYOWN_DOMAIN_SETUP=1` (+ `MYOWN_GANDI_TOKEN_FILE` à la première fois). **Jamais sur une machine de test** : le DynDNS repointerait le domaine réel vers elle. Les étapes 15 et suivantes (dossier partagé, LiveKit externe, watchdog, DKIM, Pi-hole) restent manuelles.
+
+Toutes les options sont décrites dans l'en-tête du script. Validé le 2026-10-10 dans une VM Ubuntu 26.04 neuve : socle seul, puis ajout, arrêt et réactivation d'un service avec ses données retrouvées (`notes-techniques.md`).
 
 ### 14.4 Stockage `hostPath` — le dossier doit exister avec les bonnes permissions **avant** le premier démarrage
 

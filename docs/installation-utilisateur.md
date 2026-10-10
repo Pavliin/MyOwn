@@ -16,6 +16,19 @@ Objectif actuel (pas le modèle business "machines pré-installées expédiées"
 
 Un vrai installeur graphique bootable resterait une évolution possible **plus tard**, une fois une vraie demande palier 3 validée en usage réel — pas un point de départ.
 
+## Choix des services à installer (décidé le 2026-10-10)
+
+Toutes les personnes qui installent MyOwn ne voudront pas toute la solution. L'installeur laisse donc choisir les services, et ce choix évolue dans le temps : **relancer l'installeur** permet d'ajouter un service non installé, ou d'arrêter un service déjà actif.
+
+- **Socle non désactivable : Authentik et Vaultwarden.** Authentik est la seule source d'identité. Vaultwarden reçoit tous les secrets générés à l'installation (modèle admin ci-dessous). Choix de l'utilisateur : socle minimal plutôt qu'un socle incluant Tuwunel/Uptime Kuma. **Conséquence assumée** : sans Tuwunel, il n'y a ni salon d'alertes, ni annonces avant mise à jour (règle « aucune modification sans annonce préalable », plus bas). Un canal de repli reste à définir pour ce cas, pas encore traité.
+- **Dépendances imposées** : Jellyfin requiert Nextcloud (médiathèque), LiveKit requiert Tuwunel. Les synchros de certificats suivent leur service.
+- **Arrêter ne supprime jamais les données** (choix de l'utilisateur) : pods supprimés, volumes conservés, réactivation à l'identique. Une purge définitive, si elle est un jour nécessaire, sera une action séparée et explicite.
+- **L'état installé vit dans le cluster** (filtre de l'Application `root`), pas dans un fichier qui pourrait diverger.
+
+Implémenté dans `scripts/install.sh` + `scripts/lib/services.sh`, mode d'emploi dans `manuel-installation.md` §14.3.
+
+**Limites connues** : les blueprints Authentik de **tous** les services sont appliqués quel que soit le choix (un service non installé apparaît quand même comme application SSO dans Authentik) ; même chose pour les noms d'hôte de `coredns-custom.yaml` et les sondes d'Uptime Kuma. Sans conséquence fonctionnelle, à rendre conditionnel plus tard.
+
 ## Modèle de gestion des comptes admin
 
 **Constat de départ** (état réel du projet, vérifié service par service) : trois mécanismes différents et non coordonnés aujourd'hui.
@@ -49,9 +62,9 @@ Tout le reste s'automatise une fois ces deux étapes passées, dans la continuit
 
 **Création programmatique d'entrées Vaultwarden via API juste après un premier login** — prototypé et confirmé en conditions réelles contre un compte de test jetable (créé manuellement par l'utilisateur, la définition du mot de passe maître restant l'étape humaine incompressible identifiée plus haut), via le CLI officiel `bw` (installé en local dans un dossier de travail, pas globalement — évite le besoin de droits admin sur la machine, cohérent avec ce que ferait un vrai installeur). Deux types d'entrées testés avec succès : note sécurisée et identifiant complet (utilisateur/mot de passe/URL, le cas réel pour ArgoCD/Grafana). Propriété de sécurité vérifiée en plus du simple succès de l'opération : interrogation directe de l'API Vaultwarden (`GET /api/ciphers`, hors `bw`) pour confirmer que le serveur ne stocke que du chiffré (format `CipherString` Bitwarden `type.iv|ciphertext|mac`) — aucun mot de passe en clair, y compris dans la réponse API brute. Items de test supprimés et session fermée après validation.
 
-### Pas encore intégré à `scripts/install.sh` (2026-08-15)
+### Pas encore intégré à `scripts/install.sh` (2026-08-15, toujours vrai au 2026-10-10)
 
-Le mécanisme ci-dessus (push des secrets, auto-enregistrement admin sur Immich/Tuwunel) est validé isolément mais **jamais branché au script d'installation réel**. `scripts/install.sh` s'arrête aujourd'hui après le bootstrap GitOps + mkcert + `/etc/hosts` — il ne pilote ni le flow Authentik, ni la création du coffre Vaultwarden, ni le push de secrets qui devrait suivre.
+Le mécanisme ci-dessus (push des secrets, auto-enregistrement admin sur Immich/Tuwunel) est validé isolément mais **jamais branché au script d'installation réel**. `scripts/install.sh` installe désormais le vrai k3s bare-metal avec choix des services (2026-10-10), mais s'arrête toujours après le bootstrap GitOps — il ne pilote ni le flow Authentik, ni la création du coffre Vaultwarden, ni le push de secrets qui devrait suivre.
 
 **Risque de séquencement identifié en réfléchissant à l'intégration** : l'étape de bootstrap GitOps (déjà dans le script) déploie tous les services d'un coup, y compris Immich et Tuwunel dont l'admin se décide au "premier arrivé, premier servi" — donc dans l'ordre actuel du script, ces deux services sont exposés et vulnérables à cette course **avant même** que l'admin ait fini son propre flow Authentik. Un vrai script d'installation doit soit retarder l'exposition de ces services jusqu'à ce que l'admin Authentik existe, soit accepter cette fenêtre de risque comme acceptable en LAN fermé (à trancher explicitement, pas par défaut).
 
@@ -97,7 +110,7 @@ Défaut proposé : manuel (le plus prudent) — l'installeur laisse le choix exp
 
 ## Ouvert
 
-- Forme exacte du script installeur (langage, gestion d'erreurs, reprise sur échec partiel).
+- Forme exacte du script installeur : tranché en partie (2026-10-10) — bash, liste à cocher `whiptail`, chaque étape rejouable donc une simple relance sert de reprise sur échec partiel. Reste ouvert : l'intégration du flow admin (Authentik, Vaultwarden) dans ce script.
 - Contenu précis du dashboard familial (au-delà des liens par service).
 - Mapping groupe Authentik → admin Nextcloud (cf. ci-dessus).
 - Durée exacte du délai de prévenance en mode automatique (24h/48h/autre), et mécanisme technique de vérification décentralisée des nouvelles versions (fréquence, source exacte — API GitHub Releases pressentie mais pas validée).
