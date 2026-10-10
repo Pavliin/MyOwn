@@ -262,7 +262,7 @@ if [ "$SKIP_MKCERT" != "1" ]; then
       --cert="$TMPDIR_CERTS/$host.pem" --key="$TMPDIR_CERTS/$host-key.pem" \
       --dry-run=client -o yaml | kubectl apply -f -
   done
-  for entry in "livekit:livekit" "uptime-kuma:monitoring"; do
+  for entry in "uptime-kuma:monitoring"; do
     IFS=: read -r svc ns <<<"$entry"
     grep -qx "$svc" <<<"$WANTED" || continue
     kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
