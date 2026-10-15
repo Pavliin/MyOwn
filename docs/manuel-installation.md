@@ -167,7 +167,7 @@ kubectl create configmap mkcert-ca -n monitoring --from-file=ca.pem="$(mkcert -C
 
 ## 10. Accès local
 
-Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/*.yaml` pour la liste à jour) :
+Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/templates/*.yaml` pour la liste à jour) :
 
 ```
 127.0.0.1 myown-argocd.local
@@ -278,7 +278,7 @@ Toutes les options sont décrites dans l'en-tête du script. Validé le 2026-10-
 
 ### 14.4 Stockage `hostPath` — le dossier doit exister avec les bonnes permissions **avant** le premier démarrage
 
-Nextcloud (`gitops/apps/nextcloud.yaml`, `persistence.hostPath`) monte un `hostPath` de type `Directory` — n'est **jamais créé automatiquement**, contrairement à Immich (`DirectoryOrCreate`, se crée tout seul). Sur le cluster de dev, ce dossier existait déjà de longue date (créé pendant la migration de données, `notes-techniques.md`) — jamais rejoué sur une machine neuve avant ce premier déploiement bare-metal, où l'absence de ce dossier a fait échouer le pod (`FailedMount`).
+Nextcloud (`gitops/apps/templates/nextcloud.yaml`, `persistence.hostPath`) monte un `hostPath` de type `Directory` — n'est **jamais créé automatiquement**, contrairement à Immich (`DirectoryOrCreate`, se crée tout seul). Sur le cluster de dev, ce dossier existait déjà de longue date (créé pendant la migration de données, `notes-techniques.md`) — jamais rejoué sur une machine neuve avant ce premier déploiement bare-metal, où l'absence de ce dossier a fait échouer le pod (`FailedMount`).
 
 **Point critique trouvé en le faisant pour de vrai** : créer le dossier avec un simple `mkdir` ne suffit pas — il doit appartenir au groupe `www-data` (gid 33, celui du `fsGroup` du pod) avec droits d'écriture de groupe, **avant** le tout premier démarrage du conteneur. Sans ça, le tout premier `occ maintenance:install` automatique du conteneur échoue en écriture (`Cannot write into "config" directory!`), laisse un `config.php` vide, et plus aucune tentative d'auto-installation ne se redéclenche ensuite (l'entrypoint ne réinstalle jamais tant que ce fichier existe, même vide) — piège découvert après une bonne heure de diagnostic en aval (voir `notes-techniques.md`, section Nextcloud). Fait dès le départ, l'auto-installation standard du conteneur (pilotée par `NEXTCLOUD_ADMIN_USER`/`NEXTCLOUD_ADMIN_PASSWORD`, déjà câblés via `existingSecret`) se déroule normalement, sans intervention manuelle :
 
@@ -294,7 +294,7 @@ Identique à la section 11 — sur un cluster tout juste créé, les `Applicatio
 
 ## 15. Nextcloud — dossier partagé familial (app Group Folders)
 
-Pour que plusieurs comptes personnels (SSO) puissent déposer dans un même dossier — au lieu d'un compte unique dédié — plutôt qu'une app tierce, Nextcloud a une app officielle faite pour ça (`groupfolders`). Utilisé notamment pour la médiathèque lue par Jellyfin (`gitops/apps/jellyfin.yaml`, `persistence.media.hostPath`).
+Pour que plusieurs comptes personnels (SSO) puissent déposer dans un même dossier — au lieu d'un compte unique dédié — plutôt qu'une app tierce, Nextcloud a une app officielle faite pour ça (`groupfolders`). Utilisé notamment pour la médiathèque lue par Jellyfin (`gitops/apps/templates/jellyfin.yaml`, `persistence.media.hostPath`).
 
 ```bash
 php occ app:install groupfolders   # déjà dans le hook before-starting de nextcloud.yaml, idempotent
@@ -340,7 +340,7 @@ kubectl exec -n kube-system "$POD" -- rm -f /data/acme.json
 kubectl rollout restart deployment traefik -n kube-system
 ```
 
-**4. DynDNS** — Free (Freebox) ne propose pas d'IP fixe ici (vérifié : pas d'option "IP fixe", fonctionnalité native "DNS dynamique" présente mais inutilisée). `gitops/apps/gandi-dyndns.yaml` maintient les enregistrements `@`/`*` à jour (CronJob, toutes les 5 min). Nécessite son propre secret SOPS (`gitops/secrets/gandi-dyndns/gandi-dyndns.sops.yaml`, clé `GANDIV5_PERSONAL_ACCESS_TOKEN`, même PAT que l'étape 1).
+**4. DynDNS** — Free (Freebox) ne propose pas d'IP fixe ici (vérifié : pas d'option "IP fixe", fonctionnalité native "DNS dynamique" présente mais inutilisée). `gitops/apps/templates/gandi-dyndns.yaml` maintient les enregistrements `@`/`*` à jour (CronJob, toutes les 5 min). Nécessite son propre secret SOPS (`gitops/secrets/gandi-dyndns/gandi-dyndns.sops.yaml`, clé `GANDIV5_PERSONAL_ACCESS_TOKEN`, même PAT que l'étape 1).
 
 **5. Port-forward Freebox** — `mafreebox.freebox.fr` → Paramètres avancés → **Gestion des ports** → rediriger le port **443/tcp uniquement** (pas 80, inutile pour DNS-01) vers l'IP LAN du mini PC.
 
@@ -359,7 +359,7 @@ echo | openssl s_client -connect <IP mini PC>:8453 -servername <sous-domaine> 2>
 
 Voir `notes-techniques.md`, section "Migration SSO vers les hostnames publics", pour les bugs réels rencontrés par service (Vaultwarden : réassociation SQLite nécessaire ; Jellyfin : `ForceHttpsRedirect`).
 
-**Piège critique, à ne jamais oublier sur une installation dont `root` suit un tag épinglé (mini PC)** : ne **jamais** réactiver `syncPolicy`/`selfHeal` après des tests en direct sans avoir d'abord coupé une release et rejoué `scripts/pin-release.sh` — sinon ArgoCD réécrase silencieusement tout ce qui vient d'être validé en direct dès la resynchronisation, sans que l'UI ne signale de régression (`Synced`/`Healthy` reste affiché).
+**Piège critique, à ne jamais oublier sur une installation dont `root` suit un tag épinglé (mini PC)** : ne **jamais** réactiver `syncPolicy`/`selfHeal` après des tests en direct sans avoir d'abord coupé une release contenant ces corrections et fait suivre ce nouveau tag à `root` — sinon ArgoCD réécrase silencieusement tout ce qui vient d'être validé en direct dès la resynchronisation, sans que l'UI ne signale de régression (`Synced`/`Healthy` reste affiché).
 
 ## 17. LiveKit — branchement externe et TURN
 
@@ -372,9 +372,9 @@ Une fois le domaine réel en place (section 16), LiveKit peut être ouvert à l'
 - `7881/tcp` et `7882/udp` — média RTC direct (déjà nécessaires pour LiveKit en général, cf. section 4).
 - `5349/tcp` — TURN/TLS, nécessaire dès qu'un client est derrière un NAT qui bloque la connexion directe (quasi systématique en mobile). Sans lui, les appels échouent silencieusement uniquement pour certains clients (`removing participant without connection` dans les logs `livekit-sfu`) — pas une erreur visible côté configuration.
 
-**3. TURN et validation d'IP externe** — `gitops/apps/livekit.yaml` : `livekit.turn.enabled: true` (réutilise le certificat Let's Encrypt déjà émis, via `livekit-turn-cert-sync`, aucune émission supplémentaire) et `rtc.skip_external_ip_validation: true` — nécessaire dès que la box ne supporte pas le hairpin NAT en UDP (fréquent, indépendant du support hairpin TCP déjà utilisé pour HTTPS) : sans ce flag, LiveKit annonce des IP internes non routables au lieu de la vraie IP publique pourtant correctement détectée via STUN. Détail complet (pourquoi, logs à l'appui) dans `notes-techniques.md`.
+**3. TURN et validation d'IP externe** — `gitops/apps/templates/livekit.yaml` : `livekit.turn.enabled: true` (réutilise le certificat Let's Encrypt déjà émis, via `livekit-turn-cert-sync`, aucune émission supplémentaire) et `rtc.skip_external_ip_validation: true` — nécessaire dès que la box ne supporte pas le hairpin NAT en UDP (fréquent, indépendant du support hairpin TCP déjà utilisé pour HTTPS) : sans ce flag, LiveKit annonce des IP internes non routables au lieu de la vraie IP publique pourtant correctement détectée via STUN. Détail complet (pourquoi, logs à l'appui) dans `notes-techniques.md`.
 
-**4. `livekit-turn-cert-sync`** (`gitops/apps/livekit-turn-cert-sync.yaml`) — entièrement automatique une fois synchronisé par ArgoCD, aucune étape manuelle : `CronJob` quotidien qui extrait le certificat wildcard directement depuis l'`acme.json` de Traefik et le republie en `Secret` dans `livekit`.
+**4. `livekit-turn-cert-sync`** (`gitops/apps/templates/livekit-turn-cert-sync.yaml`) — entièrement automatique une fois synchronisé par ArgoCD, aucune étape manuelle : `CronJob` quotidien qui extrait le certificat wildcard directement depuis l'`acme.json` de Traefik et le republie en `Secret` dans `livekit`.
 
 **Limitation connue, non résolue** : même une fois tout ce qui précède en place, un appel Element Call échoue encore avec `MISSING_MATRIX_RTC_TRANSPORT` sur certains clients (confirmé : appli Element X et navigateur mobile) alors que le PC fonctionne. Infrastructure serveur entièrement validée correcte par preuve directe (réponse serveur correcte confirmée dans les logs d'accès Traefik) — la cause résiduelle est côté client (`element-call`/`matrix-js-sdk`, mécanisme encore expérimental MSC4143/MSC4515), pas résolue à ce jour. Investigation complète dans `notes-techniques.md`.
 
@@ -405,7 +405,7 @@ Après le premier déploiement de Mailu (et à chaque fois qu'un doute existe su
 
 ```bash
 # 1. Active l'API admin de Mailu si ce n'est pas déjà fait — voir le bloc
-#    admin.extraEnvVars de gitops/apps/mailu.yaml (API_TOKEN, secret SOPS
+#    admin.extraEnvVars de gitops/apps/templates/mailu.yaml (API_TOKEN, secret SOPS
 #    gitops/secrets/mailu/mailu.sops.yaml).
 export MAILU_API_TOKEN=$(sops -d gitops/secrets/mailu/mailu.sops.yaml | yq '.stringData.API_TOKEN')
 
