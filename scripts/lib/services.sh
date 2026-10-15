@@ -26,8 +26,8 @@ declare -A SVC_LABEL=(
   [nextcloud]="Nextcloud — fichiers, agenda, contacts"
   [immich]="Immich — photos et vidéos"
   [jellyfin]="Jellyfin — films et séries (requiert Nextcloud)"
-  [livekit]="LiveKit — appels audio/vidéo (requiert Tuwunel)"
-  [mailu]="Mailu — mail (requiert un vrai domaine + relais)"
+  [livekit]="LiveKit — appels audio/vidéo (requiert Tuwunel + vrai domaine)"
+  [mailu]="Mailu — mail (requiert un vrai domaine + relais VPS)"
   [ollama]="Ollama — IA locale"
   [monitoring]="Prometheus/Grafana — supervision admin"
 )
@@ -49,6 +49,34 @@ declare -A SVC_APPS=(
 declare -A SVC_DEPS=(
   [jellyfin]="nextcloud"
   [livekit]="tuwunel"
+)
+
+# Réglages à faire sur la box internet (redirections de ports vers la machine
+# MyOwn), affichés à l'installation. Uniquement ce qui a été réellement
+# nécessaire sur le mini PC (Freebox) — manuel-installation.md §16-17,
+# notes-techniques.md. Hors box mais signalé aussi quand c'est bloquant.
+declare -A SVC_BOX=(
+  [livekit]="7881/tcp et 7882/udp (média des appels) + 5349/tcp (TURN, indispensable pour les mobiles)"
+  [mailu]="993/tcp (IMAPS) et 465/tcp (SMTPS) pour les clients mail mobiles. Le port 25 n'est PAS à ouvrir : la réception et l'envoi passent par le relais VPS (Free bloque le 25 sortant) — VPS + enregistrements DNS MX/SPF/DKIM/DMARC à préparer à part (docs/notes-techniques.md, relais mail)"
+)
+
+# À l'inverse : ports qu'un service ouvre sur le réseau local mais qui ne
+# doivent JAMAIS être redirigés depuis internet.
+declare -A SVC_BOX_NEVER=(
+  [jellyfin]="8096/tcp (téléviseurs Android, réservé au réseau local)"
+)
+
+# Réglage commun dès qu'un vrai domaine est utilisé (MYOWN_DOMAIN_SETUP=1).
+MYOWN_BOX_DOMAIN="443/tcp (tous les services web) + réservation DHCP pour que la machine MyOwn garde toujours la même adresse"
+
+# Services inutilisables sans vrai domaine : leur certificat (TURN pour
+# LiveKit, IMAPS/SMTPS pour Mailu) est extrait du certificat Let's Encrypt de
+# Traefik par un CronJob (*-cert-sync). Sans domaine, ce certificat n'existe
+# jamais et leurs pods restent bloqués en ContainerCreating (vu en VM,
+# 2026-10-10). Valeur : le CronJob (kube-system) et le secret qu'il produit.
+declare -A SVC_CERT_SYNC=(
+  [livekit]="livekit-turn-cert-sync livekit/livekit-turn-tls"
+  [mailu]="mailu-cert-sync mailu/mailu-certificates"
 )
 
 MYOWN_CORE_SERVICES=(authentik vaultwarden)
@@ -132,6 +160,46 @@ svc_resolve() {
   return 0
 }
 
+# Retire d'une sélection les services qui exigent un vrai domaine quand il
+# n'y en a pas, en l'expliquant. $1 : 1 si domaine. Entrée/sortie : services.
+svc_filter_domain() {
+  local domain="$1" s
+  while read -r s; do
+    [ -z "$s" ] && continue
+    if [ "$domain" != "1" ] && [ -n "${SVC_CERT_SYNC[$s]:-}" ]; then
+      echo "  -> ${SVC_LABEL[$s]%% —*} retiré : il ne peut pas démarrer sans vrai domaine (relancer avec MYOWN_DOMAIN_SETUP=1)" >&2
+      continue
+    fi
+    echo "$s"
+  done
+  return 0
+}
+
+# Lance tout de suite la première synchro de certificat des services qui en
+# ont besoin, au lieu d'attendre le passage quotidien du CronJob (05h05) —
+# sinon une installation neuve laisse LiveKit/Mailu bloqués jusqu'au
+# lendemain. Le Job réessaie seul tant que Traefik n'a pas encore obtenu le
+# certificat Let's Encrypt.
+svc_kick_cert_sync() {
+  local wanted="$1" s cj target ns secret i
+  for s in $wanted; do
+    [ -n "${SVC_CERT_SYNC[$s]:-}" ] || continue
+    read -r cj target <<<"${SVC_CERT_SYNC[$s]}"
+    ns="${target%%/*}"; secret="${target#*/}"
+    kubectl get secret "$secret" -n "$ns" >/dev/null 2>&1 && continue
+    for i in $(seq 1 30); do
+      kubectl get cronjob "$cj" -n kube-system >/dev/null 2>&1 && break
+      sleep 4
+    done
+    if kubectl create job "$cj-install-$(date +%s)" --from="cronjob/$cj" -n kube-system >/dev/null 2>&1; then
+      echo "  première synchro du certificat lancée ($cj)"
+    else
+      echo "  $cj introuvable — le certificat sera synchronisé au passage quotidien (05h05)"
+    fi
+  done
+  return 0
+}
+
 # Demande la sélection. $1 : services cochés au départ (un par ligne).
 # MYOWN_SERVICES (liste séparée par des virgules, « all » ou « none » = socle
 # seul) court-circuite
@@ -167,6 +235,28 @@ svc_prompt() {
     "Toujours installés (socle) : Authentik, Vaultwarden.\n\nEspace pour cocher/décocher, Entrée pour valider. Décocher un service déjà installé l'arrête mais conserve ses données." \
     22 78 11 "${args[@]}" 3>&1 1>&2 2>&3)" || { echo "Annulé." >&2; exit 1; }
   echo "$out"
+}
+
+# Liste les réglages de box pour une sélection. $1 : services (un par ligne),
+# $2 : 1 si le vrai domaine est configuré. N'affiche rien s'il n'y a rien.
+svc_print_box() {
+  local wanted="$1" domain="$2" ip s lines="" never=""
+  ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')"
+  [ "$domain" = "1" ] && lines="  - Accès depuis internet : $MYOWN_BOX_DOMAIN\n"
+  for s in $wanted; do
+    [ -n "${SVC_BOX[$s]:-}" ] && lines="$lines  - ${SVC_LABEL[$s]%% —*} : ${SVC_BOX[$s]}\n"
+    [ -n "${SVC_BOX_NEVER[$s]:-}" ] && never="$never  - ${SVC_LABEL[$s]%% —*} : ${SVC_BOX_NEVER[$s]}\n"
+  done
+  if [ -n "$lines" ]; then
+    echo -e "\033[1;33mÀ FAIRE SUR VOTRE BOX INTERNET\033[0m (redirection de ports vers cette machine${ip:+, $ip}) :"
+    echo -ne "$lines"
+    [ "$domain" = "1" ] || echo "  (Sans vrai domaine — MYOWN_DOMAIN_SETUP=1 — ces redirections ne servent pas encore.)"
+  fi
+  if [ -n "$never" ]; then
+    echo -e "\033[1;33mÀ NE PAS rediriger sur la box\033[0m (réseau local uniquement) :"
+    echo -ne "$never"
+  fi
+  return 0
 }
 
 # Déclenche une synchro de `root` (manuelle par conception, cf.
@@ -233,6 +323,9 @@ svc_apply() {
 
   echo "Services installés après cette étape :"
   for s in $wanted; do echo "  + ${SVC_LABEL[$s]}"; done
+  local added=""
+  for s in $wanted; do grep -qx "$s" <<<"$installed" || added="$added $s"; done
+  [ -n "$added" ] && svc_print_box "$(tr ' ' '\n' <<<"$added")" "${MYOWN_DOMAIN_SETUP:-0}"
   if [ -n "$removed" ]; then
     echo "Services qui seront ARRÊTÉS (données conservées, réactivables plus tard) :"
     for s in $removed; do echo "  - ${SVC_LABEL[$s]}"; done
