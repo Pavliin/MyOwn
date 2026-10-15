@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.20](https://github.com/Pavliin/MyOwn/compare/v0.1.19...v0.1.20) (2026-10-15)
+
+### Fonctionnalités
+
+* **install:** bare-metal k3s target with per-service selection ([deb5720](https://github.com/Pavliin/MyOwn/commit/deb572009677fc45885c83efaeba11b85d9ad10c))
+* **install:** make every service start on a fresh machine, show router setup ([20bcd04](https://github.com/Pavliin/MyOwn/commit/20bcd04d02295085c4b913baf38e28c653e2f622))
+
+### Correctifs
+
+* **gandi-dyndns:** rotate the expired Gandi PAT ([50cb89a](https://github.com/Pavliin/MyOwn/commit/50cb89a1dc40db3beca6e3fb9fc0a024aefdd0d2))
+* **uptime-kuma:** make the dev mkcert-ca volume optional ([d39c000](https://github.com/Pavliin/MyOwn/commit/d39c000221a31374e858a070723400e4972513b7))
+
+### Documentation
+
+* bring CLAUDE.md current state up to date ([9b209c3](https://github.com/Pavliin/MyOwn/commit/9b209c33587d508fd3a42e3dc169223d8e303b32))
+* document the k3s installer and service selection ([2eb0c53](https://github.com/Pavliin/MyOwn/commit/2eb0c5384a4c4d12b70c54cbf5b74403fbefaf8d))
+* point the social network track to the new Archipel repo ([b2adf9c](https://github.com/Pavliin/MyOwn/commit/b2adf9c2694a4116f862d426d755de634456285d))
+* record per-service fresh-install results and the Gandi PAT issue ([5ca3771](https://github.com/Pavliin/MyOwn/commit/5ca37716a4b2054348b4e39f90a14e7b33484be4))
+
 ## [0.1.19](https://github.com/Pavliin/MyOwn/compare/v0.1.18...v0.1.19) (2026-10-03)
 
 ### Fonctionnalités
