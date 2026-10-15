@@ -1,5 +1,5 @@
 # Traefik verifies the backend's TLS certificate by default when
-# `service.serversscheme: https` is set (gitops/apps/mailu.yaml,
+# `service.serversscheme: https` is set (gitops/apps/templates/mailu.yaml,
 # front.service.annotations). front's cert has CN=mailu.offsystem.fr,
 # but Traefik connects to the pod's ClusterIP, not that hostname — the
 # mismatch fails verification. Traefik's Go HTTP client then returns a

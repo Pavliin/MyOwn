@@ -4,7 +4,7 @@
 # same backend as the existing Ingress) — the raw RTC media ports
 # (7881/tcp, 7882/udp) bypass Traefik entirely via hostPort, unaffected.
 #
-# DNS+cert reachability only: `LIVEKIT_URL` (gitops/apps/livekit.yaml,
+# DNS+cert reachability only: `LIVEKIT_URL` (gitops/apps/templates/livekit.yaml,
 # read by lk-jwt-service and echoed to the browser as the actual media
 # connection target — notes-techniques.md) still points at the LAN
 # wss://myown-livekit.local hostname. An external Element Call client

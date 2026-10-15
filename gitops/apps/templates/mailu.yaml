@@ -240,7 +240,7 @@ spec:
     namespace: mailu
   ignoreDifferences:
     # Same well-known ArgoCD/StatefulSet limitation already fixed for
-    # Vaultwarden (see gitops/apps/vaultwarden.yaml) — never applied here
+    # Vaultwarden (see gitops/apps/templates/vaultwarden.yaml) — never applied here
     # for mailu-clamav specifically, spotted first as a real, reproduced
     # `OutOfSync` on both dev and the mini PC (2026-09-12), confirmed by
     # diffing the rendered manifest directly against the live object:

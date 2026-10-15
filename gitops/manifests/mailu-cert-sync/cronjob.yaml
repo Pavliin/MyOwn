@@ -1,6 +1,6 @@
 # front needs a real cert file mounted directly (not just a Traefik-terminated
 # TLS Ingress): it terminates its own TLS for SMTP/IMAP STARTTLS and for the
-# HTTPS port Traefik proxies to (see gitops/apps/mailu.yaml,
+# HTTPS port Traefik proxies to (see gitops/apps/templates/mailu.yaml,
 # `front.service.annotations` — serversscheme/serverstransport). There is no
 # cert-manager in this cluster (deliberate choice, see
 # traefik-acme-helmchartconfig.yaml), so this reuses Traefik's own acme.json

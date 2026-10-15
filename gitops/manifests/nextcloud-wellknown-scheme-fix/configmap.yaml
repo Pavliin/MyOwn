@@ -37,7 +37,7 @@
 # This is a full copy of the base php-apache image's own
 # /etc/apache2/sites-enabled/000-default.conf with that one addition,
 # mounted over the original via extraVolumes/extraVolumeMounts in
-# gitops/apps/nextcloud.yaml (this file is static, not templated at
+# gitops/apps/templates/nextcloud.yaml (this file is static, not templated at
 # container start, unlike e.g. Mailu's snuffleupagus.rules.tpl — so a
 # plain ConfigMap mount is sufficient, no Jinja2/entrypoint hook needed).
 apiVersion: v1

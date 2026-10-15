@@ -15,7 +15,7 @@ Not GitOps-managed for the same reason as Jellyfin's admin bootstrap
 (jellyfin-sso-setup.py): this is per-user state living in Mailu's own
 database, not a declarative resource ArgoCD can own.
 
-Requires the Mailu admin REST API to be enabled (gitops/apps/mailu.yaml,
+Requires the Mailu admin REST API to be enabled (gitops/apps/templates/mailu.yaml,
 `admin.extraEnvVars` -> `API_TOKEN`, unregistered entirely otherwise). That
 API sits behind the exact same ForwardAuth-gated public Ingress as
 everything else on mailu.offsystem.fr, so a Bearer token alone can't reach

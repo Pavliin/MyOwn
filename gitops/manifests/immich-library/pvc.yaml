@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   # Same name the chart already references via
-  # immich.persistence.library.existingClaim in gitops/apps/immich.yaml —
+  # immich.persistence.library.existingClaim in gitops/apps/templates/immich.yaml —
   # keeps that reference unchanged, only how this PVC is bound changes.
   name: immich-library
   namespace: immich
