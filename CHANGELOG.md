@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.22](https://github.com/Pavliin/MyOwn/compare/v0.1.21...v0.1.22) (2026-10-16)
+
+### Fonctionnalités
+
+* **gitops:** root injects its own revision into child Applications ([1c852d4](https://github.com/Pavliin/MyOwn/commit/1c852d451de51e3cb3d54db0ec818a4d3c50f4cb))
+
+### Documentation
+
+* document root's revision injection and the new release workflow ([e32818a](https://github.com/Pavliin/MyOwn/commit/e32818a3c38c0b4500488082589d43b46ddcdff0))
+
 ## [0.1.21](https://github.com/Pavliin/MyOwn/compare/v0.1.20...v0.1.21) (2026-10-15)
 
 ### Correctifs
