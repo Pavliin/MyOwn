@@ -1,3 +1,4 @@
+{{- if has "tuwunel" .Values.apps }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -7,19 +8,19 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/secrets/tuwunel
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel-public
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel-federation-delegation
   destination:
     server: https://kubernetes.default.svc
@@ -31,3 +32,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+{{- end }}

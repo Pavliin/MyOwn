@@ -1,18 +1,19 @@
+{{- if has "mailu-cert-sync" .Values.apps }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: livekit-turn-cert-sync
+  name: mailu-cert-sync
   namespace: argocd
 spec:
   project: default
   sources:
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
-      path: gitops/manifests/livekit-turn-cert-sync
+      targetRevision: {{ .Values.revision }}
+      path: gitops/manifests/mailu-cert-sync
   destination:
     server: https://kubernetes.default.svc
     # Nominal only — every resource in this Application sets its own
-    # explicit namespace (kube-system or livekit), see kustomization.yaml.
+    # explicit namespace (kube-system or mailu), see kustomization.yaml.
     namespace: kube-system
   syncPolicy:
     automated:
@@ -20,3 +21,4 @@ spec:
       selfHeal: true
     syncOptions:
       - ServerSideApply=true
+{{- end }}

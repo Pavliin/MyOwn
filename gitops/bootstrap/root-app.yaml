@@ -7,8 +7,21 @@ spec:
   project: default
   source:
     repoURL: https://github.com/Pavliin/MyOwn.git
+    # `master` on the dev cluster, a release tag (vX.Y.Z) in production —
+    # the only place the tracked revision is set.
     targetRevision: master
     path: gitops/apps
+    # gitops/apps is a small Helm chart: every child Application's own
+    # sources back to this repo (secrets, extra manifests) use
+    # {{ .Values.revision }}, which root fills with the revision it tracks
+    # itself. Pointing root at a tag therefore freezes the whole tree,
+    # children's secrets included — replaces scripts/pin-release.sh, which
+    # rewrote those references on an extra commit and moved the release tag
+    # onto it (2026-10-15, see notes-techniques.md).
+    helm:
+      parameters:
+        - name: revision
+          value: $ARGOCD_APP_SOURCE_TARGET_REVISION
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: myown-apps
+description: >-
+  App-of-apps de MyOwn — rendu par l'Application `root`
+  (gitops/bootstrap/root-app.yaml). Pas un chart publié, uniquement un moyen
+  de propager la révision suivie par `root` à chaque Application enfant.
+type: application
+version: 1.0.0

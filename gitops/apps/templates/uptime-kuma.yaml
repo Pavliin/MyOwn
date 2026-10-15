@@ -1,3 +1,4 @@
+{{- if has "uptime-kuma" .Values.apps }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -46,7 +47,7 @@ spec:
               mountPath: /etc/ssl/mkcert
               readOnly: true
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/uptime-kuma-public
   destination:
     server: https://kubernetes.default.svc
@@ -57,3 +58,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+{{- end }}

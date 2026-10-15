@@ -3,14 +3,16 @@
 # scripts/install.sh, pas exécutable seul.
 #
 # Un « service » (ce que choisit la personne qui installe) regroupe une ou
-# plusieurs Applications ArgoCD (un fichier gitops/apps/<app>.yaml chacune) :
+# plusieurs Applications ArgoCD (un template gitops/apps/templates/<app>.yaml
+# chacune) :
 # les synchros de certificats suivent leur service, jamais choisies à part.
 #
 # Où vit l'état installé : nulle part ailleurs que dans le cluster lui-même.
-# L'Application `root` ne déploie que les fichiers listés dans
-# `spec.source.directory.include` — l'installeur écrit cette liste, et la
-# relit à chaque relance pour savoir ce qui est déjà en place. Pas de fichier
-# d'état à part qui pourrait diverger du cluster.
+# gitops/apps est un chart Helm ; l'Application `root` ne rend que les
+# Applications listées dans sa valeur `apps` (spec.source.helm.valuesObject)
+# — l'installeur écrit cette liste. Pour savoir ce qui est déjà en place, il
+# relit les Applications présentes. Pas de fichier d'état à part qui pourrait
+# diverger du cluster.
 #
 # Socle (non désactivable) : Authentik (seule source d'identité) et
 # Vaultwarden (reçoit les secrets générés à l'installation — modèle admin de
@@ -96,7 +98,7 @@ svc_is_core() {
   return 1
 }
 
-# Échoue bruyamment si un fichier de gitops/apps/ n'est rattaché à aucun
+# Échoue bruyamment si un template de gitops/apps/templates/ n'est rattaché à aucun
 # service : sinon un nouveau service ajouté au dépôt serait silencieusement
 # jamais déployé par l'installeur.
 svc_check_catalog() {
@@ -109,7 +111,7 @@ svc_check_catalog() {
     done
     for a in "${MYOWN_DOMAIN_APPS[@]}"; do [ "$a" = "$app" ] && known=1; done
     if [ "$known" = 0 ]; then
-      echo "ERREUR : gitops/apps/$app.yaml n'est rattaché à aucun service dans scripts/lib/services.sh" >&2
+      echo "ERREUR : gitops/apps/templates/$app.yaml n'est rattaché à aucun service dans scripts/lib/services.sh" >&2
       return 1
     fi
   done
@@ -315,7 +317,7 @@ svc_remove_app() {
 # Applique une sélection au cluster. $1 : services voulus (résolus, un par
 # ligne). $2 : applications de domaine voulues (un par ligne, peut être vide).
 svc_apply() {
-  local wanted="$1" domain_apps="$2" installed removed="" s a apps="" include
+  local wanted="$1" domain_apps="$2" installed removed="" s a apps="" apps_json
   installed="$(svc_installed)"
   for s in $installed; do grep -qx "$s" <<<"$wanted" || removed="$removed $s"; done
   for s in $wanted; do apps="$apps ${SVC_APPS[$s]}"; done
@@ -336,10 +338,12 @@ svc_apply() {
     fi
   fi
 
-  # Glob ArgoCD : {a.yaml,b.yaml,...}
-  include="{$(for a in $apps; do printf '%s.yaml,' "$a"; done | sed 's/,$//')}"
-  kubectl patch application root -n argocd --type merge \
-    -p "{\"spec\":{\"source\":{\"directory\":{\"include\":\"$include\"}}}}" >/dev/null
+  # Liste `apps` du chart gitops/apps. Le même patch pose aussi le paramètre
+  # `revision` (la révision suivie par root, substituée par ArgoCD) et retire
+  # l'ancien filtre `directory` — ce qui migre au passage une installation
+  # antérieure au chart (root en simple lecture de dossier).
+  apps_json="[$(for a in $apps; do printf '"%s",' "$a"; done | sed 's/,$//')]"
+  kubectl patch application root -n argocd --type merge -p "{\"spec\":{\"source\":{\"directory\":null,\"helm\":{\"parameters\":[{\"name\":\"revision\",\"value\":\"\$ARGOCD_APP_SOURCE_TARGET_REVISION\"}],\"valuesObject\":{\"apps\":$apps_json}}}}}" >/dev/null
 
   for s in $removed; do
     for a in ${SVC_APPS[$s]}; do svc_remove_app "$a"; done

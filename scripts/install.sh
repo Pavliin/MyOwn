@@ -64,7 +64,7 @@ source "$REPO_ROOT/scripts/lib/services.sh"
 step() { echo -e "\n\033[1;34m==> $1\033[0m"; }
 die() { echo -e "\033[1;31mERREUR : $1\033[0m" >&2; exit 1; }
 
-svc_check_catalog gitops/apps || exit 1
+svc_check_catalog gitops/apps/templates || exit 1
 
 step "Vérification des outils requis ($TARGET)"
 if [ "$TARGET" = "k3d" ]; then
@@ -283,6 +283,8 @@ if [ "$FRESH" = 1 ]; then
 fi
 # Jamais de `kubectl apply` de root-app.yaml sur une relance : il remettrait
 # targetRevision à master sur une installation qui suit un tag de release.
+# (La forme Helm de root — paramètre `revision`, liste `apps` — est posée par
+# svc_apply plus bas, y compris sur une installation qui ne l'a pas encore.)
 if [ -n "${MYOWN_REVISION:-}" ]; then
   kubectl patch application root -n argocd --type merge \
     -p "{\"spec\":{\"source\":{\"targetRevision\":\"$MYOWN_REVISION\"}}}" >/dev/null
@@ -294,7 +296,7 @@ MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
 
 if grep -qx jellyfin <<<"$WANTED"; then
   step "Médiathèque partagée Nextcloud (lue par Jellyfin)"
-  # Jellyfin lit le dossier de groupe Nextcloud n°1 (gitops/apps/jellyfin.yaml)
+  # Jellyfin lit le dossier de groupe Nextcloud n°1 (gitops/apps/templates/jellyfin.yaml)
   # et reste bloqué au démarrage tant qu'il n'existe pas. Rejoue le §15 du
   # manuel : groupe « famille », dossier « Mediatheque ». occ toujours en
   # www-data — lancé en root il crée des fichiers illisibles pour Apache.
@@ -320,7 +322,7 @@ if grep -qx jellyfin <<<"$WANTED"; then
       GF_ID="$(occ groupfolders:create Mediatheque | tr -dc '0-9')"
       occ groupfolders:group "$GF_ID" famille read write share delete >/dev/null
       echo "Dossier Mediatheque créé (id $GF_ID), partagé avec le groupe famille."
-      [ "$GF_ID" = 1 ] || echo "  ATTENTION : id $GF_ID ≠ 1 — gitops/apps/jellyfin.yaml lit __groupfolders/1, à ajuster."
+      [ "$GF_ID" = 1 ] || echo "  ATTENTION : id $GF_ID ≠ 1 — gitops/apps/templates/jellyfin.yaml lit __groupfolders/1, à ajuster."
     fi
     echo "  Ajouter chaque membre au groupe : manuel-admin.md (occ group:adduser famille <compte>)."
   else
