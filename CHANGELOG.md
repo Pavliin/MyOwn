@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.21](https://github.com/Pavliin/MyOwn/compare/v0.1.20...v0.1.21) (2026-10-15)
+
+### Correctifs
+
+* **gandi-dyndns:** use Gandi's 300s minimum TTL and show API errors ([a30e1d0](https://github.com/Pavliin/MyOwn/commit/a30e1d00f56176a72ea38a4cc7b26c3f2d93aa1f))
+
+### Documentation
+
+* record the Gandi DynDNS root cause (expired PAT + TTL minimum) ([85d2411](https://github.com/Pavliin/MyOwn/commit/85d2411faaddebc3e1148ab79ded455c7bacc5ea))
+
 ## [0.1.20](https://github.com/Pavliin/MyOwn/compare/v0.1.19...v0.1.20) (2026-10-15)
 
 ### Fonctionnalités
