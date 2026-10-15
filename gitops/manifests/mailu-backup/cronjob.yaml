@@ -1,5 +1,5 @@
 # Unlike Nextcloud/Immich/Authentik, Mailu has no separate database to
-# pg_dump: persistence.single_pvc: true (gitops/apps/mailu.yaml) puts
+# pg_dump: persistence.single_pvc: true (gitops/apps/templates/mailu.yaml) puts
 # everything — admin's SQLite db, DKIM keys, Dovecot maildirs, rspamd
 # state, webmail config — on one PVC (mailu-storage), each component
 # under its own subPath. Same shape as Vaultwarden/Tuwunel: back up the

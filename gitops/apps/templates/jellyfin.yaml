@@ -1,3 +1,4 @@
+{{- if has "jellyfin" .Values.apps }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -80,13 +81,13 @@ spec:
           service:
             type: LoadBalancer
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/secrets/jellyfin
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/jellyfin-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/jellyfin-public
   destination:
     server: https://kubernetes.default.svc
@@ -97,3 +98,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+{{- end }}

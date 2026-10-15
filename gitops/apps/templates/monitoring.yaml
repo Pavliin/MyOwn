@@ -1,3 +1,4 @@
+{{- if has "monitoring" .Values.apps }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -30,7 +31,7 @@ spec:
                 - myown-grafana.local
               path: /
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/secrets/monitoring
   destination:
     server: https://kubernetes.default.svc
@@ -42,3 +43,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+{{- end }}

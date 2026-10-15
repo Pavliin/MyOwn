@@ -1,3 +1,4 @@
+{{- if has "nextcloud" .Values.apps }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -187,16 +188,16 @@ spec:
                 hosts:
                   - myown-nextcloud.local
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/secrets/nextcloud
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-backup
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-public
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-wellknown-scheme-fix
   destination:
     server: https://kubernetes.default.svc
@@ -208,3 +209,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+{{- end }}

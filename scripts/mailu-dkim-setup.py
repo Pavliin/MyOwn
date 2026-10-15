@@ -14,7 +14,7 @@ on disk. See docs/notes-techniques.md for the full investigation.
 Run this once right after Mailu's first deployment, and again any time DKIM
 delivery is in doubt — safe to rerun, does nothing if a key already exists.
 
-Requires the Mailu admin REST API (gitops/apps/mailu.yaml,
+Requires the Mailu admin REST API (gitops/apps/templates/mailu.yaml,
 `admin.extraEnvVars` -> `API_TOKEN`). Reaches mailu-admin directly via a
 `kubectl port-forward`, same ForwardAuth-SSO-bypass reasoning as
 mailu-promote-admin.py — this API sits behind the same gated public

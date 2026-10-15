@@ -1,5 +1,5 @@
 # Separate raw Ingress rather than adding to the chart's own `ingress.tls`
-# (gitops/apps/uptime-kuma.yaml): that chart's template always renders
+# (gitops/apps/templates/uptime-kuma.yaml): that chart's template always renders
 # `secretName: {{ .secretName }}` for every `tls` entry, with no way to
 # omit it — incompatible with a Traefik-managed ACME cert, which needs
 # `tls: {}` and a certResolver annotation instead of a static Secret.

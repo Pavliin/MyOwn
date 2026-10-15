@@ -20,7 +20,7 @@ Usage:
     # Requires the uptime-kuma pod to trust the mkcert dev CA for its own
     # outbound HTTPS call to Tuwunel — Node.js bundles its own CA store,
     # separate from the OS one `mkcert -install` configures, so this
-    # doesn't work without NODE_EXTRA_CA_CERTS (see gitops/apps/uptime-kuma.yaml).
+    # doesn't work without NODE_EXTRA_CA_CERTS (see gitops/apps/templates/uptime-kuma.yaml).
     # Real bug found via an actual Matrix notification test (silent
     # "unable to verify the first certificate" failure), not a dry-run.
 

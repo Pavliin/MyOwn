@@ -7,7 +7,7 @@
 # does). This is a full copy of the image's own
 # /etc/snuffleupagus.rules.tpl (mailu/webmail, chart 2.7.3) with two
 # narrowly-scoped allow exceptions added, mounted over the original via
-# webmail.extraVolumes/extraVolumeMounts in gitops/apps/mailu.yaml — same
+# webmail.extraVolumes/extraVolumeMounts in gitops/apps/templates/mailu.yaml — same
 # approach as overriding any other chart-shipped default file. Since this
 # is a full copy rather than a patch, it needs re-syncing by hand if a
 # future Mailu chart/image bump changes the upstream ruleset (diff against
@@ -139,7 +139,7 @@ data:
     #sp.disable_function.function("PDO::query").ret("FALSE").drop();
 
     # Ensure that certificates are properly verified
-    # rcmcarddav (CardDAV plugin, gitops/apps/mailu.yaml roundcubePlugins) needs
+    # rcmcarddav (CardDAV plugin, gitops/apps/templates/mailu.yaml roundcubePlugins) needs
     # to make outbound HTTPS requests to Nextcloud via guzzlehttp's CurlFactory,
     # which explicitly calls curl_setopt(..., CURLOPT_SSL_VERIFYPEER/HOST, ...)
     # as part of normal, secure HTTP client setup (real bug found live,

@@ -1,3 +1,4 @@
+{{- if has "livekit" .Values.apps }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -121,19 +122,19 @@ spec:
           deploymentStrategy:
             type: Recreate
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/secrets/livekit
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/livekit-ingress
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/lk-jwt-service
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/livekit-public
     - repoURL: https://github.com/Pavliin/MyOwn.git
-      targetRevision: master
+      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/lk-jwt-service-public
   destination:
     server: https://kubernetes.default.svc
@@ -145,3 +146,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+{{- end }}

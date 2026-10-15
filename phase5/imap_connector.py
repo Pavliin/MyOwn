@@ -9,7 +9,7 @@ classement" — that's steps 6-7 (extraction, CalDAV/Sieve writes), not
 this one.
 
 Reaches Mailu directly on the mini PC's LAN IMAPS endpoint
-(`front.externalService`, `gitops/apps/mailu.yaml`) — no port-forward or
+(`front.externalService`, `gitops/apps/templates/mailu.yaml`) — no port-forward or
 SSH tunnel needed, confirmed live (`openssl s_client` to
 192.168.1.143:993 presents Mailu's real Let's Encrypt chain).
 

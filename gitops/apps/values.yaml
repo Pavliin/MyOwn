@@ -1,0 +1,25 @@
+# Révision git du dépôt MyOwn que chaque Application enfant utilise pour ses
+# propres sources (secrets, manifestes). `root` la remplace par la révision
+# qu'il suit lui-même ($ARGOCD_APP_SOURCE_TARGET_REVISION, voir
+# gitops/bootstrap/root-app.yaml) : `master` sur le cluster de dev, le tag de
+# release en production. Cette valeur par défaut ne sert qu'à `helm template`
+# en local.
+revision: master
+
+# Applications déployées. Écrite par scripts/install.sh selon les services
+# choisis (catalogue : scripts/lib/services.sh) ; par défaut, toutes.
+apps:
+  - authentik
+  - gandi-dyndns
+  - immich
+  - jellyfin
+  - livekit
+  - livekit-turn-cert-sync
+  - mailu
+  - mailu-cert-sync
+  - monitoring
+  - nextcloud
+  - ollama
+  - tuwunel
+  - uptime-kuma
+  - vaultwarden

@@ -1,7 +1,7 @@
 # Cross-namespace by design: the source cert only exists in Traefik's own
 # acme.json (kube-system, see cronjob.yaml), but the Secret it needs to become
 # lives in mailu (mounted by front's Deployment for its own TLS termination —
-# see gitops/apps/mailu.yaml, `initialAccount`/front cert volume). Scoped to
+# see gitops/apps/templates/mailu.yaml, `initialAccount`/front cert volume). Scoped to
 # just this one Secret name rather than a broader "manage secrets in mailu"
 # grant — same pattern already used for livekit-turn-cert-sync.
 apiVersion: rbac.authorization.k8s.io/v1

@@ -1,7 +1,7 @@
 # Cross-namespace by design: the source cert only exists in Traefik's own
 # acme.json (kube-system, see cronjob.yaml), but the Secret it needs to become
 # lives in livekit (mounted by the livekit-sfu Deployment for its TURN/TLS
-# listener, see gitops/apps/livekit.yaml). Scoped to just this one Secret name
+# listener, see gitops/apps/templates/livekit.yaml). Scoped to just this one Secret name
 # rather than a broader "manage secrets in livekit" grant.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

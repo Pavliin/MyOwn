@@ -2,7 +2,7 @@
 # One-shot: creates the DNS records offsystem.fr needs for the VPS mail
 # relay (mail-relay-vps/) — A for the MX hostname, MX itself, SPF, DKIM,
 # DMARC. Reuses the same Gandi LiveDNS PUT pattern and PAT as the
-# gitops/apps/gandi-dyndns.yaml CronJob (that one only ever touches the
+# gitops/apps/templates/gandi-dyndns.yaml CronJob (that one only ever touches the
 # wildcard/apex records; this script is the one-time complement for the
 # mail-specific ones it doesn't manage).
 #
