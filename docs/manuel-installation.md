@@ -264,6 +264,14 @@ scripts/install.sh
 
 **Relancer le script** ajoute les services nouvellement cochés et **arrête** ceux décochés, après confirmation (`MYOWN_ASSUME_YES=1` en non interactif). Un service arrêté perd ses pods, jamais ses données : ses volumes sont marqués `Delete=false` avant suppression de son `Application`, et une réactivation les retrouve tels quels. Les dossiers `hostPath` ne sont jamais touchés. L'état installé n'est stocké nulle part ailleurs que dans le cluster (filtre `directory.include` de l'Application `root`). Une relance ne change jamais la version d'ArgoCD en place, ni la révision suivie par `root` (sauf `MYOWN_ARGOCD_VERSION` / `MYOWN_REVISION` explicites).
 
+**Réglages de la box internet** : l'installeur liste, pour les services choisis, les ports à rediriger vers la machine (443/tcp et réservation DHCP dès qu'un vrai domaine est utilisé ; LiveKit 7881/tcp, 7882/udp, 5349/tcp ; Mailu 993/tcp et 465/tcp, jamais le 25 — relais VPS), et ceux à **ne surtout pas** rediriger (Jellyfin 8096, réseau local uniquement).
+
+**Services qui exigent un vrai domaine** : LiveKit et Mailu tirent leur certificat (TURN, IMAPS/SMTPS) du certificat Let's Encrypt de Traefik. Sans `MYOWN_DOMAIN_SETUP=1`, l'installeur les retire de la sélection en l'expliquant, plutôt que de laisser leurs pods bloqués. Avec un domaine, il lance tout de suite la première synchro de certificat au lieu d'attendre le passage quotidien de 05h05.
+
+**Nextcloud et Jellyfin** : l'installeur pré-crée `config/` en `www-data` en plus du dossier de la section 14.4, et, si Jellyfin est choisi, crée le dossier partagé `Mediatheque` (groupe `famille`) une fois Nextcloud installé — les étapes de la section 15 n'ont plus à être faites à la main, sauf l'ajout de chaque membre au groupe.
+
+**Réglages de l'hôte** : limites inotify relevées (`/etc/sysctl.d/90-myown-inotify.conf` : 8192 instances, 524288 watches — la valeur Ubuntu par défaut de 128 instances est trop basse pour un nœud Kubernetes), et k3s reçoit ses propres résolveurs DNS (`/etc/rancher/k3s/myown-resolv.conf`, Quad9 `9.9.9.9` et Cloudflare `1.1.1.1`, qui valident tous deux DNSSEC — exigé par Mailu) au lieu de ceux de l'hôte. L'hôte et le réseau local gardent leur propre DNS (Pi-hole compris).
+
 **Domaine réel** : la section 16 (Let's Encrypt via Gandi, DynDNS) n'est activée qu'avec `MYOWN_DOMAIN_SETUP=1` (+ `MYOWN_GANDI_TOKEN_FILE` à la première fois). **Jamais sur une machine de test** : le DynDNS repointerait le domaine réel vers elle. Les étapes 15 et suivantes (dossier partagé, LiveKit externe, watchdog, DKIM, Pi-hole) restent manuelles.
 
 Toutes les options sont décrites dans l'en-tête du script. Validé le 2026-10-10 dans une VM Ubuntu 26.04 neuve : socle seul, puis ajout, arrêt et réactivation d'un service avec ses données retrouvées (`notes-techniques.md`).

@@ -36,6 +36,8 @@
 #                           version en place n'est JAMAIS changée sans cette
 #                           variable (une mise à jour d'ArgoCD est un choix).
 #   MYOWN_GENERATE_AGE_KEY  1 pour générer la clé age d'une toute première install
+#   (k3s : l'installeur règle aussi les limites inotify du noyau et les
+#   résolveurs DNS du cluster — voir les étapes correspondantes)
 #   MYOWN_SKIP_MKCERT       1/0 — défaut 0 en k3d, 1 en k3s (domaine réel)
 #   MYOWN_SKIP_HOSTS        1 pour ne pas toucher /etc/hosts (k3d uniquement)
 #   k3d seulement : MYOWN_CLUSTER_NAME, MYOWN_PORT_HTTP, MYOWN_PORT_HTTPS,
@@ -118,7 +120,51 @@ if [ "$TARGET" = "k3d" ]; then
   fi
   kubectl config use-context "k3d-${CLUSTER_NAME}"
 else
+  step "Limites inotify du noyau"
+  # Ubuntu limite à 128 les instances inotify par utilisateur : trop peu pour
+  # un nœud Kubernetes (kubelet, containerd et beaucoup d'applications
+  # surveillent des fichiers). Vu sur le mini PC avec ~40 pods : systemctl
+  # lui-même échoue en « Failed to allocate directory watch: Too many open
+  # files » (2026-10-15). Valeurs couramment recommandées pour un nœud k8s.
+  INOTIFY_CONF=/etc/sysctl.d/90-myown-inotify.conf
+  WANT_INOTIFY="$(printf 'fs.inotify.max_user_instances = 8192\nfs.inotify.max_user_watches = 524288\n')"
+  if [ "$(cat "$INOTIFY_CONF" 2>/dev/null)" != "$WANT_INOTIFY" ]; then
+    echo "$WANT_INOTIFY" | sudo tee "$INOTIFY_CONF" >/dev/null
+    sudo sysctl -q -p "$INOTIFY_CONF"
+    echo "Limites relevées (instances 8192, watches 524288)."
+  else
+    echo "Déjà configurées."
+  fi
+
+  step "Résolveurs DNS du cluster"
+  # CoreDNS relaie les noms externes vers les résolveurs de l'hôte, un au
+  # hasard par requête. Mailu refuse de démarrer si le résolveur ne valide
+  # pas DNSSEC — sur le mini PC, Pi-hole ne valide pas (1 requête sur 3),
+  # dans une VM aucun ne valide : démarrage au hasard, ou jamais (vu en VM,
+  # 2026-10-10). k3s reçoit donc ses propres résolveurs, qui valident tous
+  # les deux. N'affecte que les pods : l'hôte et le réseau local gardent
+  # leur DNS (Pi-hole compris). Noms internes et *.offsystem.fr : toujours
+  # résolus par CoreDNS (coredns-custom.yaml).
+  DNS_RESOLV=/etc/rancher/k3s/myown-resolv.conf
+  DNS_CFG=/etc/rancher/k3s/config.yaml.d/myown-dns.yaml
+  DNS_CHANGED=0
+  WANT_RESOLV="$(printf 'nameserver 9.9.9.9\nnameserver 1.1.1.1\n')"
+  WANT_CFG="resolv-conf: $DNS_RESOLV"
+  if [ "$(sudo cat "$DNS_RESOLV" 2>/dev/null)" != "$WANT_RESOLV" ] || [ "$(sudo cat "$DNS_CFG" 2>/dev/null)" != "$WANT_CFG" ]; then
+    sudo mkdir -p /etc/rancher/k3s/config.yaml.d
+    echo "$WANT_RESOLV" | sudo tee "$DNS_RESOLV" >/dev/null
+    echo "$WANT_CFG" | sudo tee "$DNS_CFG" >/dev/null
+    DNS_CHANGED=1
+    echo "Résolveurs du cluster : Quad9 (9.9.9.9) et Cloudflare (1.1.1.1), validation DNSSEC."
+  else
+    echo "Déjà configurés."
+  fi
+
   step "Installation de k3s"
+  if systemctl is-active --quiet k3s && [ "$DNS_CHANGED" = 1 ]; then
+    echo "Redémarrage de k3s pour appliquer les résolveurs (les conteneurs continuent de tourner)..."
+    sudo systemctl restart k3s
+  fi
   if systemctl is-active --quiet k3s; then
     echo "k3s déjà actif ($(k3s --version | head -1)), réutilisation."
   else
@@ -206,14 +252,12 @@ else
   echo "Installation existante — services actuellement en place :"
   for s in $CURRENT; do echo "  * ${SVC_LABEL[$s]}"; done
 fi
-SELECTED="$(svc_prompt "$CURRENT")"
-WANTED="$(svc_resolve <<<"$SELECTED")"
-
 DOMAIN_APPS="$(svc_domain_apps_installed)"
 if [ "$DOMAIN_SETUP" = "1" ]; then DOMAIN_APPS="$(printf '%s\n' "${MYOWN_DOMAIN_APPS[@]}")"; fi
-if grep -qx mailu <<<"$WANTED" && [ -z "$DOMAIN_APPS" ]; then
-  echo "  (attention : Mailu ne fonctionne qu'avec un vrai domaine — MYOWN_DOMAIN_SETUP=1 — et le relais VPS)"
-fi
+HAS_DOMAIN=0
+[ -n "$DOMAIN_APPS" ] && HAS_DOMAIN=1
+SELECTED="$(svc_prompt "$CURRENT")"
+WANTED="$(svc_filter_domain "$HAS_DOMAIN" <<<"$SELECTED" | svc_resolve)"
 
 if [ "$TARGET" = "k3s" ] && grep -qx nextcloud <<<"$WANTED"; then
   step "Stockage Nextcloud (hostPath)"
@@ -224,6 +268,12 @@ if [ "$TARGET" = "k3s" ] && grep -qx nextcloud <<<"$WANTED"; then
   sudo mkdir -p "$NC_DIR"
   sudo chown root:33 "$NC_DIR"
   sudo chmod g+rwx "$NC_DIR"
+  # config/ aussi, en www-data : le chart y monte ses fichiers de config un
+  # par un (subPath), donc sans ça c'est kubelet qui crée config/ en root
+  # avant le conteneur — Nextcloud ne peut plus écrire config.php, et
+  # l'image ne retente jamais l'installation après ce premier échec (vu en
+  # VM, 2026-10-10 ; manuel §14.4).
+  [ -d "$NC_DIR/config" ] || sudo install -d -o 33 -g 33 -m 775 "$NC_DIR/config"
   echo "$NC_DIR prêt."
 fi
 
@@ -239,7 +289,44 @@ if [ -n "${MYOWN_REVISION:-}" ]; then
 fi
 echo "root suit : $(kubectl get application root -n argocd -o jsonpath='{.spec.source.targetRevision}')"
 kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
-svc_apply "$WANTED" "$DOMAIN_APPS"
+MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
+[ "$HAS_DOMAIN" = 1 ] && svc_kick_cert_sync "$WANTED"
+
+if grep -qx jellyfin <<<"$WANTED"; then
+  step "Médiathèque partagée Nextcloud (lue par Jellyfin)"
+  # Jellyfin lit le dossier de groupe Nextcloud n°1 (gitops/apps/jellyfin.yaml)
+  # et reste bloqué au démarrage tant qu'il n'existe pas. Rejoue le §15 du
+  # manuel : groupe « famille », dossier « Mediatheque ». occ toujours en
+  # www-data — lancé en root il crée des fichiers illisibles pour Apache.
+  echo "Attente de la fin de l'installation de Nextcloud (jusqu'à 15 min au premier lancement)..."
+  NC_OK=0
+  for _ in $(seq 1 90); do
+    if kubectl exec -n nextcloud deploy/nextcloud -c nextcloud -- \
+      su -s /bin/sh www-data -c "php occ status --output=json" 2>/dev/null | grep -q '"installed":true'; then
+      NC_OK=1; break
+    fi
+    sleep 10
+  done
+  if [ "$NC_OK" = 1 ]; then
+    occ() { kubectl exec -n nextcloud deploy/nextcloud -c nextcloud -- su -s /bin/sh www-data -c "php occ $*"; }
+    # occ renvoie 1 quand l'app ou le groupe existe déjà : normal sur une
+    # relance, ne doit pas arrêter le script.
+    occ app:install groupfolders >/dev/null 2>&1 || occ app:enable groupfolders >/dev/null 2>&1 || true
+    occ group:add famille >/dev/null 2>&1 || true
+    GF_LIST="$(occ groupfolders:list --output=json)"
+    if grep -q '"mountPoint":"Mediatheque"' <<<"$GF_LIST"; then
+      echo "Dossier Mediatheque déjà présent."
+    else
+      GF_ID="$(occ groupfolders:create Mediatheque | tr -dc '0-9')"
+      occ groupfolders:group "$GF_ID" famille read write share delete >/dev/null
+      echo "Dossier Mediatheque créé (id $GF_ID), partagé avec le groupe famille."
+      [ "$GF_ID" = 1 ] || echo "  ATTENTION : id $GF_ID ≠ 1 — gitops/apps/jellyfin.yaml lit __groupfolders/1, à ajuster."
+    fi
+    echo "  Ajouter chaque membre au groupe : manuel-admin.md (occ group:adduser famille <compte>)."
+  else
+    echo "Nextcloud pas encore installé après 15 min — relancer ce script plus tard pour créer la médiathèque (Jellyfin attendra)."
+  fi
+fi
 
 if [ "$SKIP_MKCERT" != "1" ]; then
   step "Certificats TLS locaux (mkcert)"
@@ -300,6 +387,8 @@ fi
 step "Vérification"
 echo "Les Applications convergent en arrière-plan (plusieurs minutes au premier lancement) :"
 kubectl get applications -n argocd
+echo
+svc_print_box "$WANTED" "$HAS_DOMAIN"
 cat <<EOF
 
 Installation terminée.
