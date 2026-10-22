@@ -96,28 +96,33 @@ téléphone, ordinateur).
 
 ### Pour commencer
 
-1. Ouvrez l'adresse ci-dessus et cliquez sur *« Se connecter via
-   Authentik »* — pas besoin de créer un compte séparé.
+1. Ouvrez l'adresse ci-dessus. Ici, pas de bouton « Authentik » : saisissez
+   votre **adresse email** (celle de votre compte MyOwn), puis cliquez sur
+   **« Utiliser l'authentification unique »** — et non sur *« Autre »*, qui
+   demande un mot de passe maître classique. Vous êtes alors redirigé vers
+   Authentik pour vous identifier, comme sur les autres services.
 2. À cette première connexion, Vaultwarden vous demande de définir votre
    **mot de passe maître**. Le SSO prouve qui vous êtes, mais seul ce mot de
    passe peut déchiffrer votre coffre — d'où cette double étape :
    choisissez-le solide et dont vous vous souviendrez, personne ne peut vous
-   le retrouver s'il est perdu, pas même l'administrateur du serveur.
+   le retrouver s'il est perdu, pas même l'administrateur du serveur. Aux
+   connexions suivantes, ce mot de passe maître vous est redemandé après
+   Authentik, pour déverrouiller le coffre.
 3. Installez l'extension ou l'application Bitwarden, puis dans ses réglages
    changez le **serveur** pour l'adresse ci-dessus (Bitwarden pointe vers
-   bitwarden.com par défaut). Connectez-vous ensuite via Authentik (voir
-   l'encadré ci-dessous), puis déverrouillez le coffre avec votre **mot de
-   passe maître**.
+   bitwarden.com par défaut) avant de vous connecter de la même façon :
+   email, puis l'option d'authentification unique (voir encadré ci-dessous).
 4. Ajoutez votre premier mot de passe avec le bouton **+**.
 
 !!! example "Capture à venir"
     Réglage « Serveur auto-hébergé » dans l'application Bitwarden.
 
-!!! note "Dans l'extension ou l'application : bouton « Use single sign-on »"
+!!! note "Applications Bitwarden : option « Use single sign-on »"
     Une fois votre email saisi, ne cliquez pas sur *Continuer* (qui demande
     un mot de passe classique) : choisissez plutôt l'option distincte
-    **« Use single sign-on »**. Un « identifiant SSO » est ensuite demandé —
-    n'importe quelle valeur convient (tapez par exemple `offsystem`).
+    **« Use single sign-on »** (*« Utiliser l'authentification unique »* en
+    français). Si un « identifiant SSO » est ensuite demandé, n'importe
+    quelle valeur convient (tapez par exemple `offsystem`).
 
 !!! warning "Avertissement Chrome « Dangerous site »"
     Un avertissement rouge plein écran peut apparaître pendant la
