@@ -376,7 +376,7 @@ Une fois le domaine réel en place (section 16), LiveKit peut être ouvert à l'
 
 **4. `livekit-turn-cert-sync`** (`gitops/apps/templates/livekit-turn-cert-sync.yaml`) — entièrement automatique une fois synchronisé par ArgoCD, aucune étape manuelle : `CronJob` quotidien qui extrait le certificat wildcard directement depuis l'`acme.json` de Traefik et le republie en `Secret` dans `livekit`.
 
-**Limitation connue, non résolue** : même une fois tout ce qui précède en place, un appel Element Call échoue encore avec `MISSING_MATRIX_RTC_TRANSPORT` sur certains clients (confirmé : appli Element X et navigateur mobile) alors que le PC fonctionne. Infrastructure serveur entièrement validée correcte par preuve directe (réponse serveur correcte confirmée dans les logs d'accès Traefik) — la cause résiduelle est côté client (`element-call`/`matrix-js-sdk`, mécanisme encore expérimental MSC4143/MSC4515), pas résolue à ce jour. Investigation complète dans `notes-techniques.md`.
+**Prérequis côté Tuwunel : un `server_name` public.** Avec un `server_name` en `.local` (TLD réservé), les appels Element Call échouent sur mobile (appli Element X et navigateur mobile) avec `MISSING_MATRIX_RTC_TRANSPORT`, alors que le PC fonctionne et que toute l'infrastructure ci-dessus est correcte. Le blocage a disparu avec la migration de `server_name` vers `offsystem.fr` (2026-08-23), sans aucun changement côté LiveKit. Investigation et résolution dans `notes-techniques.md`.
 
 ## 18. Watchdog de remédiation automatique
 

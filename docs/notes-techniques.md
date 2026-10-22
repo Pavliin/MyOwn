@@ -690,7 +690,9 @@ LiveKit découvre correctement l'IP publique réelle via STUN, puis tente de la 
 
 **Piège de rollout distinct, trouvé en déployant ce correctif** : le `Deployment` par défaut est en stratégie `RollingUpdate`, mais les pods LiveKit sont en `hostNetwork` sur un cluster mono-nœud — le second pod (surge) ne peut jamais être planifié en parallèle du premier (conflit de ports 7880-7882/5349 sur le même nœud), le rollout reste bloqué indéfiniment (`1 old replicas are pending termination`). `deploymentStrategy: {type: Recreate}` ajouté — touchera tout futur changement sur ce `Deployment`, pas seulement celui-ci.
 
-### MISSING_MATRIX_RTC_TRANSPORT — investigation longue, cause confirmée mais non résolue
+### MISSING_MATRIX_RTC_TRANSPORT — investigation longue, résolu le lendemain
+
+**Résolu le 2026-08-23** par la migration du `server_name` de Tuwunel vers `offsystem.fr` (voir « Migration server_name Tuwunel vers offsystem.fr » plus bas) : le `.local` était en cause. L'investigation ci-dessous est conservée pour les pistes éliminées.
 
 Malgré les deux correctifs réseau ci-dessus, l'appel échouait encore, de façon identique, sur mobile (appli Element X **et** navigateur mobile) — jamais sur PC (Chrome, onglet privé). Fausses pistes explorées et éliminées une à une, par la preuve plutôt que par supposition :
 

@@ -105,14 +105,15 @@ téléphone, ordinateur).
    le retrouver s'il est perdu, pas même l'administrateur du serveur.
 3. Installez l'extension ou l'application Bitwarden, puis dans ses réglages
    changez le **serveur** pour l'adresse ci-dessus (Bitwarden pointe vers
-   bitwarden.com par défaut) avant de vous connecter avec les mêmes
-   identifiants.
+   bitwarden.com par défaut). Connectez-vous ensuite via Authentik (voir
+   l'encadré ci-dessous), puis déverrouillez le coffre avec votre **mot de
+   passe maître**.
 4. Ajoutez votre premier mot de passe avec le bouton **+**.
 
 !!! example "Capture à venir"
     Réglage « Serveur auto-hébergé » dans l'application Bitwarden.
 
-!!! note "Sur mobile : bouton « Use single sign-on »"
+!!! note "Dans l'extension ou l'application : bouton « Use single sign-on »"
     Une fois votre email saisi, ne cliquez pas sur *Continuer* (qui demande
     un mot de passe classique) : choisissez plutôt l'option distincte
     **« Use single sign-on »**. Un « identifiant SSO » est ensuite demandé —
@@ -184,11 +185,6 @@ la messagerie).
     recherche de salon dans Element ne trouve pas toujours les alias
     existants).
 
-!!! warning "Appels vidéo de groupe sur mobile"
-    Les appels de groupe fonctionnent bien depuis un ordinateur. Sur mobile,
-    un problème connu les empêche encore de démarrer — le chat texte, lui,
-    fonctionne normalement partout.
-
 ## ✉️ Mailu — courrier électronique
 
 **À quoi ça sert** : une boîte mail complète (webmail, anti-spam) sur le
@@ -229,32 +225,46 @@ ajoutés en libre-service, comme l'authentificateur plus haut.
 
 ### Sur mobile (application FairEmail)
 
-Mailu ne propose pas de connexion via Authentik pour les applis mail (IMAP/SMTP — technologie différente du web, non prise en charge ici). On utilise à la place un **jeton d'authentification**, propre à chaque appareil.
+Mailu ne propose pas de connexion via Authentik pour les applis mail
+(IMAP/SMTP — technologie différente du web, non prise en charge ici). On
+utilise à la place un **jeton d'authentification**, propre à chaque
+appareil.
 
 **1. Créer le jeton** (dans le webmail, une seule fois par appareil) :
 
-1. `https://mailu.offsystem.fr` → menu de gauche, section **« Mon compte »** → **« Jetons d'authentification »**.
+1. `https://mailu.offsystem.fr` → menu de gauche, section **« Mon
+   compte »** → **« Jetons d'authentification »**.
 2. Bouton **« Nouveau jeton »** en haut à droite.
-3. Champ **« Commentaire »** : un nom pour vous y retrouver (ex. « Téléphone »). Le champ « Adresse IP autorisée » reste vide.
-4. **« Enregistrer »** — le jeton ne s'affiche qu'une seule fois : copiez-le immédiatement.
+3. Champ **« Commentaire »** : un nom pour vous y retrouver (ex.
+   « Téléphone »). Le champ « Adresse IP autorisée » reste vide.
+4. **« Enregistrer »** — le jeton ne s'affiche qu'une seule fois :
+   copiez-le immédiatement.
 
-**2. Configurer FairEmail** — installez [FairEmail](https://f-droid.org/en/packages/eu.faircode.email/) (F-Droid ou Play Store), puis configuration **manuelle** (pas l'assistant automatique, qui ne connaît pas Mailu) :
+**2. Configurer FairEmail** — installez
+[FairEmail](https://f-droid.org/en/packages/eu.faircode.email/) (F-Droid ou
+Play Store), puis configuration **manuelle** (pas l'assistant automatique,
+qui ne connaît pas Mailu) :
 
-1. Écran principal des réglages → **« Manual setup and account options »** (sous l'assistant) → **« Accounts »** → **« + »**.
-2. Choisissez **« Custom »** dans la liste des fournisseurs, puis renseignez :
-      - **Host** : `mailu.offsystem.fr`
-      - **Port** : `993`
-      - **Encryption** : SSL/TLS
-      - **User name** : votre adresse complète `@offsystem.fr`
-      - **Password** : le jeton créé à l'étape précédente
-3. **« Check »**, vérifiez les dossiers détectés, puis **« Save »** en laissant **« Add related identity »** coché.
-4. FairEmail tente ensuite une configuration automatique de l'envoi (SMTP), qui échoue pour Mailu — un écran d'**identité** s'affiche pour la suite en manuel :
-      - **Host** : `mailu.offsystem.fr`
-      - **Port** : `465`
-      - **Encryption** : SSL/TLS
-      - **User name** : la même adresse `@offsystem.fr`
-      - **Password** : le même jeton
-      - Renseignez aussi le nom d'expéditeur demandé sur cet écran.
+1. Écran principal des réglages → **« Manual setup and account options »**
+   (sous l'assistant) → **« Accounts »** → **« + »**.
+2. Choisissez **« Custom »** dans la liste des fournisseurs, puis
+   renseignez :
+    - **Host** : `mailu.offsystem.fr`
+    - **Port** : `993`
+    - **Encryption** : SSL/TLS
+    - **User name** : votre adresse complète `@offsystem.fr`
+    - **Password** : le jeton créé à l'étape précédente
+3. **« Check »**, vérifiez les dossiers détectés, puis **« Save »** en
+   laissant **« Add related identity »** coché.
+4. FairEmail tente ensuite une configuration automatique de l'envoi (SMTP),
+   qui échoue pour Mailu — un écran d'**identité** s'affiche pour la suite
+   en manuel :
+    - **Host** : `mailu.offsystem.fr`
+    - **Port** : `465`
+    - **Encryption** : SSL/TLS
+    - **User name** : la même adresse `@offsystem.fr`
+    - **Password** : le même jeton
+    - Renseignez aussi le nom d'expéditeur demandé sur cet écran.
 
 !!! example "Capture à venir"
     Écran de création d'un jeton d'authentification dans Mailu.
@@ -276,6 +286,19 @@ streaming sur tous vos écrans.
 
 !!! example "Capture à venir"
     Écran d'accueil Jellyfin avec la bibliothèque de films.
+
+## 🛡️ Filtrage des publicités (à la maison)
+
+**À quoi ça sert** : à la maison, la plupart des publicités et des traqueurs
+sont bloqués automatiquement pour tous les appareils connectés à la box —
+rien à installer ni à configurer.
+
+!!! tip "Un site ou une appli ne marche plus correctement à la maison ?"
+    Il arrive qu'un site légitime soit bloqué par erreur (bouton qui ne
+    répond pas, page incomplète, appli qui ne charge pas). Si le problème
+    disparaît en 4G ou hors de la maison, c'est probablement ça : prévenez
+    l'administrateur en lui indiquant le site ou l'appli concernés, il peut
+    le débloquer en quelques secondes.
 
 ## 🟢 État du système
 
