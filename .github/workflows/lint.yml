@@ -26,3 +26,16 @@ jobs:
       - uses: wagoid/commitlint-github-action@v6
         with:
           configFile: ./commitlint.config.mjs
+
+  sops:
+    # Refuse tout *.sops.yaml non chiffré, avec une valeur en clair, ou dont
+    # un nom de clé ressemble à un secret — sops ne chiffre jamais les noms
+    # de clés (incident du jeton Gandi, docs/notes-techniques.md).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - run: python3 scripts/check-sops-files.py
