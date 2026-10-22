@@ -80,15 +80,18 @@ spec:
           # candidate (http/8096) without any app-side configuration.
           service:
             type: LoadBalancer
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/jellyfin
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/jellyfin-backup
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/jellyfin-public
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: jellyfin

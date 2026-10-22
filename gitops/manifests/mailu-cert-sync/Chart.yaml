@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mailu-cert-sync
+description: Manifestes MyOwn (mailu-cert-sync) — le domaine est injecté par l'Application parente (gitops/apps).
+type: application
+version: 1.0.0

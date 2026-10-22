@@ -338,12 +338,13 @@ svc_apply() {
     fi
   fi
 
-  # Liste `apps` du chart gitops/apps. Le même patch pose aussi le paramètre
+  # Valeurs `domain` (MYOWN_DOMAIN_VALUE, résolu par install.sh) et `apps`
+  # du chart gitops/apps. Le même patch pose aussi le paramètre
   # `revision` (la révision suivie par root, substituée par ArgoCD) et retire
   # l'ancien filtre `directory` — ce qui migre au passage une installation
   # antérieure au chart (root en simple lecture de dossier).
   apps_json="[$(for a in $apps; do printf '"%s",' "$a"; done | sed 's/,$//')]"
-  kubectl patch application root -n argocd --type merge -p "{\"spec\":{\"source\":{\"directory\":null,\"helm\":{\"parameters\":[{\"name\":\"revision\",\"value\":\"\$ARGOCD_APP_SOURCE_TARGET_REVISION\"}],\"valuesObject\":{\"apps\":$apps_json}}}}}" >/dev/null
+  kubectl patch application root -n argocd --type merge -p "{\"spec\":{\"source\":{\"directory\":null,\"helm\":{\"parameters\":[{\"name\":\"revision\",\"value\":\"\$ARGOCD_APP_SOURCE_TARGET_REVISION\"}],\"valuesObject\":{\"domain\":\"$MYOWN_DOMAIN_VALUE\",\"apps\":$apps_json}}}}}" >/dev/null
 
   for s in $removed; do
     for a in ${SVC_APPS[$s]}; do svc_remove_app "$a"; done

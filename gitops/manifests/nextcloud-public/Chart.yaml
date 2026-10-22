@@ -1,0 +1,5 @@
+apiVersion: v2
+name: nextcloud-public
+description: Manifestes MyOwn (nextcloud-public) — le domaine est injecté par l'Application parente (gitops/apps).
+type: application
+version: 1.0.0

@@ -17,6 +17,9 @@
 #
 # Variables d'environnement :
 #   MYOWN_TARGET            k3s (défaut) | k3d
+#   MYOWN_DOMAIN            domaine de l'installation (obligatoire sur une
+#                           installation neuve ; une relance reprend celui
+#                           déjà configuré)
 #   MYOWN_SERVICES          sélection sans question : « nextcloud,immich » ou
 #                           « all », ou « none » pour le socle seul (le socle
 #                           est toujours ajouté)
@@ -276,6 +279,20 @@ if [ "$TARGET" = "k3s" ] && grep -qx nextcloud <<<"$WANTED"; then
   [ -d "$NC_DIR/config" ] || sudo install -d -o 33 -g 33 -m 775 "$NC_DIR/config"
   echo "$NC_DIR prêt."
 fi
+
+# Domaine de l'installation (valeur `domain` du chart gitops/apps, rendue
+# obligatoire par le chart). Relance : celui déjà configuré dans root, jamais
+# changé en silence. Installation neuve : MYOWN_DOMAIN (la question
+# interactive et les niveaux A/B/C viennent avec l'étape 4 de
+# docs/installation-utilisateur.md).
+MYOWN_DOMAIN_VALUE="$(kubectl get application root -n argocd -o jsonpath='{.spec.source.helm.valuesObject.domain}' 2>/dev/null || true)"
+if [ -n "${MYOWN_DOMAIN:-}" ] && [ -n "$MYOWN_DOMAIN_VALUE" ] && [ "$MYOWN_DOMAIN" != "$MYOWN_DOMAIN_VALUE" ]; then
+  die "domaine déjà configuré : $MYOWN_DOMAIN_VALUE (MYOWN_DOMAIN=$MYOWN_DOMAIN). Changer de domaine n'est pas pris en charge par une simple relance."
+fi
+MYOWN_DOMAIN_VALUE="${MYOWN_DOMAIN_VALUE:-${MYOWN_DOMAIN:-}}"
+[ -n "$MYOWN_DOMAIN_VALUE" ] || die "aucun domaine configuré : relancez avec MYOWN_DOMAIN=<votre-domaine>."
+export MYOWN_DOMAIN_VALUE
+echo "Domaine : $MYOWN_DOMAIN_VALUE"
 
 step "Bootstrap GitOps"
 if [ "$FRESH" = 1 ]; then

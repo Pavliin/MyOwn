@@ -22,7 +22,7 @@ spec:
               # and cert both being correct. `host` above stays the LAN
               # name (what the chart uses to build its own internal
               # config), this list is what's actually checked per-request.
-              - nextcloud.offsystem.fr
+              - nextcloud.{{ include "myown.domain" . }}
             configs:
               # Nextcloud's SSRF guard (preventLocalAddress) blocks outbound
               # requests to hosts resolving to private/cluster IPs by default
@@ -103,7 +103,7 @@ spec:
                 php occ user_oidc:provider authentik \
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
-                  --discoveryuri="https://authentik.offsystem.fr/application/o/nextcloud/.well-known/openid-configuration"
+                  --discoveryuri="https://authentik.{{ include "myown.domain" . }}/application/o/nextcloud/.well-known/openid-configuration"
             # Real bug found live (2026-08-24): .well-known/carddav and
             # /caldav redirect to http://, not https:// — Apache's own
             # mod_rewrite builds that redirect's absolute URL itself
@@ -187,18 +187,24 @@ spec:
               - secretName: nextcloud-tls
                 hosts:
                   - myown-nextcloud.local
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/nextcloud
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-backup
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-public
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-wellknown-scheme-fix
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: nextcloud

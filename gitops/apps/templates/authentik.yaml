@@ -35,18 +35,21 @@ spec:
               - authentik-blueprint-account-recovery
               - authentik-blueprint-mailu-sso
               - authentik-blueprint-login-mfa-optional
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/authentik
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/authentik-blueprints
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/authentik-backup
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/authentik-public
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik

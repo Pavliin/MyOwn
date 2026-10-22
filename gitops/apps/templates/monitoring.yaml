@@ -30,7 +30,7 @@ spec:
               hosts:
                 - myown-grafana.local
               path: /
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/monitoring
   destination:
