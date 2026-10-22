@@ -29,6 +29,109 @@ Implémenté dans `scripts/install.sh` + `scripts/lib/services.sh`, mode d'emplo
 
 **Limites connues** : les blueprints Authentik de **tous** les services sont appliqués quel que soit le choix (un service non installé apparaît quand même comme application SSO dans Authentik) ; même chose pour les noms d'hôte de `coredns-custom.yaml` et les sondes d'Uptime Kuma. Sans conséquence fonctionnelle, à rendre conditionnel plus tard.
 
+## Installation indépendante — niveaux réseau, configuration, secrets (décidé le 2026-10-22)
+
+Objectif : qu'un autre foyer puisse installer MyOwn avec son propre domaine (ou sans domaine), sans dépendre de l'installation de l'auteur. État des lieux de départ (2026-10-22) : le domaine `offsystem.fr` était écrit en dur dans 26 fichiers GitOps, 12 scripts **et dans 12 secrets chiffrés** (blueprints SSO, config Tuwunel…), et tous les secrets étaient chiffrés avec la clé de l'auteur — l'installeur ne savait que réinstaller cette installation-là.
+
+Principe directeur : **une installation n'exige que ce que réclament les services cochés.** Un foyer qui ne veut que Jellyfin et Immich n'a besoin ni de nom de domaine, ni de fournisseur DNS, ni de serveur loué ; le mail, lui, exige tout cela.
+
+### Les trois niveaux réseau
+
+Avoir un **nom de domaine** et être **accessible depuis internet** sont deux choses différentes : un domaine suffit à obtenir de vrais certificats (le cadenas du navigateur) sans ouvrir la moindre porte vers la maison. D'où trois niveaux, choisis en premier à l'installation.
+
+#### A — Sans nom de domaine
+
+**En clair** : tout reste à la maison, sur le réseau de la box, sans rien acheter ni rien régler sur la box. C'est l'installation la plus simple. En contrepartie, il n'y a pas de cadenas dans le navigateur : les services qui exigent une connexion sécurisée — les mots de passe, les fichiers et l'agenda, la messagerie, les appels, le mail — ne sont pas disponibles. Les services restent inaccessibles en dehors de la maison, et toute personne connectée au même réseau (Wi-Fi d'un invité compris) pourrait en théorie lire ce qui y circule, mots de passe de connexion inclus.
+
+**Techniquement** :
+
+- Services servis en **HTTP**, sous un suffixe local (`<service>.<suffixe>`) résolu par Pi-hole ou `/etc/hosts`.
+- Aucun certificat valide (une autorité locale type mkcert est possible mais doit être installée sur chaque appareil, et n'est pas reconnue par la plupart des applications mobiles — non retenu).
+- Compatibles : Authentik, Jellyfin, Immich, Ollama, Uptime Kuma, supervision.
+- Exclus : Vaultwarden (le chiffrement côté navigateur exige un contexte sécurisé), Nextcloud (`user_oidc` refuse le HTTP), Tuwunel (cookie de session SSO marqué `Secure`), LiveKit, Mailu.
+- Le trafic, y compris l'authentification SSO, circule en clair sur le réseau local.
+
+#### B — Nom de domaine, accès à la maison seulement
+
+**En clair** : on achète un nom (par exemple `famille-dupont.fr`, une dizaine d'euros par an) chez un fournisseur dont le service DNS est compatible. Tous les services fonctionnent, avec le cadenas, sur tous les appareils et dans les applications mobiles — sauf le mail. Mais uniquement à la maison : en déplacement, rien n'est accessible. C'est le niveau le plus prudent, puisque rien n'est ouvert vers internet. Passer plus tard au niveau C se fait sans rien perdre ni rien renommer.
+
+**Techniquement** :
+
+- Certificats Let's Encrypt obtenus par **défi DNS-01** (lego, via l'API du fournisseur DNS) : aucun port entrant n'est ouvert.
+- DNS « split-horizon » : Pi-hole (ou CoreDNS pour le cluster) résout `*.domaine` vers l'adresse locale du serveur.
+- Le fournisseur DNS doit être pris en charge par lego — plus d'une centaine le sont. **Premier fournisseur testé : Gandi.**
+- Tuwunel sans fédération, mais son identité Matrix (`server_name` = le domaine) est définitive dès maintenant — c'est ce qui permet de passer en C sans recréer les comptes.
+- LiveKit : appels possibles entre appareils de la maison seulement.
+- Exclu : Mailu (recevoir du mail exige d'être joignable depuis internet).
+- Accès d'administration à distance toujours possible via le VPN WireGuard (réservé à l'admin, pas aux services familiaux).
+
+#### C — Nom de domaine, accessible partout
+
+**En clair** : comme B, mais les services sont joignables partout — depuis le téléphone en 4G, en vacances, par la famille qui habite loin. C'est aussi ce niveau qui permet les appels vidéo hors de la maison, d'échanger avec des personnes inscrites sur d'autres serveurs Matrix, et d'avoir sa propre adresse mail (ce dernier point demande en plus de louer un petit serveur relais, quelques euros par mois). La contrepartie : la maison devient visible depuis internet, et garder les mises à jour et les sauvegardes à jour devient indispensable.
+
+**Techniquement** :
+
+- B, plus des redirections de ports sur la box (listées par l'installeur selon les services choisis) : `443/tcp` ; LiveKit `7881/tcp`, `7882/udp`, `5349/tcp` (TURN) ; Mailu `993/tcp`, `465/tcp`.
+- DynDNS (ddns-updater) si l'adresse IP publique change.
+- Fédération Matrix via `.well-known/matrix/server`.
+- Mailu : en plus, un VPS relais (le port 25 sortant est bloqué par la plupart des box résidentielles), un enregistrement PTR, et les enregistrements DNS MX/SPF/DKIM/DMARC — l'installeur les affiche, à créer chez le fournisseur.
+- Tous les services web sont exposés, derrière l'authentification Authentik ; les outils d'administration (ArgoCD, `kubectl`, SSH) ne le sont jamais.
+- Lacunes connues : IPv6 entrant non pris en charge par le cluster (voir `notes-techniques.md`).
+
+#### Compatibilité par service
+
+| Service | A | B | C | Contrainte |
+|---|---|---|---|---|
+| Authentik, Jellyfin, Immich, Ollama, Uptime Kuma, supervision | ✅ | ✅ | ✅ | — |
+| Vaultwarden | — | ✅ | ✅ | HTTPS obligatoire |
+| Nextcloud | — | ✅ | ✅ | HTTPS obligatoire |
+| Tuwunel | — | ✅ sans fédération | ✅ | identité Matrix définitive |
+| LiveKit | — | ✅ à la maison | ✅ | certificat TURN |
+| Mailu | — | — | ✅ + VPS | réception internet, relais |
+
+**Changer de niveau** : de B à C, il suffit d'ouvrir les ports et d'activer le DynDNS — mêmes noms, mêmes données. De A à B, les adresses des services changent (suffixe local → domaine) et les appareils doivent être reconfigurés. Conseil donné à l'installation : choisir B dès qu'un passage à C est envisageable.
+
+### Configuration d'installation
+
+Un seul jeu de paramètres, dans les valeurs du chart `gitops/apps` lues par l'Application `root` — au même endroit que `revision` et `apps`, sans fichier d'état à part :
+
+| Valeur | Rôle |
+|---|---|
+| `domain` | domaine (niveaux B/C) ou suffixe local (niveau A) |
+| `exposure` | `none` / `lan` / `internet` (A / B / C) |
+| `dnsProvider` | nom du fournisseur pour lego (B/C) — générique dans le code, Gandi n'est cité que dans la documentation |
+| `repoURL` | dépôt suivi (celui du projet, ou un fork) |
+
+Un seul schéma de noms : `<service>.<domain>`, à la maison comme depuis internet. Les noms `myown-*.local` historiques sont retirés.
+
+### Secrets générés dans le cluster
+
+Les secrets ne sont **plus jamais commités**. L'installeur les génère dans le cluster (`kubectl create secret`) :
+
+- **idempotent** : une relance ne crée que ce qui manque, n'écrase jamais un secret existant ;
+- **apparié** : les identifiants OIDC sont créés en une fois pour le service et pour Authentik ;
+- ce qui contient le domaine sans être secret (blueprints Authentik, configuration Tuwunel) devient un fichier en clair dans le dépôt, le domaine étant injecté par Helm et les secrets lus à part (balise `!Env` des blueprints Authentik).
+
+Environ 90 % des secrets sont aléatoires ou dérivés et se génèrent sans intervention ; restent à demander : l'e-mail de l'admin, les identifiants du fournisseur DNS (B/C), et ceux du relais mail (Mailu).
+
+**Conséquence à ne pas sous-estimer** : les secrets n'existant plus ailleurs, leur sauvegarde devient critique — sauvegarde chiffrée des Secrets avec le reste (Restic), et dépôt dans le coffre Vaultwarden de l'admin (voir « Modèle de gestion des comptes admin » ci-dessous). SOPS, KSOPS et la clé age ne sont plus nécessaires à une nouvelle installation ; les fichiers `*.sops.yaml` de l'installation de l'auteur seront retirés du dépôt une fois sa propre installation migrée.
+
+### Fournisseur DNS et DynDNS
+
+- Certificats : fournisseur lego et identifiants en paramètres (secret générique `dns-provider-credentials`, avec les variables qu'attend lego pour ce fournisseur).
+- DynDNS : **ddns-updater** (composant open source, nombreux fournisseurs) remplace le script maison.
+- DNS du mail : enregistrements affichés par l'installeur, à créer chez n'importe quel fournisseur.
+
+### Ordre de réalisation
+
+Chaque étape laisse l'installation de l'auteur fonctionnelle, et se vérifie par un rendu identique avant tout déploiement :
+
+1. Domaine paramétré (les manifestes bruts deviennent de petits charts) et nouvelles valeurs `domain`/`exposure`/`dnsProvider`/`repoURL` ; retrait des noms `.local`.
+2. Fournisseur DNS générique et DynDNS via ddns-updater.
+3. Secrets générés, sauvegarde des secrets, migration de l'installation de l'auteur hors de KSOPS (les secrets existants conservés, jamais régénérés), retrait des fichiers SOPS.
+4. Niveaux A/B/C dans l'installeur, validés en VM pour chaque niveau.
+5. Flow admin : les secrets générés rangés dans le coffre Vaultwarden.
+
 ## Modèle de gestion des comptes admin
 
 **Constat de départ** (état réel du projet, vérifié service par service) : trois mécanismes différents et non coordonnés aujourd'hui.
