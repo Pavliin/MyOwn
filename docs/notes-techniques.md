@@ -1209,3 +1209,11 @@ Trouvé pendant l'audit des noms `.local` (étape 1b de l'installation indépend
 **Sondes Uptime Kuma** sur les noms publics, vérification TLS réactivée (certificats valides partout) et route de santé propre à chaque service ; `scripts/uptime-kuma-setup.py` prend le domaine en paramètre. **CoreDNS et Pi-hole** apprennent les noms manquants (`livekit`, `livekit-jwt`, `mailu`, `status`, `uptime`, `argocd`, `grafana`, `ollama`) — `mailu` n'était pas dans Pi-hole : le webmail faisait le détour par la box depuis le Wi-Fi.
 
 **Limite connue** : via le VPN d'admin, ces noms ne fonctionnent pas encore — la configuration client WireGuard ne fait passer que le sous-réseau du tunnel et ne définit pas de DNS (`scripts/wireguard-setup.sh`) ; à adapter.
+
+## Cascade d'évacuation des clusters k3d sur un disque plein (machine de dev, 2026-10-22)
+
+Le disque système de la machine de dev était plein à ~95 % depuis des semaines, sans incident visible. Un `apt upgrade` (22h41) a mis à jour `containerd.io` : le démon Docker a redémarré, et avec lui les deux clusters k3d (`myown-dev`, `shuttlemind`). Au redémarrage, kubelet a vu le disque sous son seuil d'éviction (**15 % libres**, soit ~27 Go sur 184 Go) : `DiskPressure`, évacuation de la plupart des pods (300+ enregistrements morts), puis **suppression des images** des conteneurs pour libérer de la place — ce qui a fait remonter le disque à ~48 Go libres et pouvait passer, à tort, pour un ménage. Les clusters ont ensuite **retéléchargé** leurs images, le disque est revenu à ~95 %, et la pression est revenue : une **boucle** remplissage → évacuation → suppression → retéléchargement, qui rend le cluster inutilisable (ArgoCD lui-même évacué, rendus qui expirent).
+
+**Résolu** en libérant durablement de la place (cache de build Docker, ~33 Go — `docker builder prune --all`, l'option `--all` étant nécessaire, sans elle rien n'était récupérable ; cache `uv`, 24 Go ; arrêt du cluster `shuttlemind`), puis suppression des pods en phase `Failed` (leurs remplaçants existaient déjà) et resynchronisation de `root`. Disque à ~78 %, cluster de dev revenu à l'état antérieur.
+
+**À retenir** : sur un nœud k3d, le seuil qui compte est celui de kubelet (15 % libres), pas « le disque n'est pas plein ». Une simple mise à jour qui redémarre Docker suffit à déclencher la cascade sur une machine au-dessus de ~85 %.
