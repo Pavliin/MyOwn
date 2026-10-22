@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.24](https://github.com/Pavliin/MyOwn/compare/v0.1.23...v0.1.24) (2026-10-22)
+
+### Fonctionnalités
+
+* **gitops:** make the domain and repository install-time values ([388af7b](https://github.com/Pavliin/MyOwn/commit/388af7b6854ac98b6967a7d0f0e7a909c383c533))
+
+### Documentation
+
+* design independent installs (network levels A/B/C, generated secrets) ([50a7b51](https://github.com/Pavliin/MyOwn/commit/50a7b512f892eefed8ef1866598ad245f44e3994))
+* document the domain parameter and its one-time migration ([4587746](https://github.com/Pavliin/MyOwn/commit/4587746fd78e7da46212d895a7a7a0a80f8f9a79))
+* document the SOPS guard and husky hooks in worktrees ([ff7b2e9](https://github.com/Pavliin/MyOwn/commit/ff7b2e907497c049671e3b4eebc07e7a5153e6e7))
 ## [0.1.23](https://github.com/Pavliin/MyOwn/compare/v0.1.22...v0.1.23) (2026-10-22)
 
 ### Correctifs
