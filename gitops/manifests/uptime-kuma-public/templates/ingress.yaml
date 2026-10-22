@@ -1,9 +1,9 @@
-# Separate raw Ingress rather than adding to the chart's own `ingress.tls`
-# (gitops/apps/templates/uptime-kuma.yaml): that chart's template always renders
-# `secretName: {{`{{`}} .secretName }}` for every `tls` entry, with no way to
-# omit it — incompatible with a Traefik-managed ACME cert, which needs
-# `tls: {}` and a certResolver annotation instead of a static Secret.
-# Purely additive: myown-uptime.local (LAN, plain HTTP) is untouched.
+# Public side of Uptime Kuma: ONLY the status page. Until 2026-10-22 this
+# Ingress routed "/" — the whole app, admin dashboard and login included,
+# was reachable from the internet behind nothing but Uptime Kuma's own
+# password. The paths below are exactly what the status page loads (read
+# from its HTML and JS bundle); the admin UI moved to uptime.<domain>,
+# restricted to the LAN/VPN (chart gitops/manifests/admin-access).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -25,8 +25,84 @@ spec:
     - host: status.{{ .Values.domain }}
       http:
         paths:
-          - path: /
+          - path: /status/
             pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+          - path: /assets/
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+          - path: /api/status-page/
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+          - path: /api/entry-page
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+          - path: /upload/
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+          - path: /icon.svg
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+          - path: /favicon.ico
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+---
+# status.<domain>/ → the status page itself (instead of a 404).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: uptime-kuma-status-root
+spec:
+  redirectRegex:
+    regex: ^https?://([^/]+)/?$
+    replacement: https://${1}/status/{{ .Values.statusPageSlug }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uptime-kuma-status-root
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-uptime-kuma-status-root@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - status.{{ .Values.domain }}
+  rules:
+    - host: status.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Exact
             backend:
               service:
                 name: uptime-kuma

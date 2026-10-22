@@ -1,0 +1,25 @@
+{{- if and .Values.sourceRanges .Values.hostPrefix }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-admin
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-{{ .Release.Name }}-admin-only@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ .Values.hostPrefix }}.{{ required "domain" .Values.domain }}
+  rules:
+    - host: {{ .Values.hostPrefix }}.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ required "service" .Values.service }}
+                port:
+                  number: {{ .Values.port }}
+{{- end }}

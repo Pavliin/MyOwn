@@ -1,0 +1,9 @@
+# Fourni par l'Application parente (gitops/apps) :
+domain: ""
+# Plages d'adresses autorisées (valeur `adminSourceRanges` de gitops/apps).
+# Vide : ni filtre ni Ingress — l'outil n'est pas exposé du tout.
+sourceRanges: []
+# Outil exposé : <hostPrefix>.<domain> → service:port du namespace.
+hostPrefix: ""
+service: ""
+port: 80

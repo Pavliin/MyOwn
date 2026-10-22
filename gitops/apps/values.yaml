@@ -14,9 +14,16 @@ domain: ""
 # Dépôt suivi par toutes les sources (celui du projet, ou un fork).
 repoURL: https://github.com/Pavliin/MyOwn.git
 
+# Plages d'adresses autorisées à joindre les outils d'administration
+# (ArgoCD, Grafana, Ollama, admin Uptime Kuma : <outil>.<domain>) — réseau
+# local, VPN d'admin, et le cluster lui-même. Vide : aucun de ces outils
+# n'est exposé (défaut le plus sûr). Posé par l'installeur.
+adminSourceRanges: []
+
 # Applications déployées. Écrite par scripts/install.sh selon les services
 # choisis (catalogue : scripts/lib/services.sh) ; par défaut, toutes.
 apps:
+  - argocd-access
   - authentik
   - gandi-dyndns
   - immich

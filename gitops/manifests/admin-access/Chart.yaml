@@ -1,0 +1,7 @@
+apiVersion: v2
+name: admin-access
+description: >-
+  Filtre par adresse source des outils d'administration (ArgoCD, Grafana,
+  Ollama, admin Uptime Kuma) — réseau local et VPN d'admin uniquement.
+type: application
+version: 1.0.0

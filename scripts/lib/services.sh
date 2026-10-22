@@ -92,6 +92,10 @@ MYOWN_DEFAULT_SERVICES=(tuwunel uptime-kuma)
 # tourner sur une machine de test (détournerait le vrai domaine).
 MYOWN_DOMAIN_APPS=(gandi-dyndns)
 
+# Applications d'infrastructure toujours déployées, quel que soit le choix
+# des services (jamais proposées dans la liste).
+MYOWN_INFRA_APPS=(argocd-access)
+
 svc_is_core() {
   local s
   for s in "${MYOWN_CORE_SERVICES[@]}"; do [ "$s" = "$1" ] && return 0; done
@@ -109,7 +113,7 @@ svc_check_catalog() {
     for s in "${MYOWN_SERVICES_ORDER[@]}"; do
       for a in ${SVC_APPS[$s]}; do [ "$a" = "$app" ] && known=1; done
     done
-    for a in "${MYOWN_DOMAIN_APPS[@]}"; do [ "$a" = "$app" ] && known=1; done
+    for a in "${MYOWN_DOMAIN_APPS[@]}" "${MYOWN_INFRA_APPS[@]}"; do [ "$a" = "$app" ] && known=1; done
     if [ "$known" = 0 ]; then
       echo "ERREUR : gitops/apps/templates/$app.yaml n'est rattaché à aucun service dans scripts/lib/services.sh" >&2
       return 1
@@ -322,6 +326,7 @@ svc_apply() {
   for s in $installed; do grep -qx "$s" <<<"$wanted" || removed="$removed $s"; done
   for s in $wanted; do apps="$apps ${SVC_APPS[$s]}"; done
   for a in $domain_apps; do apps="$apps $a"; done
+  for a in "${MYOWN_INFRA_APPS[@]}"; do apps="$apps $a"; done
 
   echo "Services installés après cette étape :"
   for s in $wanted; do echo "  + ${SVC_LABEL[$s]}"; done
@@ -344,7 +349,7 @@ svc_apply() {
   # l'ancien filtre `directory` — ce qui migre au passage une installation
   # antérieure au chart (root en simple lecture de dossier).
   apps_json="[$(for a in $apps; do printf '"%s",' "$a"; done | sed 's/,$//')]"
-  kubectl patch application root -n argocd --type merge -p "{\"spec\":{\"source\":{\"directory\":null,\"helm\":{\"parameters\":[{\"name\":\"revision\",\"value\":\"\$ARGOCD_APP_SOURCE_TARGET_REVISION\"}],\"valuesObject\":{\"domain\":\"$MYOWN_DOMAIN_VALUE\",\"apps\":$apps_json}}}}}" >/dev/null
+  kubectl patch application root -n argocd --type merge -p "{\"spec\":{\"source\":{\"directory\":null,\"helm\":{\"parameters\":[{\"name\":\"revision\",\"value\":\"\$ARGOCD_APP_SOURCE_TARGET_REVISION\"}],\"valuesObject\":{\"domain\":\"$MYOWN_DOMAIN_VALUE\",\"adminSourceRanges\":${MYOWN_ADMIN_RANGES_JSON:-[]},\"apps\":$apps_json}}}}}" >/dev/null
 
   for s in $removed; do
     for a in ${SVC_APPS[$s]}; do svc_remove_app "$a"; done
