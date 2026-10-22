@@ -1,0 +1,3 @@
+# Garde-fou secrets : refuse un *.sops.yaml non chiffré ou dont un nom de
+# clé ressemble à un secret (sops ne chiffre jamais les noms de clés).
+python3 scripts/check-sops-files.py --staged
