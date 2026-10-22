@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.25](https://github.com/Pavliin/MyOwn/compare/v0.1.24...v0.1.25) (2026-10-22)
+
+### Fonctionnalités
+
+* **gitops:** admin tools on <tool>.<domain>, LAN/VPN only; public status page only ([7707bde](https://github.com/Pavliin/MyOwn/commit/7707bde0f6e708a237b59924f372b975520283de))
+
+### Correctifs
+
+* **traefik:** keep the real client address (externalTrafficPolicy: Local) ([bc758f3](https://github.com/Pavliin/MyOwn/commit/bc758f3daa10a5da467c62b085284e94107c7a8d))
+
+### Documentation
+
+* add level-A, signature and client-IP points to the install design ([ff5f5b5](https://github.com/Pavliin/MyOwn/commit/ff5f5b589dc1c5aa14d1d74076d3c72792f602e3))
+* admin tool URLs, Uptime Kuma exposure finding, VPN limitation ([2875abc](https://github.com/Pavliin/MyOwn/commit/2875abcdfc34c4ca47715f13a12835c6f971db9d))
 ## [0.1.24](https://github.com/Pavliin/MyOwn/compare/v0.1.23...v0.1.24) (2026-10-22)
 
 ### Fonctionnalités
