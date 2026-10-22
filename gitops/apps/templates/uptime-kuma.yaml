@@ -52,6 +52,7 @@ spec:
       helm:
         valuesObject:
           domain: {{ include "myown.domain" . }}
+    {{- include "myown.adminAccessSource" (dict "root" . "prefix" "uptime" "service" "uptime-kuma" "port" 3001) | nindent 4 }}
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

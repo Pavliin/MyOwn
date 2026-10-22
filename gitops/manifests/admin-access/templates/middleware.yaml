@@ -1,0 +1,19 @@
+{{- /*
+Réservé au réseau local et au VPN d'admin : le DNS public de *.<domaine>
+pointe vers la box, donc <outil>.<domaine> atteint Traefik depuis internet —
+ce filtre renvoie 403 à toute adresse hors des plages autorisées. N'a de sens
+que parce que Traefik voit l'adresse réelle des visiteurs
+(externalTrafficPolicy: Local, gitops/bootstrap/traefik-acme-helmchartconfig.yaml).
+Nommé d'après l'Application (Release.Name) : plusieurs Applications peuvent
+partager un namespace (monitoring : Grafana et Uptime Kuma).
+*/ -}}
+{{- if .Values.sourceRanges }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Release.Name }}-admin-only
+spec:
+  ipAllowList:
+    sourceRange:
+      {{- toYaml .Values.sourceRanges | nindent 6 }}
+{{- end }}

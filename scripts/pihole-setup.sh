@@ -43,8 +43,8 @@
 #                            (same split-horizon reasoning as
 #                            gitops/bootstrap/coredns-custom.yaml, this
 #                            time for LAN clients instead of in-cluster
-#                            ones) — default: the 9 offsystem.fr hostnames
-#                            already exposed publicly (coredns-custom.yaml)
+#                            ones) — default: every offsystem.fr hostname served by the cluster
+#                            (same list as the cluster-side rewrites in coredns-custom.yaml)
 
 set -euo pipefail
 
@@ -54,7 +54,7 @@ WEB_PORT="${MYOWN_PIHOLE_WEB_PORT:-8081}"
 DATA_DIR="${MYOWN_PIHOLE_DATA_DIR:-/opt/myown-pihole/etc-pihole}"
 TZ_VALUE="${MYOWN_PIHOLE_TZ:-Europe/Paris}"
 UPSTREAMS="${MYOWN_PIHOLE_UPSTREAMS:-1.1.1.1;9.9.9.9}"
-LOCAL_HOSTS="${MYOWN_PIHOLE_LOCAL_HOSTS:-authentik.offsystem.fr vaultwarden.offsystem.fr nextcloud.offsystem.fr immich.offsystem.fr tuwunel.offsystem.fr jellyfin.offsystem.fr livekit.offsystem.fr livekit-jwt.offsystem.fr status.offsystem.fr}"
+LOCAL_HOSTS="${MYOWN_PIHOLE_LOCAL_HOSTS:-authentik.offsystem.fr vaultwarden.offsystem.fr nextcloud.offsystem.fr immich.offsystem.fr tuwunel.offsystem.fr jellyfin.offsystem.fr livekit.offsystem.fr livekit-jwt.offsystem.fr status.offsystem.fr mailu.offsystem.fr uptime.offsystem.fr argocd.offsystem.fr grafana.offsystem.fr ollama.offsystem.fr}"
 
 step() { echo -e "\n\033[1;34m==> $1\033[0m"; }
 

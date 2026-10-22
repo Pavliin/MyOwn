@@ -33,6 +33,7 @@ spec:
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/monitoring
+    {{- include "myown.adminAccessSource" (dict "root" . "prefix" "grafana" "service" "monitoring-grafana" "port" 80) | nindent 4 }}
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

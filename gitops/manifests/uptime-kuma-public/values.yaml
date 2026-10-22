@@ -1,2 +1,4 @@
 # Fourni par l'Application parente (gitops/apps, valeur `domain`).
 domain: ""
+# Page d'état publique (créée par scripts/uptime-kuma-setup.py).
+statusPageSlug: etat-du-systeme

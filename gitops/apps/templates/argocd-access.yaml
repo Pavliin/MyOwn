@@ -1,0 +1,22 @@
+{{- if has "argocd-access" .Values.apps }}
+# Accès à l'interface d'ArgoCD : argocd.<domain>, réservé au réseau local et au
+# VPN d'admin (chart gitops/manifests/admin-access). Rien n'est créé tant que
+# `adminSourceRanges` est vide. Infrastructure, jamais proposée dans la liste
+# des services : l'installeur l'ajoute toujours (scripts/lib/services.sh).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-access
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    {{- include "myown.adminAccessSource" (dict "root" . "prefix" "argocd" "service" "argocd-server" "port" 80) | nindent 4 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}

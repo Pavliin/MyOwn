@@ -20,6 +20,9 @@
 #   MYOWN_DOMAIN            domaine de l'installation (obligatoire sur une
 #                           installation neuve ; une relance reprend celui
 #                           déjà configuré)
+#   MYOWN_ADMIN_SOURCE_RANGES  plages autorisées à joindre les outils d'admin,
+#                           séparées par des virgules (défaut : réseau local +
+#                           VPN d'admin + pods ; une relance garde la valeur)
 #   MYOWN_SERVICES          sélection sans question : « nextcloud,immich » ou
 #                           « all », ou « none » pour le socle seul (le socle
 #                           est toujours ajouté)
@@ -293,6 +296,27 @@ MYOWN_DOMAIN_VALUE="${MYOWN_DOMAIN_VALUE:-${MYOWN_DOMAIN:-}}"
 [ -n "$MYOWN_DOMAIN_VALUE" ] || die "aucun domaine configuré : relancez avec MYOWN_DOMAIN=<votre-domaine>."
 export MYOWN_DOMAIN_VALUE
 echo "Domaine : $MYOWN_DOMAIN_VALUE"
+
+# Plages autorisées à joindre les outils d'admin (ArgoCD, Grafana, Ollama,
+# admin Uptime Kuma : <outil>.<domaine>). Relance : la valeur déjà configurée.
+# Sinon MYOWN_ADMIN_SOURCE_RANGES (liste séparée par des virgules), ou à défaut :
+# réseau local de cette machine + VPN d'admin (wg0, s'il existe) + réseau des
+# pods. Jamais le tunnel du relais mail : un VPS compromis ne doit atteindre
+# aucun outil d'admin.
+MYOWN_ADMIN_RANGES_JSON="$(kubectl get application root -n argocd -o jsonpath='{.spec.source.helm.valuesObject.adminSourceRanges}' 2>/dev/null || true)"
+if [ -z "$MYOWN_ADMIN_RANGES_JSON" ] || [ "$MYOWN_ADMIN_RANGES_JSON" = "[]" ]; then
+  if [ -n "${MYOWN_ADMIN_SOURCE_RANGES:-}" ]; then
+    RANGES="$(tr ',' ' ' <<<"$MYOWN_ADMIN_SOURCE_RANGES")"
+  else
+    LAN_IF="$(ip -4 route show default | awk '{print $5; exit}')"
+    LAN_CIDR="$(ip -4 route show dev "$LAN_IF" scope link 2>/dev/null | awk '$1 ~ /\// {print $1; exit}')"
+    WG_CIDR="$(ip -4 route show dev wg0 scope link 2>/dev/null | awk '$1 ~ /\// {print $1; exit}')"
+    RANGES="$LAN_CIDR $WG_CIDR 10.42.0.0/16"
+  fi
+  MYOWN_ADMIN_RANGES_JSON="[$(for r in $RANGES; do printf '"%s",' "$r"; done | sed 's/,$//')]"
+fi
+export MYOWN_ADMIN_RANGES_JSON
+echo "Outils d'admin réservés à : $MYOWN_ADMIN_RANGES_JSON"
 
 step "Bootstrap GitOps"
 if [ "$FRESH" = 1 ]; then

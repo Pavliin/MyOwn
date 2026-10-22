@@ -40,4 +40,12 @@ data:
     rewrite name exact jellyfin.offsystem.fr traefik-internal.kube-system.svc.cluster.local
     rewrite name exact livekit.offsystem.fr traefik-internal.kube-system.svc.cluster.local
     rewrite name exact livekit-jwt.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact mailu.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact status.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact uptime.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact argocd.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact grafana.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact ollama.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact livekit.offsystem.fr traefik-internal.kube-system.svc.cluster.local
+    rewrite name exact livekit-jwt.offsystem.fr traefik-internal.kube-system.svc.cluster.local
     rewrite name exact status.offsystem.fr traefik-internal.kube-system.svc.cluster.local

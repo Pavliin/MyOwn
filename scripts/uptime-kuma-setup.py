@@ -9,7 +9,8 @@ every cluster recreation.
 Usage:
     uv venv && source .venv/bin/activate
     uv pip install uptime-kuma-api
-    UPTIME_KUMA_USERNAME=... UPTIME_KUMA_PASSWORD=... python3 uptime-kuma-setup.py
+    MYOWN_DOMAIN=<domaine> UPTIME_KUMA_USERNAME=... UPTIME_KUMA_PASSWORD=... python3 uptime-kuma-setup.py
+    # (UPTIME_KUMA_URL pour viser une autre adresse que https://uptime.<domaine>)
     # on first run against a fresh instance, omit the env vars — a random
     # admin account is created and printed once; save it (e.g. into the
     # gitops/secrets/uptime-kuma/ SOPS file) and re-export it for reruns.
@@ -52,7 +53,10 @@ import requests
 from uptime_kuma_api import Event, MonitorType, NotificationType, UptimeKumaApi
 from uptime_kuma_api.api import _check_arguments_monitor, _convert_monitor_input
 
-URL = "http://myown-uptime.local:8090"
+# Domaine de l'installation (valeur `domain` de gitops/apps), obligatoire.
+DOMAIN = os.environ.get("MYOWN_DOMAIN") or sys.exit("MYOWN_DOMAIN est obligatoire (domaine de l'installation).")
+# Interface d'admin : uptime.<domaine>, réservée au réseau local et au VPN.
+URL = os.environ.get("UPTIME_KUMA_URL", f"https://uptime.{DOMAIN}")
 ADMIN_USER = os.environ.get("UPTIME_KUMA_USERNAME", "admin")
 ADMIN_PASS = os.environ.get("UPTIME_KUMA_PASSWORD")
 
@@ -63,13 +67,19 @@ ALERT_ROOM_ID = os.environ.get("TUWUNEL_ALERT_ROOM_ID")
 
 # Family-facing services only — ArgoCD/Grafana stay admin-only, never on
 # this page (cf. installation-utilisateur.md, roadmap.md Phase 4).
+# Public names, resolved inside the cluster to Traefik's internal Service
+# (gitops/bootstrap/coredns-custom.yaml) — the same path a family member's
+# request takes, with a real Let's Encrypt certificate, so TLS verification
+# stays on (ignoreTls=False explicitly: edit_monitor keeps a field it isn't
+# given, and the former .local monitors had it on). Each service's own health
+# route where it has one.
 SERVICES = [
-    dict(name="Authentik", type=MonitorType.HTTP, url="http://myown-authentik.local:8090/-/health/live/", interval=60),
-    dict(name="Vaultwarden", type=MonitorType.HTTP, url="https://myown-vaultwarden.local:8453", interval=60, ignoreTls=True),
-    dict(name="Nextcloud", type=MonitorType.HTTP, url="https://myown-nextcloud.local:8453", interval=60, ignoreTls=True),
-    dict(name="Immich", type=MonitorType.HTTP, url="http://myown-immich.local:8090", interval=60),
-    dict(name="Tuwunel", type=MonitorType.HTTP, url="https://myown-tuwunel.local:8453/_matrix/client/versions", interval=60, ignoreTls=True),
-    dict(name="LiveKit", type=MonitorType.HTTP, url="https://myown-livekit.local:8453/", interval=60, ignoreTls=True),
+    dict(name="Authentik", type=MonitorType.HTTP, url=f"https://authentik.{DOMAIN}/-/health/live/", interval=60, ignoreTls=False),
+    dict(name="Vaultwarden", type=MonitorType.HTTP, url=f"https://vaultwarden.{DOMAIN}/alive", interval=60, ignoreTls=False),
+    dict(name="Nextcloud", type=MonitorType.HTTP, url=f"https://nextcloud.{DOMAIN}/status.php", interval=60, ignoreTls=False),
+    dict(name="Immich", type=MonitorType.HTTP, url=f"https://immich.{DOMAIN}/api/server/ping", interval=60, ignoreTls=False),
+    dict(name="Tuwunel", type=MonitorType.HTTP, url=f"https://tuwunel.{DOMAIN}/_matrix/client/versions", interval=60, ignoreTls=False),
+    dict(name="LiveKit", type=MonitorType.HTTP, url=f"https://livekit.{DOMAIN}/", interval=60, ignoreTls=False),
 ]
 
 STATUS_PAGE_SLUG = "etat-du-systeme"
