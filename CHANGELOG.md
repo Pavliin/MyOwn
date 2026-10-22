@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.23](https://github.com/Pavliin/MyOwn/compare/v0.1.22...v0.1.23) (2026-10-22)
+
+### Correctifs
+
+* **gandi-dyndns:** replace the leaked Gandi PAT ([a53236a](https://github.com/Pavliin/MyOwn/commit/a53236aebeec81e7399bf3b036dbca8ab0b3f85d))
+
+### Documentation
+
+* **manuel-utilisateur:** fix Vaultwarden SSO login steps ([e4f5c58](https://github.com/Pavliin/MyOwn/commit/e4f5c58b743ca12af62c0266ef125fe3d7e2f4d5))
+* record the Gandi PAT leak through a SOPS key name ([9c46022](https://github.com/Pavliin/MyOwn/commit/9c460226856f34a33903bda0b59268b4d5fb9ad2))
+* record the root Helm migration on dev and the mini PC ([e6a97a2](https://github.com/Pavliin/MyOwn/commit/e6a97a242385db2d285701d7eca897755c4694cc))
+* refresh user and admin manuals against current state ([ffa32f2](https://github.com/Pavliin/MyOwn/commit/ffa32f2361fc1c73a8fa7c421e891157e73bc6d0))
 ## [0.1.22](https://github.com/Pavliin/MyOwn/compare/v0.1.21...v0.1.22) (2026-10-16)
 
 ### Fonctionnalités
