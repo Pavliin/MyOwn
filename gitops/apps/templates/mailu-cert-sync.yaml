@@ -7,9 +7,12 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-cert-sync
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     # Nominal only — every resource in this Application sets its own

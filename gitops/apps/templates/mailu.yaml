@@ -12,15 +12,15 @@ spec:
       targetRevision: 2.7.3
       helm:
         valuesObject:
-          domain: offsystem.fr
+          domain: {{ include "myown.domain" . }}
           hostnames:
-            - mailu.offsystem.fr
+            - mailu.{{ include "myown.domain" . }}
           timezone: Europe/Paris
           existingSecret: mailu-secrets
           initialAccount:
             enabled: true
             username: admin
-            domain: offsystem.fr
+            domain: {{ include "myown.domain" . }}
             existingSecret: mailu-secrets
             existingSecretPasswordKey: initial-account-password
             mode: create
@@ -220,19 +220,25 @@ spec:
               - name: snuffleupagus-carddav-fix
                 mountPath: /etc/snuffleupagus.rules.tpl
                 subPath: snuffleupagus.rules.tpl
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/mailu
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-public
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-forwardauth
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-backup
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-webmail-carddav-fix
   destination:

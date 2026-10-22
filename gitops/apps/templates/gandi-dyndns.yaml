@@ -7,10 +7,13 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/gandi-dyndns
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/gandi-dyndns
   destination:

@@ -6,6 +6,14 @@
 # en local.
 revision: master
 
+# Domaine de l'installation (niveaux B/C) ou suffixe local (niveau A) —
+# voir docs/installation-utilisateur.md. Obligatoire, posé par l'installeur
+# dans les valeurs de root ; jamais de valeur par défaut ici.
+domain: ""
+
+# Dépôt suivi par toutes les sources (celui du projet, ou un fork).
+repoURL: https://github.com/Pavliin/MyOwn.git
+
 # Applications déployées. Écrite par scripts/install.sh selon les services
 # choisis (catalogue : scripts/lib/services.sh) ; par défaut, toutes.
 apps:

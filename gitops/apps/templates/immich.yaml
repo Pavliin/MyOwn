@@ -60,10 +60,10 @@ spec:
                 type: persistentVolumeClaim
                 size: 5Gi
                 accessMode: ReadWriteOnce
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/immich
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/immich-postgres
     # Static hostPath-backed PV/PVC (immich-library), same name the chart
@@ -71,15 +71,18 @@ spec:
     # previously existed only as an out-of-band, hand-created object —
     # never declared in GitOps, so a fresh cluster would have failed to
     # start Immich at all (existingClaim pointing at nothing).
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/immich-library
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/immich-backup
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/immich-public
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: immich

@@ -16,7 +16,7 @@ spec:
           # this is what Vaultwarden itself uses to build its own
           # callback/redirect URLs. Reachable from LAN too, post
           # split-horizon DNS (gitops/bootstrap/coredns-custom.yaml).
-          domain: "https://vaultwarden.offsystem.fr"
+          domain: "https://vaultwarden.{{ include "myown.domain" . }}"
           adminToken:
             existingSecret: vaultwarden-secrets
             existingSecretKey: ADMIN_TOKEN
@@ -54,7 +54,7 @@ spec:
             # Let's Encrypt cert means no CA-trust workaround needed
             # here, unlike the mkcert-CA mounting lk-jwt-service/Uptime
             # Kuma needed for the same class of internal HTTPS call.
-            authority: "https://authentik.offsystem.fr/application/o/vaultwarden/"
+            authority: "https://authentik.{{ include "myown.domain" . }}/application/o/vaultwarden/"
             scopes: "openid email profile"
             ignoreEmailVerification: true
             existingSecret: vaultwarden-secrets
@@ -62,15 +62,18 @@ spec:
               existingSecretKey: SSO_CLIENT_ID
             clientSecret:
               existingSecretKey: SSO_CLIENT_SECRET
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/vaultwarden
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/vaultwarden-backup
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/vaultwarden-public
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: vaultwarden

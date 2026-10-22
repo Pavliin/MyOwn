@@ -88,7 +88,7 @@ spec:
             # later (`udp_port:`) if TCP alone ever proves insufficient.
             turn:
               enabled: true
-              domain: livekit.offsystem.fr
+              domain: livekit.{{ include "myown.domain" . }}
               tls_port: 5349
               secretName: livekit-turn-tls
           # Real bug found deploying this for real via ArgoCD (never
@@ -121,21 +121,30 @@ spec:
           # every future livekit-sfu change without this.
           deploymentStrategy:
             type: Recreate
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/livekit
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/livekit-ingress
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/lk-jwt-service
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/livekit-public
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/lk-jwt-service-public
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: livekit

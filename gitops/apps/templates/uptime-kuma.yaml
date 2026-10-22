@@ -46,9 +46,12 @@ spec:
             - name: mkcert-ca
               mountPath: /etc/ssl/mkcert
               readOnly: true
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/uptime-kuma-public
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

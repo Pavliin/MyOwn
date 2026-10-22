@@ -7,21 +7,30 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/tuwunel
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel-backup
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel-public
-    - repoURL: https://github.com/Pavliin/MyOwn.git
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+    - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel-federation-delegation
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
   destination:
     server: https://kubernetes.default.svc
     namespace: tuwunel
