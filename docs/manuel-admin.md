@@ -18,6 +18,24 @@ ArgoCD, Grafana et l'admin Nextcloud/Uptime Kuma ne sont **jamais** exposés
 publiquement, uniquement en LAN ou via le VPN d'administration (WireGuard) —
 choix délibéré, pas un oubli.
 
+## Accès aux outils réservés au LAN
+
+ArgoCD, Grafana et l'admin Uptime Kuma répondent sur des noms
+`myown-*.local:8090` que rien ne résout automatiquement — ni la Freebox, ni
+Pi-hole (qui ne connaît que les `*.offsystem.fr`). Sur la machine d'admin,
+ajouter à `/etc/hosts` :
+
+```text
+<IP LAN du mini PC> myown-argocd.local myown-grafana.local myown-uptime.local
+```
+
+Pas `127.0.0.1` : c'est la valeur du cluster de dev k3d
+(`manuel-installation.md` §10), qui tourne sur la machine elle-même. Via le
+VPN, remplacer l'IP LAN par l'adresse du mini PC dans le tunnel
+(`10.100.0.1`). Retirer toute ligne qui forcerait un `*.offsystem.fr` vers
+`127.0.0.1` : elle redirige silencieusement vers le cluster de dev au lieu
+du vrai (piège déjà rencontré, voir `notes-techniques.md`).
+
 ## Enrôlement — ajouter un utilisateur
 
 1. **Authentik** (<https://authentik.offsystem.fr/if/admin/>) → Répertoire →
@@ -32,15 +50,28 @@ choix délibéré, pas un oubli.
 3. Elle définit son propre mot de passe via ce lien, puis se connecte en SSO
    à chaque service — le compte s'y crée automatiquement à la première
    connexion.
-4. Vérifier ces cas particuliers après le premier login :
+4. **Après sa première connexion à Nextcloud**, l'ajouter au groupe
+   `famille`, sans quoi le dossier partagé **Mediatheque** (et donc l'ajout
+   de contenu à Jellyfin) lui reste invisible. Le compte SSO a un
+   identifiant opaque, à retrouver d'abord (voir la section Nextcloud) :
+
+   ```bash
+   occ user:list
+   occ group:adduser famille <identifiant>
+   ```
+
+5. Vérifier ces cas particuliers après le premier login :
 
    | Service | Point d'attention |
    |---|---|
-   | Jellyfin | Le compte SSO créé n'a **pas** les droits admin par défaut — normal pour un utilisateur, voir plus bas si c'est le vôtre. |
-   | Immich, Tuwunel | Le **tout premier** compte créé sur le service devient son admin — à réserver au vôtre, avant d'inviter qui que ce soit d'autre. |
    | Mailu | Refuse la connexion tant que l'email Authentik n'est pas en `@offsystem.fr` (erreur avec `domain=...`). |
+   | Tuwunel | ID Matrix illisible (`@ai2f-…`) si le username Authentik contient une espace ou un accent — voir la section Tuwunel. |
+   | Jellyfin, Mailu | Le compte SSO créé n'a **pas** les droits admin — normal pour un utilisateur ; pour le vôtre, voir les sections correspondantes. |
 
-5. Envoyer le [fichier de favoris](https://aide.offsystem.fr/downloads/myown-favoris.html){: download="myown-favoris.html" }
+   Immich et Tuwunel donnent les droits admin au **tout premier** compte
+   créé : c'est déjà fait (le vôtre), rien à vérifier pour les suivants.
+
+6. Envoyer le [fichier de favoris](https://aide.offsystem.fr/downloads/myown-favoris.html){: download="myown-favoris.html" }
    et le lien du [manuel utilisateur](manuel-utilisateur.md) — ou simplement
    le lien de [l'accueil](https://aide.offsystem.fr), qui pointe déjà vers
    les deux.
@@ -72,7 +103,23 @@ choix délibéré, pas un oubli.
 - La page d'accueil liste toutes les `Application` — vert
   (`Synced`/`Healthy`) = tout va bien. `root` (l'app-of-apps) reste
   volontairement en **synchronisation manuelle**, précédée d'une annonce
-  dans le salon `#etat-du-systeme` pour les services sensibles à la famille.
+  dans le salon `#etat-du-systeme` pour les services sensibles à la famille
+  (`scripts/tuwunel-announce.py`).
+- **Déployer une nouvelle release** sur le mini PC (une fois la release
+  coupée et sa PR fusionnée, voir `CLAUDE.md`, section Releases) : pointer
+  `root` sur le nouveau tag puis le synchroniser — toutes les `Application`
+  enfants, secrets compris, suivent automatiquement :
+
+  ```bash
+  kubectl patch application root -n argocd --type merge \
+    -p '{"spec":{"source":{"targetRevision":"vX.Y.Z"}}}'
+  argocd app sync root
+  ```
+
+- Ne jamais réactiver `selfHeal` sur une `Application` après un test en
+  direct sans que la correction testée soit dans le tag suivi par `root` :
+  ArgoCD réécraserait silencieusement le correctif en affichant toujours
+  `Synced`/`Healthy`.
 
 ## Grafana — métriques du cluster
 
@@ -170,12 +217,31 @@ choix délibéré, pas un oubli.
 
 ## Mailu — courrier électronique
 
-- **Panneau admin** : <https://mailu.offsystem.fr/admin>
-- **Compte** : `admin@offsystem.fr`, mot de passe dans
-  `gitops/secrets/mailu/mailu.sops.yaml` → `initial-account-password`
+- **Panneau admin** : <https://mailu.offsystem.fr/admin>, avec votre
+  propre compte SSO — à condition qu'il ait été promu admin. Tout
+  `mailu.offsystem.fr` passe par Authentik : le compte bootstrap ne peut
+  pas s'y connecter par cette adresse. Pour promouvoir un compte (après sa
+  première connexion SSO, qui crée sa boîte) :
+
+  ```bash
+  export MAILU_API_TOKEN=$(sops -d gitops/secrets/mailu/mailu.sops.yaml | yq '.stringData.API_TOKEN')
+  python3 scripts/mailu-promote-admin.py <email>@offsystem.fr
+  ```
+
+- **Compte de secours** (bootstrap) : `admin@offsystem.fr`, mot de passe
+  dans `gitops/secrets/mailu/mailu.sops.yaml` →
+  `initial-account-password`. Joignable uniquement en contournant
+  l'Ingress public (`kubectl port-forward` vers `mailu-admin`), pas via
+  l'adresse ci-dessus.
 - **Actions courantes** : gestion des domaines/alias, consultation des
-  files d'attente et du filtrage anti-spam. DKIM déjà configuré (clé privée
-  dans le même secret, ne jamais l'afficher en clair).
+  files d'attente et du filtrage anti-spam.
+- **DKIM** : la clé privée vit sur le volume persistant de Mailu
+  (`/dkim/offsystem.fr.dkim.key`), **pas** dans un secret SOPS — un
+  enregistrement DNS publié ne garantit pas qu'elle existe encore. En cas
+  de doute (mails classés en spam, `dkim=none` dans les en-têtes reçus) :
+  `python3 scripts/mailu-dkim-setup.py offsystem.fr` (même `MAILU_API_TOKEN`)
+  la régénère si absente et la relit depuis le disque — détail dans
+  `manuel-installation.md` §19.
 - Une adresse `@offsystem.fr` est créée automatiquement pour chaque compte
   Authentik dont l'email est déjà sur ce domaine — pas de création manuelle
   nécessaire une fois l'email corrigé côté Authentik.
@@ -228,6 +294,42 @@ choix délibéré, pas un oubli.
 - **Limitation connue** : le DNS IPv6 annoncé par la Freebox (RA) n'est
   pas redirigé — les appareils IPv6 natifs peuvent échapper au filtrage
   pour les domaines avec enregistrement AAAA.
+
+## WireGuard — VPN d'administration
+
+- Service systemd sur le mini PC (`wg-quick@wg0`), hors GitOps et hors k3s
+  pour rester disponible même si le cluster est en panne (voir
+  `wireguard/README.md`).
+- **Ajouter un appareil** (sur le mini PC, `sudo` interactif nécessaire) :
+
+  ```bash
+  MYOWN_WG_PEER_NAME=<nom-appareil> scripts/wireguard-setup.sh
+  ```
+
+  Le nom est obligatoire dès que le serveur existe (pas de valeur par
+  défaut, pour ne jamais écraser un pair existant). Le script met à jour
+  `wireguard/wg0.conf.sops.yaml` (à committer) et écrit la config cliente
+  hors dépôt, dans `~/myown-wireguard-<nom>.conf` — à importer dans l'appli
+  WireGuard, ou à afficher en QR code avec `qrencode -t ansiutf8 <` ce
+  fichier (scanner depuis l'appli WireGuard elle-même, pas depuis
+  l'appareil photo du téléphone).
+- **Limitation actuelle** : seul l'usage en LAN a été validé ; l'accès
+  depuis l'extérieur demande encore une redirection de port sur la
+  Freebox.
+
+## Watchdog — redémarrage automatique de k3s
+
+- Timer systemd sur le mini PC (`myown-watchdog.timer`), hors GitOps : si
+  l'API k3s ne répond plus pendant 3 minutes d'affilée, il redémarre
+  `k3s.service` tout seul, au maximum 3 fois par heure.
+- **Messages `[MyOwn Watchdog]` dans `#etat-du-systeme`** : ils arrivent
+  avec du retard (Tuwunel tourne dans le cluster surveillé, ils partent au
+  retour du cluster).
+  - *« redémarrage automatique de k3s tenté »* : rien à faire si tout est
+    revenu au vert, sinon regarder pourquoi :
+    `journalctl -t myown-watchdog` et `journalctl -u k3s`.
+  - *« le watchdog abandonne »* : le cluster ne revient pas malgré 3
+    redémarrages — intervention manuelle nécessaire (SSH ou VPN).
 
 ## Sauvegardes (Restic)
 
