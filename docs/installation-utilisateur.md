@@ -91,6 +91,12 @@ Avoir un **nom de domaine** et être **accessible depuis internet** sont deux ch
 
 **Changer de niveau** : de B à C, il suffit d'ouvrir les ports et d'activer le DynDNS — mêmes noms, mêmes données. De A à B, les adresses des services changent (suffixe local → domaine) et les appareils doivent être reconfigurés. Conseil donné à l'installation : choisir B dès qu'un passage à C est envisageable.
 
+#### Prérequis et protections transverses (ajoutés le 2026-10-22)
+
+- **Pi-hole est un prérequis du niveau A.** Sans domaine public, rien d'autre ne fait connaître aux appareils de la maison les noms `<service>.<suffixe>` : l'installeur met Pi-hole en place avec une entrée couvrant tout le suffixe, et la seule action manuelle est de régler, dans la box, le DNS distribué aux appareils sur l'adresse du serveur. Suffixe recommandé : `home.arpa` (RFC 8375, réservé aux réseaux domestiques) — jamais `.local`, réservé à la découverte automatique (mDNS) et source de conflits sur macOS/iOS/Linux. En B et C, Pi-hole reste optionnel (il ne sert qu'au filtrage et à éviter le détour par la box).
+- **Vérification des signatures de commits par ArgoCD, avant toute ouverture à d'autres foyers.** Une installation applique ce que dit le dépôt suivi, avec tous les droits sur le cluster : suivre le dépôt du projet, c'est faire confiance au compte qui le publie (un compte compromis atteindrait toutes les installations qui synchronisent). Synchronisation manuelle et tags limitent déjà ce risque ; ArgoCD peut en plus refuser tout commit non signé par une clé de confiance. Le paramètre `repoURL` (suivre un fork) n'ajoute pas ce risque, il le rend seulement visible.
+- **Adresse réelle des visiteurs** : le Service de Traefik est en `externalTrafficPolicy: Local` (corrigé le 2026-10-22, voir `notes-techniques.md`). C'est la condition pour que le filtrage par adresse des outils d'administration (ArgoCD, Grafana, Ollama : `<outil>.<domaine>`, réservés au réseau local et au VPN) ait un sens, et pour qu'Authentik distingue un attaquant du reste de la famille.
+
 ### Configuration d'installation
 
 Un seul jeu de paramètres, dans les valeurs du chart `gitops/apps` lues par l'Application `root` — au même endroit que `revision` et `apps`, sans fichier d'état à part :

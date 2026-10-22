@@ -26,6 +26,17 @@ metadata:
   namespace: kube-system
 spec:
   valuesContent: |-
+    # Keep the real client address. With the default
+    # externalTrafficPolicy: Cluster, kube-proxy source-NATs every incoming
+    # connection: Traefik, its access logs and Authentik (brute-force
+    # protection, X-Forwarded-For) all saw every visitor — internet included
+    # — as a 10.42.x.x cluster address (7 days of logs, 2026-10-22). That
+    # also made any IP allow-list meaningless, or worse, since internet
+    # traffic looked internal. Local skips the SNAT; single node, Traefik's
+    # pod is always on it, so no traffic is dropped.
+    service:
+      spec:
+        externalTrafficPolicy: Local
     persistence:
       enabled: true
       path: /data
