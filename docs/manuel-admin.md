@@ -14,27 +14,36 @@ récupèrent avec :
 sops -d gitops/secrets/<service>/<service>.sops.yaml
 ```
 
-ArgoCD, Grafana et l'admin Nextcloud/Uptime Kuma ne sont **jamais** exposés
-publiquement, uniquement en LAN ou via le VPN d'administration (WireGuard) —
-choix délibéré, pas un oubli.
+ArgoCD, Grafana, Ollama et l'admin Uptime Kuma ne sont **jamais** accessibles
+depuis internet : uniquement depuis le réseau de la maison ou via le VPN
+d'administration (WireGuard) — choix délibéré, pas un oubli. (Les pages
+d'administration de Nextcloud, Immich, Mailu… font partie de leur application,
+accessible publiquement mais derrière la connexion SSO.)
 
 ## Accès aux outils réservés au LAN
 
-ArgoCD, Grafana et l'admin Uptime Kuma répondent sur des noms
-`myown-*.local:8090` que rien ne résout automatiquement — ni la Freebox, ni
-Pi-hole (qui ne connaît que les `*.offsystem.fr`). Sur la machine d'admin,
-ajouter à `/etc/hosts` :
+Chaque outil a son nom dans le domaine, résolu à la maison par Pi-hole —
+plus rien à ajouter dans `/etc/hosts` :
 
-```text
-<IP LAN du mini PC> myown-argocd.local myown-grafana.local myown-uptime.local
-```
+| Outil | Adresse |
+|---|---|
+| ArgoCD | `https://argocd.offsystem.fr` |
+| Grafana | `https://grafana.offsystem.fr` |
+| Admin Uptime Kuma | `https://uptime.offsystem.fr` |
+| Ollama (API) | `https://ollama.offsystem.fr` |
 
-Pas `127.0.0.1` : c'est la valeur du cluster de dev k3d
-(`manuel-installation.md` §10), qui tourne sur la machine elle-même. Via le
-VPN, remplacer l'IP LAN par l'adresse du mini PC dans le tunnel
-(`10.100.0.1`). Retirer toute ligne qui forcerait un `*.offsystem.fr` vers
-`127.0.0.1` : elle redirige silencieusement vers le cluster de dev au lieu
-du vrai (piège déjà rencontré, voir `notes-techniques.md`).
+Depuis internet, ces noms existent (le DNS public couvre tout le domaine)
+mais Traefik répond **403** : seules les adresses du réseau local, du VPN
+d'administration et des pods sont acceptées (valeur `adminSourceRanges` de
+l'installation). **Hors de la maison, pas encore d'accès par ces noms** : la
+configuration client WireGuard ne fait passer que le sous-réseau du tunnel,
+sans DNS — ces noms se résolvent donc vers l'adresse publique et reçoivent
+**403**. Il faudra faire passer l'adresse du mini PC dans le tunnel et utiliser
+Pi-hole comme DNS (`scripts/wireguard-setup.sh`, à faire). En attendant, à
+distance : `kubectl port-forward` via SSH dans le tunnel.
+
+La page d'état publique, `https://status.offsystem.fr`, ne montre que l'état
+des services — l'administration d'Uptime Kuma n'y est pas accessible.
 
 ## Enrôlement — ajouter un utilisateur
 
@@ -97,7 +106,7 @@ du vrai (piège déjà rencontré, voir `notes-techniques.md`).
 
 ## ArgoCD — déploiement GitOps
 
-- **URL** : `http://myown-argocd.local:8090` (LAN/VPN uniquement)
+- **URL** : `https://argocd.offsystem.fr` (LAN/VPN uniquement)
 - **Mot de passe** : `gitops/secrets/argocd/argocd.sops.yaml` →
   `ARGOCD_ADMIN_PASSWORD`
 - La page d'accueil liste toutes les `Application` — vert
@@ -123,7 +132,7 @@ du vrai (piège déjà rencontré, voir `notes-techniques.md`).
 
 ## Grafana — métriques du cluster
 
-- **URL** : `http://myown-grafana.local:8090` (LAN/VPN uniquement)
+- **URL** : `https://grafana.offsystem.fr` (LAN/VPN uniquement)
 - **Mot de passe** : `gitops/secrets/monitoring/monitoring.sops.yaml` →
   `admin-password`
 - ~29 tableaux de bord préconfigurés (menu **Dashboards**), rien à
@@ -260,7 +269,7 @@ du vrai (piège déjà rencontré, voir `notes-techniques.md`).
 
 ## Uptime Kuma — supervision
 
-- **Admin** (LAN/VPN) : `http://myown-uptime.local:8090` — identifiants
+- **Admin** (LAN/VPN) : `https://uptime.offsystem.fr` — identifiants
   dans `gitops/secrets/uptime-kuma/uptime-kuma.sops.yaml`
   (`UPTIME_KUMA_USERNAME` / `UPTIME_KUMA_PASSWORD`).
 - **Page publique** (lecture seule, pour la famille) :
