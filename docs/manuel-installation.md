@@ -147,13 +147,7 @@ kubectl create secret tls livekit-jwt-tls -n livekit \
 
 Ces secrets sont volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
 
-`lk-jwt-service` a en plus besoin de faire confiance à ce même CA mkcert pour ses propres requêtes sortantes vers Tuwunel (vérification du jeton OpenID, découverte `.well-known`) — le conteneur ne fait pas confiance au magasin de certs de l'hôte par défaut. Un `ConfigMap` (pas un `Secret`, le CA est public) monté dans le pod via `SSL_CERT_FILE` :
-
-```bash
-kubectl create configmap mkcert-ca -n livekit --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem"
-```
-
-Même besoin pour Uptime Kuma (Phase 3.5, notification Matrix vers Tuwunel) — un `ConfigMap` séparé, un par namespace :
+Uptime Kuma (Phase 3.5, notification Matrix vers Tuwunel) a en plus besoin de faire confiance à ce même CA mkcert pour ses propres requêtes sortantes — Node.js ne voit pas le magasin de certs de l'hôte. Un `ConfigMap` (pas un `Secret`, le CA est public) monté dans le pod :
 
 ```bash
 kubectl create configmap mkcert-ca -n monitoring --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem"
