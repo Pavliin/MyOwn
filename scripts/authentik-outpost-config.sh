@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sets authentik_host / authentik_host_browser on the embedded outpost —
 # needed for ANY ForwardAuth-mode Proxy Provider (first used by Mailu's
-# webmail/admin SSO, gitops/secrets/authentik-blueprints/mailu-sso.sops.yaml)
+# webmail/admin SSO, gitops/manifests/authentik-blueprints/templates/mailu-sso.yaml)
 # to build correct browser-facing login redirects.
 #
 # Real bug found live (2026-08-23): left unset, the embedded outpost

@@ -7,13 +7,13 @@ uptime-kuma-setup.py) — this script is the reproducible alternative to
 clicking through the Dashboard, kept in git so it doesn't have to be
 redone by hand after every cluster recreation. The Authentik side (OAuth2
 Provider + Application) IS GitOps-managed, see
-gitops/secrets/authentik-blueprints/jellyfin-sso.sops.yaml.
+gitops/manifests/authentik-blueprints/templates/jellyfin-sso.yaml.
 
 Usage:
     uv venv && source .venv/bin/activate && uv pip install requests
     # Pull the real client secret out of the encrypted secret rather than
-    # retyping it — it must match gitops/secrets/authentik-blueprints/
-    # jellyfin-sso.sops.yaml exactly, both sides of the same OAuth2 client.
+    # retyping it — Authentik's side (authentik-sso-clients) is derived from
+    # this same value, both sides of the same OAuth2 client.
     export JELLYFIN_SSO_CLIENT_SECRET=$(sops -d gitops/secrets/jellyfin/jellyfin.sops.yaml | yq '.stringData.SSO_CLIENT_SECRET')
     python3 jellyfin-sso-setup.py
     # On first run against a fresh instance, omit JELLYFIN_ADMIN_PASSWORD —
