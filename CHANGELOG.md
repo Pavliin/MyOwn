@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.31](https://github.com/Pavliin/MyOwn/compare/v0.1.30...v0.1.31) (2026-10-27)
+
+### Correctifs
+
+* **secrets:** correct the cluster-secrets.py path in the installer and CI ([ce4ea8d](https://github.com/Pavliin/MyOwn/commit/ce4ea8d4ced41efab443993fb8aa98ec5a302bf3))
+
+### Documentation
+
+* bring CLAUDE.md current state up to date (independent install steps 1-3) ([566a106](https://github.com/Pavliin/MyOwn/commit/566a106c14184292e4c337c0218358c5817537c0))
 ## [0.1.30](https://github.com/Pavliin/MyOwn/compare/v0.1.29...v0.1.30) (2026-10-27)
 
 ### Fonctionnalités
