@@ -100,7 +100,7 @@ des services — l'administration d'Uptime Kuma n'y est pas accessible.
   `gitops/manifests/authentik-blueprints/` (en clair, rendus avec le domaine)
   — jamais à la main dans l'UI. Leurs secrets OIDC sont dans le Secret
   `authentik/authentik-sso-clients`, dérivés de ceux des services par
-  `scripts/lib/secrets.py`.
+  `scripts/lib/cluster-secrets.py`.
 - La récupération en libre-service (identification + TOTP) exige que
   l'utilisateur ait déjà un authentificateur configuré — sans quoi le flow
   refuse délibérément (`not_configured_action: deny`, pas de contournement

@@ -353,17 +353,17 @@ fi
 step "Secrets générés dans le cluster"
 # Créés AVANT la synchronisation, pour que chaque service démarre avec les
 # siens : seulement ceux qui manquent, jamais écrasés ni affichés
-# (scripts/lib/secrets.py). Installation antérieure aux secrets générés
+# (scripts/lib/cluster-secrets.py). Installation antérieure aux secrets générés
 # (Secrets alors produits par KSOPS depuis des fichiers chiffrés du dépôt) :
 # ils sont protégés de la suppression avant la synchronisation qui retire
 # leurs sources, puis détachés d'ArgoCD après — valeurs inchangées.
-python3 scripts/lib/secrets.py ensure --apps "$(paste -sd, <<<"$WANTED")" --domain "$MYOWN_DOMAIN_VALUE" \
+python3 scripts/lib/cluster-cluster-secrets.py ensure --apps "$(paste -sd, <<<"$WANTED")" --domain "$MYOWN_DOMAIN_VALUE" \
   || die "secrets générés : échec (voir ci-dessus)."
-python3 scripts/lib/secrets.py protect
+python3 scripts/lib/cluster-secrets.py protect
 
 MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
 [ "$HAS_DOMAIN" = 1 ] && svc_kick_cert_sync "$WANTED"
-python3 scripts/lib/secrets.py release >/dev/null
+python3 scripts/lib/cluster-secrets.py release >/dev/null
 
 if grep -qx jellyfin <<<"$WANTED"; then
   step "Médiathèque partagée Nextcloud (lue par Jellyfin)"

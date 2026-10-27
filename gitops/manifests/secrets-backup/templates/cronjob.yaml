@@ -1,12 +1,12 @@
 # Sauvegarde quotidienne des Secrets générés dans le cluster
-# (scripts/lib/secrets.py) : ils n'existent nulle part ailleurs.
+# (scripts/lib/cluster-secrets.py) : ils n'existent nulle part ailleurs.
 #
 # 1. export : chaque Secret listé est lu par l'API (droits limités à ces noms,
 #    rbac.yaml) et écrit tel quel en JSON dans un volume en mémoire (tmpfs) —
 #    les valeurs ne touchent jamais le disque en clair.
 # 2. backup : Restic chiffre ce dossier dans son dépôt dédié.
 #
-# Le mot de passe de ce dépôt (Secret secrets-backup, créé par secrets.py) est
+# Le mot de passe de ce dépôt (Secret secrets-backup, créé par cluster-secrets.py) est
 # la seule valeur à garder HORS du cluster : il ouvre toutes les autres
 # (manuel-admin.md, « Sauvegarde des secrets »). Il n'est pas lui-même dans la
 # sauvegarde, qui serait illisible sans lui.

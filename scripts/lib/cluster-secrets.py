@@ -6,7 +6,7 @@ Crée ce qui manque, n'écrase jamais une valeur existante, n'affiche jamais une
 valeur : seulement des noms de Secrets et de clés. Appelé par scripts/install.sh ;
 lançable seul sur une installation existante, y compris à distance sans checkout :
 
-    ssh <serveur> 'KUBECTL="sudo k3s kubectl" python3 - ensure' < scripts/lib/secrets.py
+    ssh <serveur> 'KUBECTL="sudo k3s kubectl" python3 - ensure' < scripts/lib/cluster-secrets.py
 
 Commandes :
   ensure [--apps a,b] [--domain d] [--admin-email e]
