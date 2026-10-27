@@ -40,8 +40,9 @@ import time
 
 import requests
 
-BASE = "http://myown-jellyfin.local:8090"
-HOST_HEADER = {"Host": "myown-jellyfin.local"}
+# Domaine de l'installation (valeur `domain` de gitops/apps), obligatoire.
+DOMAIN = os.environ.get("MYOWN_DOMAIN") or sys.exit("MYOWN_DOMAIN est obligatoire (domaine de l'installation).")
+BASE = os.environ.get("JELLYFIN_URL", f"https://jellyfin.{DOMAIN}")
 ADMIN_USER = "admin"
 PLUGIN_NAME = "Authentik SSO"
 PLUGIN_ID = "f4c1d2a3b5e647899abcdef012345678"
@@ -51,7 +52,7 @@ PLUGIN_REPO_URL = "https://scottfridwin.github.io/jellyfin-plugin-authentik/mani
 # mirrors into the browser login redirect too (Host of whichever request
 # fetched discovery/config) — see notes-techniques.md, "Nom de domaine réel
 # + Let's Encrypt". Resolves internally post split-horizon DNS regardless.
-AUTHENTIK_URL = os.environ.get("JELLYFIN_SSO_AUTHENTIK_URL", "https://authentik.offsystem.fr")
+AUTHENTIK_URL = os.environ.get("JELLYFIN_SSO_AUTHENTIK_URL", f"https://authentik.{DOMAIN}")
 SSO_CLIENT_ID = os.environ.get("JELLYFIN_SSO_CLIENT_ID", "jellyfin")
 SSO_CLIENT_SECRET = os.environ.get("JELLYFIN_SSO_CLIENT_SECRET")
 if not SSO_CLIENT_SECRET:
@@ -73,7 +74,6 @@ def info(msg: str) -> None:
 
 
 s = requests.Session()
-s.headers.update(HOST_HEADER)
 
 public_info = s.get(f"{BASE}/System/Info/Public").json()
 

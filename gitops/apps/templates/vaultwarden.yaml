@@ -25,13 +25,9 @@ spec:
               name: data
               size: 1Gi
               accessMode: ReadWriteOnce
+          # Pas d'Ingress du chart : nom unique <service>.<domaine>, servi par l'Ingress public (gitops/manifests/vaultwarden-public).
           ingress:
-            enabled: true
-            class: traefik
-            tls: true
-            tlsSecret: vaultwarden-tls
-            nginxIngressAnnotations: false
-            hostname: myown-vaultwarden.local
+            enabled: false
           sso:
             enabled: true
             # authentik.offsystem.fr, not myown-authentik.local: Authentik

@@ -20,11 +20,9 @@ spec:
             auth:
               existingSecret: authentik-secrets
           server:
+            # Pas d'Ingress du chart : nom unique <service>.<domaine>, servi par l'Ingress public (gitops/manifests/authentik-public).
             ingress:
-              enabled: true
-              ingressClassName: traefik
-              hosts:
-                - myown-authentik.local
+              enabled: false
           blueprints:
             secrets:
               - authentik-blueprint-vaultwarden-sso

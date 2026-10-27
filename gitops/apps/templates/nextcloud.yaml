@@ -13,15 +13,14 @@ spec:
       helm:
         valuesObject:
           nextcloud:
-            host: myown-nextcloud.local
+            # Single naming scheme: the public name is also the one the chart
+            # uses internally (probes send it as their Host header).
+            host: nextcloud.{{ include "myown.domain" . }}
+            # Nextcloud rejects any Host header not in its trusted_domains
+            # with a plain 400. This list only seeds a *first* install (the
+            # entrypoint reads it once) — the before-starting hook below
+            # enforces it on every start.
             trustedDomains:
-              - myown-nextcloud.local
-              # Nextcloud rejects any Host header not in this list with a
-              # plain 400, before even reaching the app — found live,
-              # nextcloud.offsystem.fr returned 400 despite the Ingress
-              # and cert both being correct. `host` above stays the LAN
-              # name (what the chart uses to build its own internal
-              # config), this list is what's actually checked per-request.
               - nextcloud.{{ include "myown.domain" . }}
             configs:
               # Nextcloud's SSRF guard (preventLocalAddress) blocks outbound
@@ -104,6 +103,16 @@ spec:
                   --clientid="$OIDC_CLIENT_ID" \
                   --clientsecret="$OIDC_CLIENT_SECRET" \
                   --discoveryuri="https://authentik.{{ include "myown.domain" . }}/application/o/nextcloud/.well-known/openid-configuration"
+                # Single naming scheme (2026-10-27): trusted_domains and the
+                # URL used for generated links are enforced on every start —
+                # the chart's trustedDomains only ever seeded the first
+                # install (dev still trusted only myown-nextcloud.local,
+                # prod got its public name added by hand via occ), and
+                # overwrite.cli.url had been https://localhost.
+                php occ config:system:set trusted_domains 0 --value=localhost
+                php occ config:system:set trusted_domains 1 --value=nextcloud.{{ include "myown.domain" . }}
+                for i in 2 3 4 5 6 7 8 9; do php occ config:system:delete trusted_domains "$i" >/dev/null 2>&1 || true; done
+                php occ config:system:set overwrite.cli.url --value=https://nextcloud.{{ include "myown.domain" . }}
             # Real bug found live (2026-08-24): .well-known/carddav and
             # /caldav redirect to http://, not https:// — Apache's own
             # mod_rewrite builds that redirect's absolute URL itself
@@ -180,13 +189,9 @@ spec:
           persistence:
             enabled: true
             hostPath: /var/lib/rancher/k3s/storage/myown/nextcloud-data
+          # Pas d'Ingress du chart : nom unique <service>.<domaine>, servi par l'Ingress public (gitops/manifests/nextcloud-public).
           ingress:
-            enabled: true
-            className: traefik
-            tls:
-              - secretName: nextcloud-tls
-                hosts:
-                  - myown-nextcloud.local
+            enabled: false
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/nextcloud

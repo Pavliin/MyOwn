@@ -12,14 +12,9 @@ spec:
       targetRevision: 4.1.0
       helm:
         valuesObject:
+          # Pas d'Ingress du chart : page d'état publique et admin LAN/VPN (gitops/manifests/uptime-kuma-public, admin-access).
           ingress:
-            enabled: true
-            className: traefik
-            hosts:
-              - host: myown-uptime.local
-                paths:
-                  - path: /
-                    pathType: ImplementationSpecific
+            enabled: false
           # Dev-cluster only, both entries below — needed because Node.js
           # (unlike the OS) bundles its own CA store and doesn't see the
           # mkcert dev CA trusted via `mkcert -install`. Real bug found via

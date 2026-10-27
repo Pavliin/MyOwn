@@ -53,14 +53,9 @@ spec:
               # Q4 model) — capped rather than left unbounded, this is a
               # dev cluster shared with everything else already running.
               memory: 10Gi
+          # Pas d'Ingress du chart : <outil>.<domaine>, réservé au LAN/VPN (gitops/manifests/admin-access).
           ingress:
-            enabled: true
-            className: traefik
-            hosts:
-              - host: myown-ollama.local
-                paths:
-                  - path: /
-                    pathType: Prefix
+            enabled: false
     {{- include "myown.adminAccessSource" (dict "root" . "prefix" "ollama" "service" "ollama" "port" 11434) | nindent 4 }}
   destination:
     server: https://kubernetes.default.svc

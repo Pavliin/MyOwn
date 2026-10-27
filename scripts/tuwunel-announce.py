@@ -21,7 +21,9 @@ import time
 
 import requests
 
-TUWUNEL_URL = "https://myown-tuwunel.local:8453"
+# Domaine de l'installation (valeur `domain` de gitops/apps), obligatoire.
+DOMAIN = os.environ.get("MYOWN_DOMAIN") or sys.exit("MYOWN_DOMAIN est obligatoire (domaine de l'installation).")
+TUWUNEL_URL = os.environ.get("TUWUNEL_URL", f"https://tuwunel.{DOMAIN}")
 ROOM_ID = os.environ.get("TUWUNEL_ALERT_ROOM_ID")
 TOKEN = os.environ.get("TUWUNEL_ALERTBOT_TOKEN")
 

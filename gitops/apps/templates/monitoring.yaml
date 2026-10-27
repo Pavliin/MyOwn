@@ -24,12 +24,9 @@ spec:
           grafana:
             admin:
               existingSecret: monitoring-secrets
+            # Pas d'Ingress du chart : <outil>.<domaine>, réservé au LAN/VPN (gitops/manifests/admin-access).
             ingress:
-              enabled: true
-              ingressClassName: traefik
-              hosts:
-                - myown-grafana.local
-              path: /
+              enabled: false
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/monitoring

@@ -1,5 +1,5 @@
 # Separate Ingress rather than adding a second host to the existing
-# gitops/manifests/livekit-ingress/ingress.yaml (static secretName, same
+# the former .local Ingress (static secretName, removed 2026-10-27; same
 # reasoning as tuwunel-public). Only the WS/HTTP signaling port (7880,
 # same backend as the existing Ingress) — the raw RTC media ports
 # (7881/tcp, 7882/udp) bypass Traefik entirely via hostPort, unaffected.

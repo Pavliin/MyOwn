@@ -56,14 +56,9 @@ spec:
               type: hostPath
               hostPath: /var/lib/rancher/k3s/storage/myown/nextcloud-data/data/__groupfolders/1
               readOnly: true
+          # Pas d'Ingress du chart : nom unique <service>.<domaine>, servi par l'Ingress public (gitops/manifests/jellyfin-public).
           ingress:
-            enabled: true
-            className: traefik
-            hosts:
-              - host: myown-jellyfin.local
-                paths:
-                  - path: /
-                    pathType: Prefix
+            enabled: false
           # Real bug hit live: the Android TV app's manual server-address
           # field only reaches Jellyfin by probing its native ports
           # (8096 http / 8920 https) directly against the hostname — it
