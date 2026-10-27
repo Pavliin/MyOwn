@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.30](https://github.com/Pavliin/MyOwn/compare/v0.1.29...v0.1.30) (2026-10-27)
+
+### Fonctionnalités
+
+* **secrets:** daily encrypted backup of the generated Secrets ([61795c8](https://github.com/Pavliin/MyOwn/commit/61795c86132bd825767ee848ca040c7688d49a61))
+* **secrets:** restore script for the secrets backup ([2f480e9](https://github.com/Pavliin/MyOwn/commit/2f480e944163672cdd19cdc69a94f5a37520112e))
+
+### Correctifs
+
+* **secrets:** rename secrets.py so it no longer shadows Python's secrets module ([e54ddc4](https://github.com/Pavliin/MyOwn/commit/e54ddc4e455053b726b7d80edc4b548e338fe88d))
+
+### Documentation
+
+* secrets backup, restore procedure and off-machine limit ([66741b4](https://github.com/Pavliin/MyOwn/commit/66741b42a0543be9a80c55db03dfd1195df6a728))
 ## [0.1.29](https://github.com/Pavliin/MyOwn/compare/v0.1.28...v0.1.29) (2026-10-27)
 
 ### Fonctionnalités
