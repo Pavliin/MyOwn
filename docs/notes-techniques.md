@@ -1232,3 +1232,20 @@ Seconde moitié de l'étape 1b, après vérification qu'aucune requête n'arriva
 **Scripts** : `jellyfin-sso-setup.py` et `tuwunel-announce.py` prennent le domaine (`MYOWN_DOMAIN`) comme `uptime-kuma-setup.py` ; l'adresse par défaut de la Phase 5 passe au nom public. La page d'état autorise aussi `/serviceWorker.js`, seule ressource refusée lors du test depuis un vrai téléphone.
 
 Reste lié, traité par la PR de `lk-jwt-service` (#175) : sa valeur `LIVEKIT_FULL_ACCESS_HOMESERVERS` encore en `myown-tuwunel.local`, et sa CA mkcert.
+
+## Fournisseur DNS générique et DynDNS par ddns-updater — étape 2 de l'installation indépendante (2026-10-27)
+
+Objectif (`installation-utilisateur.md`) : qu'un autre foyer puisse prendre n'importe quel fournisseur DNS pris en charge, sans que Gandi apparaisse dans le code.
+
+**Certificats** : la surcouche Traefik (`gitops/bootstrap/traefik-acme-helmchartconfig.yaml`) devient un gabarit (`__DNS_PROVIDER__`, `__ACME_EMAIL__`, même principe que CoreDNS). Les identifiants passent d'une variable nommée (`GANDIV5_PERSONAL_ACCESS_TOKEN` lue dans `gandi-dns-credentials/token`) à un `envFrom` sur le Secret générique `dns-provider-credentials` : ses clés sont directement les variables que lego attend pour le fournisseur choisi, quel qu'il soit. Le fournisseur et l'e-mail restent hors des valeurs de `root` (rien dans l'arbre GitOps ne s'en sert) ; l'installeur les relit dans la surcouche à chaque relance.
+
+**DynDNS** : le CronJob maison `gandi-dyndns` (deux `curl` sur l'API Gandi, `PUT` inconditionnel toutes les 5 minutes) est remplacé par l'Application `dyndns`, qui fait tourner [ddns-updater](https://github.com/qdm12/ddns-updater) `v2.10.0`. Sa configuration entière (fournisseur, jeton, domaine et wildcard, IPv4 et IPv6) est dans le Secret `dyndns/dyndns-config`, construit par l'installeur à partir d'un petit JSON propre au fournisseur. Le Secret SOPS `gitops/secrets/gandi-dyndns/` est retiré du dépôt. Différences notables :
+
+- **Il vérifie avant d'écrire** : à chaque passage, il résout chaque enregistrement et n'appelle l'API que si l'adresse diffère (il résout le wildcard via `any.<domaine>`). Testé sur le dev avec un jeton factice : `skipping update` sur l'apex et le wildcard, aucun appel à l'API.
+- **Résolveur public imposé** (`RESOLVER_ADDRESS=9.9.9.9:53`) : CoreDNS réécrit les noms des services vers l'adresse interne de Traefik (split horizon), ce qui ne correspondrait jamais à l'IP publique et déclencherait une mise à jour à chaque passage.
+- **`hostNetwork` conservé** pour les AAAA : le réseau des pods n'a pas de sortie IPv6, comme pour l'ancien CronJob.
+- **Piège** : en `LOG_LEVEL=debug`, ddns-updater écrit sa configuration complète, jeton compris, dans les journaux du pod. Constaté au test, signalé dans le manifeste et dans `manuel-admin.md`.
+
+**Une installation existante est migrée par l'installeur** : il reconnaît l'ancienne Application `gandi-dyndns` comme preuve d'un vrai domaine, et l'arrête proprement (finaliseur de cascade, sans quoi son CronJob aurait continué de tourner) une fois `dyndns-config` créé.
+
+**Le dev ne fait plus tourner de DynDNS.** Jusqu'ici, `gandi-dyndns` tournait aussi sur le cluster de dev, avec le vrai jeton, en contradiction avec la règle « jamais sur une machine de test ». C'était sans effet visible : même adresse IPv4 publique que le mini PC, et pas d'IPv6 dans les pods k3d. Mais avec `hostNetwork` et une machine de dev ayant sa propre adresse IPv6, les deux clusters réécriraient l'AAAA chacun leur tour. La liste `apps` du `root` de dev est donc posée explicitement, sans `dyndns`.
