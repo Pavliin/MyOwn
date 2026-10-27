@@ -30,11 +30,20 @@
 #   MYOWN_REVISION          révision suivie par root (branche ou tag de release).
 #                           Défaut : master sur une installation neuve ; sur une
 #                           relance, la révision déjà suivie est conservée.
-#   MYOWN_DOMAIN_SETUP      1 pour activer le vrai domaine : Let's Encrypt via
-#                           Gandi + DynDNS (section 16). JAMAIS sur une machine
-#                           de test : le DynDNS repointerait le domaine réel.
-#   MYOWN_GANDI_TOKEN_FILE  fichier contenant le PAT Gandi (si le secret
-#                           kube-system/gandi-dns-credentials n'existe pas encore)
+#   MYOWN_DOMAIN_SETUP      1 pour activer le vrai domaine : Let's Encrypt en
+#                           DNS-01 + DynDNS (manuel, section 16). JAMAIS sur une
+#                           machine de test : le DynDNS repointerait le domaine réel.
+#   MYOWN_DNS_PROVIDER      code lego du fournisseur DNS (une relance garde
+#                           celui déjà configuré)
+#   MYOWN_ACME_EMAIL        e-mail du compte Let's Encrypt (idem)
+#   MYOWN_DNS_CREDENTIALS_FILE  fichier KEY=VALUE des variables qu'attend lego
+#                           pour ce fournisseur (si kube-system/dns-provider-credentials
+#                           n'existe pas encore)
+#   MYOWN_DDNS_CREDENTIALS_FILE  fichier JSON des réglages ddns-updater propres
+#                           au fournisseur, sans le domaine (si dyndns/dyndns-config
+#                           n'existe pas encore)
+#   MYOWN_DDNS_IPV6         1/0 : tenir aussi les enregistrements AAAA à jour
+#                           (défaut : oui si la machine a une route IPv6 par défaut)
 #   MYOWN_K3S_VERSION       version k3s d'une installation neuve (défaut : celle
 #                           validée en production, ci-dessous)
 #   MYOWN_ARGOCD_VERSION    version ArgoCD. Défaut : celle validée en production
@@ -210,13 +219,52 @@ else
   kubectl rollout status deployment coredns -n kube-system --timeout=120s
 
   if [ "$DOMAIN_SETUP" = "1" ]; then
-    step "Domaine réel : Let's Encrypt (Gandi DNS-01)"
-    if ! kubectl get secret gandi-dns-credentials -n kube-system >/dev/null 2>&1; then
-      [ -n "${MYOWN_GANDI_TOKEN_FILE:-}" ] && [ -f "$MYOWN_GANDI_TOKEN_FILE" ] || \
-        die "secret gandi-dns-credentials absent : relancez avec MYOWN_GANDI_TOKEN_FILE=<fichier contenant le PAT Gandi> (manuel, section 16)."
-      kubectl create secret generic gandi-dns-credentials -n kube-system --from-file=token="$MYOWN_GANDI_TOKEN_FILE"
+    step "Domaine réel : certificats Let's Encrypt (DNS-01)"
+    # Fournisseur et e-mail : relance → ceux déjà posés dans la configuration
+    # de Traefik, sauf variable explicite.
+    TRAEFIK_VALUES="$(kubectl get helmchartconfig traefik -n kube-system -o jsonpath='{.spec.valuesContent}' 2>/dev/null || true)"
+    DNS_PROVIDER="${MYOWN_DNS_PROVIDER:-$(awk '$1 == "provider:" {print $2; exit}' <<<"$TRAEFIK_VALUES")}"
+    ACME_EMAIL="${MYOWN_ACME_EMAIL:-$(awk '$1 == "email:" {print $2; exit}' <<<"$TRAEFIK_VALUES")}"
+    [[ "$DNS_PROVIDER" =~ ^[a-z0-9.-]+$ ]] || die "fournisseur DNS inconnu : relancez avec MYOWN_DNS_PROVIDER=<code lego du fournisseur> (manuel, section 16)."
+    [[ "$ACME_EMAIL" =~ ^[^[:space:]/@]+@[^[:space:]/@]+$ ]] || die "e-mail Let's Encrypt manquant ou invalide : relancez avec MYOWN_ACME_EMAIL=<adresse>."
+    if ! kubectl get secret dns-provider-credentials -n kube-system >/dev/null 2>&1; then
+      [ -n "${MYOWN_DNS_CREDENTIALS_FILE:-}" ] && [ -f "$MYOWN_DNS_CREDENTIALS_FILE" ] || \
+        die "secret dns-provider-credentials absent : relancez avec MYOWN_DNS_CREDENTIALS_FILE=<fichier KEY=VALUE des identifiants du fournisseur> (manuel, section 16)."
+      kubectl create secret generic dns-provider-credentials -n kube-system --from-env-file="$MYOWN_DNS_CREDENTIALS_FILE"
     fi
-    kubectl apply -f gitops/bootstrap/traefik-acme-helmchartconfig.yaml
+    sed -e "s/__DNS_PROVIDER__/$DNS_PROVIDER/" -e "s/__ACME_EMAIL__/$ACME_EMAIL/" \
+      gitops/bootstrap/traefik-acme-helmchartconfig.yaml | kubectl apply -f -
+    echo "Fournisseur DNS : $DNS_PROVIDER — compte Let's Encrypt : $ACME_EMAIL"
+
+    step "DynDNS (ddns-updater)"
+    # Réglages complets (identifiants compris) dans un Secret, jamais commité :
+    # le domaine et son wildcard, en IPv4 et, si la machine en a, en IPv6.
+    if ! kubectl get secret dyndns-config -n dyndns >/dev/null 2>&1; then
+      [ -n "${MYOWN_DDNS_CREDENTIALS_FILE:-}" ] && [ -f "$MYOWN_DDNS_CREDENTIALS_FILE" ] || \
+        die "secret dyndns-config absent : relancez avec MYOWN_DDNS_CREDENTIALS_FILE=<fichier JSON des réglages ddns-updater du fournisseur> (manuel, section 16)."
+      DDNS_IPV6="${MYOWN_DDNS_IPV6:-}"
+      if [ -z "$DDNS_IPV6" ]; then
+        DDNS_IPV6=0
+        [ -n "$(ip -6 route show default 2>/dev/null)" ] && DDNS_IPV6=1
+      fi
+      kubectl create namespace dyndns --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+      # Calculé avant toute création : un échec ne doit pas laisser un Secret
+      # vide, qu'une relance prendrait pour déjà en place.
+      DDNS_CONFIG="$(python3 - "$MYOWN_DDNS_CREDENTIALS_FILE" "$MYOWN_DOMAIN_VALUE" "$DDNS_IPV6" <<'PY'
+import json, sys
+path, domain, ipv6 = sys.argv[1:]
+provider = json.load(open(path))
+if not isinstance(provider, dict) or "provider" not in provider:
+    sys.exit("MYOWN_DDNS_CREDENTIALS_FILE : un objet JSON avec au moins « provider » est attendu")
+versions = ["ipv4", "ipv6"] if ipv6 == "1" else ["ipv4"]
+settings = [dict(provider, domain=host, ip_version=v)
+            for host in (domain, "*." + domain) for v in versions]
+print(json.dumps({"settings": settings}))
+PY
+)"
+      kubectl create secret generic dyndns-config -n dyndns --from-file=config.json=<(printf '%s' "$DDNS_CONFIG")
+      echo "Enregistrements tenus à jour : $MYOWN_DOMAIN_VALUE et *.$MYOWN_DOMAIN_VALUE (IPv6 : $([ "$DDNS_IPV6" = 1 ] && echo oui || echo non))"
+    fi
   fi
 fi
 
@@ -327,6 +375,14 @@ if [ -n "${MYOWN_REVISION:-}" ]; then
     -p "{\"spec\":{\"source\":{\"targetRevision\":\"$MYOWN_REVISION\"}}}" >/dev/null
 fi
 echo "root suit : $(kubectl get application root -n argocd -o jsonpath='{.spec.source.targetRevision}')"
+# Ancien DynDNS propre à un fournisseur (avant le 2026-10-27), remplacé par
+# dyndns : arrêté avec ses ressources (sans le finaliseur, retirer
+# l'Application laisserait son CronJob tourner).
+if [ "$HAS_DOMAIN" = 1 ] && kubectl get application gandi-dyndns -n argocd >/dev/null 2>&1; then
+  kubectl get secret dyndns-config -n dyndns >/dev/null 2>&1 || \
+    die "remplacement de l'ancien DynDNS : relancez avec MYOWN_DOMAIN_SETUP=1 et MYOWN_DDNS_CREDENTIALS_FILE (manuel, section 16)."
+  svc_remove_app gandi-dyndns
+fi
 MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
 [ "$HAS_DOMAIN" = 1 ] && svc_kick_cert_sync "$WANTED"
 

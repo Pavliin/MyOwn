@@ -272,19 +272,46 @@ curl -X POST "http://<jellyfin>/Library/VirtualFolders?name=Films&collectionType
   -d '{"LibraryOptions":{"PathInfos":[{"Path":"/media/files/Films"}]}}'
 ```
 
-## 16. Nom de domaine réel + Let's Encrypt (Gandi, DNS-01)
+## 16. Nom de domaine réel + Let's Encrypt (DNS-01) et DynDNS
 
-Phase 4 : bascule des certificats `mkcert` (dev) vers de vrais certificats Let's Encrypt sur un nom de domaine réel. DNS-01 via l'API Gandi (pas HTTP-01) — pas besoin d'exposer le port 80, permet un certificat **wildcard** unique (`*.<domaine>` + apex) plutôt qu'un certificat par service. Détail complet du choix technique (pourquoi `cert-manager` a été écarté, comment le wildcard est réutilisé par tous les futurs services) dans `notes-techniques.md`.
+Vrais certificats Let's Encrypt sur le domaine de l'installation, par **défi DNS-01** : pas besoin d'exposer le port 80, et un seul certificat **wildcard** (`*.<domaine>` + apex) sert tous les services. N'importe quel fournisseur DNS pris en charge par [lego](https://go-acme.github.io/lego/dns/) (la bibliothèque ACME intégrée à Traefik, plus d'une centaine de fournisseurs) convient ; le fournisseur n'apparaît nulle part dans le code, seulement dans les paramètres de l'installeur. Choix techniques (pourquoi pas `cert-manager`, réutilisation du wildcard) dans `notes-techniques.md`.
 
-**1. Token Gandi** — Personal Access Token scopé **LiveDNS uniquement**, restreint au domaine si possible (admin.gandi.net → profil → Sécurité → Personal Access Tokens). Ne jamais utiliser l'ancienne clé API (`GANDIV5_API_KEY`), dépréciée.
+L'installeur fait tout avec `MYOWN_DOMAIN_SETUP=1` (jamais sur une machine de test : le DynDNS repointerait le vrai domaine) et quatre paramètres :
 
-**2. Secret kube-system (bootstrap, hors GitOps — même statut que `sops-age`)** :
+| Variable | Contenu |
+|---|---|
+| `MYOWN_DNS_PROVIDER` | code lego du fournisseur (page du fournisseur dans la doc lego) |
+| `MYOWN_ACME_EMAIL` | e-mail du compte Let's Encrypt (avis d'expiration) |
+| `MYOWN_DNS_CREDENTIALS_FILE` | fichier `CLE=valeur` des variables qu'attend lego pour ce fournisseur → Secret `kube-system/dns-provider-credentials` |
+| `MYOWN_DDNS_CREDENTIALS_FILE` | fichier JSON des réglages [ddns-updater](https://github.com/qdm12/ddns-updater/tree/master/docs) du fournisseur, **sans** le domaine → Secret `dyndns/dyndns-config` |
+
+Les deux Secrets ne sont créés que s'ils manquent, jamais commités. Une relance garde le fournisseur et l'e-mail déjà en place. Supprimer les deux fichiers d'identifiants une fois l'installation faite.
+
+**Exemple : Gandi** (premier fournisseur utilisé par le projet). Jeton : Personal Access Token avec les droits « gérer la configuration technique des domaines », restreint au seul domaine (admin.gandi.net → Paramètres du compte → Sécurité). Jamais l'ancienne clé API (`GANDIV5_API_KEY`), dépréciée.
 
 ```bash
-kubectl create secret generic gandi-dns-credentials -n kube-system --from-file=token=<fichier contenant le PAT>
+# dns.env (lego, fournisseur « gandiv5 »)
+GANDIV5_PERSONAL_ACCESS_TOKEN=<jeton>
 ```
 
-**3. Résolveur ACME Traefik** — `kubectl apply -f gitops/bootstrap/traefik-acme-helmchartconfig.yaml` (overlay du `HelmChart` Traefik géré par k3s, ne jamais éditer ce dernier directement). Valider d'abord sur le serveur **staging** Let's Encrypt (`caServer` dans le fichier) avant de rebasculer en production — évite de brûler les quotas de production tant que le flow DNS-01/Gandi n'est pas prouvé. Après validation, retirer `caServer` (défaut Traefik = production), ré-appliquer, **et purger le certificat staging déjà en cache** avant de redémarrer, sinon Traefik continue de servir l'ancien certificat non reconnu :
+```json
+{"provider": "gandi", "personal_access_token": "<jeton>", "ttl": 300}
+```
+
+```bash
+MYOWN_DOMAIN_SETUP=1 MYOWN_DNS_PROVIDER=gandiv5 MYOWN_ACME_EMAIL=<adresse> \
+  MYOWN_DNS_CREDENTIALS_FILE=dns.env MYOWN_DDNS_CREDENTIALS_FILE=ddns.json \
+  scripts/install.sh
+```
+
+Le `ttl` vaut 300 parce que Gandi refuse toute valeur inférieure (`notes-techniques.md`) ; d'autres fournisseurs ont leurs propres bornes.
+
+**Ce que fait l'installeur** :
+
+1. **Résolveur ACME de Traefik** : `gitops/bootstrap/traefik-acme-helmchartconfig.yaml` est un gabarit (`__DNS_PROVIDER__`, `__ACME_EMAIL__`), appliqué comme surcouche du `HelmChart` Traefik géré par k3s (ne jamais éditer ce dernier). Le Secret des identifiants est chargé tel quel en variables d'environnement de Traefik.
+2. **DynDNS** : l'Application `dyndns` (ddns-updater) vérifie toutes les 5 minutes que l'apex et le wildcard pointent sur l'IP publique, et ne modifie un enregistrement que s'il diffère. AAAA tenus à jour aussi si la machine a une route IPv6 par défaut (`MYOWN_DDNS_IPV6=0/1` pour forcer).
+
+Pour valider un nouveau fournisseur sans brûler les quotas Let's Encrypt, passer d'abord par le serveur **staging** (`caServer: https://acme-staging-v02.api.letsencrypt.org/directory` sous `acme:`), puis le retirer, réappliquer, **et purger le certificat staging en cache**, sinon Traefik continue de le servir :
 
 ```bash
 POD=$(kubectl get pods -n kube-system -l app.kubernetes.io/name=traefik -o jsonpath='{.items[0].metadata.name}')
@@ -292,18 +319,18 @@ kubectl exec -n kube-system "$POD" -- rm -f /data/acme.json
 kubectl rollout restart deployment traefik -n kube-system
 ```
 
-**4. DynDNS** — Free (Freebox) ne propose pas d'IP fixe ici (vérifié : pas d'option "IP fixe", fonctionnalité native "DNS dynamique" présente mais inutilisée). `gitops/apps/templates/gandi-dyndns.yaml` maintient les enregistrements `@`/`*` à jour (CronJob, toutes les 5 min). Nécessite son propre secret SOPS (`gitops/secrets/gandi-dyndns/gandi-dyndns.sops.yaml`, clé `GANDIV5_PERSONAL_ACCESS_TOKEN`, même PAT que l'étape 1).
+**Changer de jeton** (rotation) : remplacer la valeur dans les deux Secrets, puis redémarrer Traefik et `dyndns` (`manuel-admin.md`).
 
-**5. Port-forward Freebox** — `mafreebox.freebox.fr` → Paramètres avancés → **Gestion des ports** → rediriger le port **443/tcp uniquement** (pas 80, inutile pour DNS-01) vers l'IP LAN du mini PC.
+**Port-forward Freebox** — `mafreebox.freebox.fr` → Paramètres avancés → **Gestion des ports** → rediriger le port **443/tcp uniquement** (pas 80, inutile pour DNS-01) vers l'IP LAN du mini PC.
 
 **Vérification** :
 
 ```bash
-dig +short A <sous-domaine> @ns1.gandi.net   # résolution DNS publique
+dig +short A <sous-domaine> @<serveur DNS du fournisseur>   # résolution DNS publique
 echo | openssl s_client -connect <IP mini PC>:443 -servername <sous-domaine> 2>/dev/null | openssl x509 -noout -issuer
 ```
 
-**6. SSO vers les hostnames publics** — pour qu'une connexion SSO externe aboutisse (pas juste que la page charge), deux étapes supplémentaires par service intégré (Vaultwarden, Nextcloud, Immich, Tuwunel, Jellyfin) :
+**SSO vers les hostnames publics** — pour qu'une connexion SSO externe aboutisse (pas juste que la page charge), deux étapes supplémentaires par service intégré (Vaultwarden, Nextcloud, Immich, Tuwunel, Jellyfin) :
 
 - **DNS split-horizon d'abord** (`gitops/bootstrap/coredns-custom.yaml`, bloc `offsystem.override`) : sans ça, les appels serveur-à-serveur vers Authentik sortiraient par la Freebox pour revenir dessus. Réappliquer + `kubectl rollout restart deployment coredns -n kube-system`.
 - Basculer `authority`/`discoveryuri`/`issuer_url` de chaque service vers `authentik.offsystem.fr` (jamais `myown-authentik.local` — Authentik reflète le `Host` de la requête de découverte dans la redirection de connexion elle-même). **Jamais `server_name` pour Tuwunel** — seuls `issuer_url`/`callback_url`.

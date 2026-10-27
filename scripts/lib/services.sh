@@ -87,10 +87,10 @@ MYOWN_CORE_SERVICES=(authentik vaultwarden)
 MYOWN_DEFAULT_SERVICES=(tuwunel uptime-kuma)
 
 # Applications d'infrastructure, jamais proposées dans la liste : liées au
-# domaine réel, pas un service que la famille utilise. gandi-dyndns réécrit
+# domaine réel, pas un service que la famille utilise. dyndns réécrit
 # les enregistrements DNS publics vers l'IP de la machine — ne doit JAMAIS
 # tourner sur une machine de test (détournerait le vrai domaine).
-MYOWN_DOMAIN_APPS=(gandi-dyndns)
+MYOWN_DOMAIN_APPS=(dyndns)
 
 # Applications d'infrastructure toujours déployées, quel que soit le choix
 # des services (jamais proposées dans la liste).
@@ -141,6 +141,9 @@ svc_domain_apps_installed() {
   for a in "${MYOWN_DOMAIN_APPS[@]}"; do
     grep -qx "$a" <<<"$apps" && echo "$a"
   done
+  # Nom d'avant le DynDNS générique (2026-10-27) : une installation qui l'a
+  # encore a bien un vrai domaine, et passe à dyndns à la relance.
+  grep -qx gandi-dyndns <<<"$apps" && ! grep -qx dyndns <<<"$apps" && echo dyndns
   return 0
 }
 

@@ -105,7 +105,7 @@ Un seul jeu de paramètres, dans les valeurs du chart `gitops/apps` lues par l'A
 |---|---|
 | `domain` | domaine (niveaux B/C) ou suffixe local (niveau A) |
 | `exposure` | `none` / `lan` / `internet` (A / B / C) |
-| `dnsProvider` | nom du fournisseur pour lego (B/C) — générique dans le code, Gandi n'est cité que dans la documentation |
+| `dnsProvider` | nom du fournisseur pour lego (B/C) — générique dans le code, Gandi n'est cité que dans la documentation. Finalement **hors des valeurs de `root`** : seul Traefik s'en sert, et sa configuration est du bootstrap ; l'installeur le pose dans la surcouche Traefik et l'y relit à chaque relance (fait le 2026-10-27, avec l'e-mail ACME) |
 | `repoURL` | dépôt suivi (celui du projet, ou un fork) |
 
 Un seul schéma de noms : `<service>.<domain>`, à la maison comme depuis internet. Les noms `myown-*.local` historiques sont retirés.
@@ -126,6 +126,7 @@ Environ 90 % des secrets sont aléatoires ou dérivés et se génèrent sans int
 
 - Certificats : fournisseur lego et identifiants en paramètres (secret générique `dns-provider-credentials`, avec les variables qu'attend lego pour ce fournisseur).
 - DynDNS : **ddns-updater** (composant open source, nombreux fournisseurs) remplace le script maison.
+- **Fait le 2026-10-27** (étape 2 ci-dessous) : `manuel-installation.md` §16 pour les paramètres, `notes-techniques.md` pour la migration de l'installation de l'auteur.
 - DNS du mail : enregistrements affichés par l'installeur, à créer chez n'importe quel fournisseur.
 
 ### Ordre de réalisation
