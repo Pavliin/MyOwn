@@ -135,7 +135,7 @@ Chaque étape laisse l'installation de l'auteur fonctionnelle, et se vérifie pa
 
 1. Domaine paramétré (les manifestes bruts deviennent de petits charts) et nouvelles valeurs `domain`/`exposure`/`dnsProvider`/`repoURL` ; retrait des noms `.local`.
 2. Fournisseur DNS générique et DynDNS via ddns-updater.
-3. Secrets générés, sauvegarde des secrets, migration de l'installation de l'auteur hors de KSOPS (les secrets existants conservés, jamais régénérés), retrait des fichiers SOPS.
+3. Secrets générés, sauvegarde des secrets, migration de l'installation de l'auteur hors de KSOPS (les secrets existants conservés, jamais régénérés), retrait des fichiers SOPS. *Génération et sortie de KSOPS faites le 2026-10-27 (`notes-techniques.md`) ; restent la sauvegarde et le retrait des fichiers.*
 4. Niveaux A/B/C dans l'installeur, validés en VM pour chaque niveau.
 5. Flow admin : les secrets générés rangés dans le coffre Vaultwarden.
 
