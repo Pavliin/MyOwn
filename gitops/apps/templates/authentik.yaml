@@ -26,7 +26,7 @@ spec:
           # Blueprints en clair (gitops/manifests/authentik-blueprints), un
           # par service installé. Leurs secrets OIDC (`!Env <SERVICE>_CLIENT_SECRET`)
           # viennent du Secret authentik-sso-clients, créé par l'installeur à
-          # partir du secret côté service (scripts/lib/secrets.sh) — jamais commité.
+          # partir du secret côté service (scripts/lib/cluster-secrets.py) — jamais commité.
           blueprints:
             configMaps:
               - authentik-blueprint-account-recovery

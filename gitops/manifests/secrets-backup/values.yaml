@@ -1,5 +1,5 @@
 # Secrets sauvegardés : ceux du catalogue de scripts/lib/cluster-secrets.py (à tenir
-# identiques — vérifié par `cluster-cluster-secrets.py check-backup`). Un Secret absent (service
+# identiques — vérifié par `cluster-secrets.py check-backup`). Un Secret absent (service
 # non installé) est simplement ignoré.
 secrets:
   - authentik/authentik-secrets

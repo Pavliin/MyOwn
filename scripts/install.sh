@@ -357,7 +357,7 @@ step "Secrets générés dans le cluster"
 # (Secrets alors produits par KSOPS depuis des fichiers chiffrés du dépôt) :
 # ils sont protégés de la suppression avant la synchronisation qui retire
 # leurs sources, puis détachés d'ArgoCD après — valeurs inchangées.
-python3 scripts/lib/cluster-cluster-secrets.py ensure --apps "$(paste -sd, <<<"$WANTED")" --domain "$MYOWN_DOMAIN_VALUE" \
+python3 scripts/lib/cluster-secrets.py ensure --apps "$(paste -sd, <<<"$WANTED")" --domain "$MYOWN_DOMAIN_VALUE" \
   || die "secrets générés : échec (voir ci-dessus)."
 python3 scripts/lib/cluster-secrets.py protect
 
