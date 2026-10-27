@@ -1,10 +1,9 @@
 # Same reasoning as gitops/manifests/uptime-kuma-public/: the chart's own
 # `ingress.tlsSecret` is a single static field, incompatible with a
 # Traefik-managed ACME cert (needs `tls: {}` + a certResolver annotation,
-# not a fixed Secret). Purely additive — myown-vaultwarden.local (mkcert,
-# :8453) is untouched. Reuses the wildcard cert already obtained via the
-# Uptime Kuma canary (gitops/manifests/uptime-kuma-public/), no new ACME
-# request needed — just the certResolver annotation.
+# not a fixed Secret). Only Ingress for Vaultwarden (single naming
+# scheme). Reuses the wildcard cert declared on the uptime-kuma-public
+# Ingress, no new ACME request needed — just the certResolver annotation.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
