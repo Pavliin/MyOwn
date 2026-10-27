@@ -44,12 +44,8 @@ spec:
             # https://, not http:// — real bug found live: the new
             # authentik-public Ingress (gitops/manifests/authentik-public/)
             # carries a `tls` block, so Traefik only serves it on the
-            # websecure entrypoint (8453/443); port 8090 returns a bare
-            # 404 for this host (confirmed via curl, unlike
-            # myown-authentik.local which still answers on both). Real
-            # Let's Encrypt cert means no CA-trust workaround needed
-            # here, unlike the mkcert-CA mounting lk-jwt-service/Uptime
-            # Kuma needed for the same class of internal HTTPS call.
+            # websecure entrypoint (443). Real Let's Encrypt cert, so no
+            # CA-trust workaround is needed for this internal HTTPS call.
             authority: "https://authentik.{{ include "myown.domain" . }}/application/o/vaultwarden/"
             scopes: "openid email profile"
             ignoreEmailVerification: true
