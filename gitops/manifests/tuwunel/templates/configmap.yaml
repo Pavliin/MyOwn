@@ -28,7 +28,7 @@ data:
     allow_registration = true
     # Secrets read from files, not written here: this config is plain text in
     # the repo (rendered with the install domain), the values live in the
-    # tuwunel-config-secrets Secret, created by scripts/lib/secrets.sh.
+    # tuwunel-config-secrets Secret, created by scripts/lib/cluster-secrets.py.
     registration_token_file = "/etc/tuwunel/secrets/registration_token"
     # Joins every newly-registered account (SSO first-login included —
     # confirmed by reading src/api/client/session/sso.rs and
