@@ -5,20 +5,21 @@
 # without touching the HelmChart resource itself; same name/namespace as
 # the HelmChart it overlays.
 #
-# Adds a DNS-01 ACME resolver (Gandi LiveDNS, provider `gandiv5` — native
-# to the lego library Traefik bundles, no extra webhook/controller needed)
-# so Traefik can obtain a real Let's Encrypt wildcard certificate
-# (*.offsystem.fr + apex) instead of the mkcert dev certs used so far.
-# DNS-01 doesn't require port 80 inbound — only outbound access to the
-# Gandi API and Let's Encrypt's ACME servers.
+# Adds a DNS-01 ACME resolver so Traefik can obtain a real Let's Encrypt
+# wildcard certificate (*.<domain> + apex). DNS-01 doesn't require port 80
+# inbound — only outbound access to the DNS provider's API and Let's
+# Encrypt's ACME servers. Any provider supported by lego (the ACME library
+# Traefik bundles, 100+ providers, no extra webhook/controller needed).
 #
-# Applied manually (kubectl apply), like the other gitops/bootstrap/
-# files — outside ArgoCD's app-of-apps, same boundary already documented
-# in CLAUDE.md ("ArgoCD manages everything except the bootstrap layer
-# itself"). Requires a Secret `gandi-dns-credentials` in kube-system
-# (kubectl create secret generic gandi-dns-credentials -n kube-system
-# --from-literal=token=<Gandi PAT, LiveDNS-only scope on offsystem.fr>)
-# created manually beforehand — same class as sops-age, not committed.
+# Template, like coredns-custom.yaml: scripts/install.sh replaces
+# __DNS_PROVIDER__ (lego provider code) and __ACME_EMAIL__ before applying
+# it (manuel-installation.md §16). The provider's credentials come from the
+# Secret `dns-provider-credentials` in kube-system, loaded whole as
+# environment variables: its keys are the variable names lego documents for
+# that provider. Created by the installer, never committed.
+#
+# Applied outside ArgoCD's app-of-apps, like the other gitops/bootstrap/
+# files ("ArgoCD manages everything except the bootstrap layer itself").
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
@@ -40,12 +41,9 @@ spec:
     persistence:
       enabled: true
       path: /data
-    env:
-      - name: GANDIV5_PERSONAL_ACCESS_TOKEN
-        valueFrom:
-          secretKeyRef:
-            name: gandi-dns-credentials
-            key: token
+    envFrom:
+      - secretRef:
+          name: dns-provider-credentials
     deployment:
       initContainers:
         # acme.json must be 0600 or lego refuses to use it — the PVC
@@ -59,16 +57,16 @@ spec:
     certificatesResolvers:
       letsencrypt:
         acme:
-          email: chartier.ro@gmail.com
+          email: __ACME_EMAIL__
           storage: /data/acme.json
           # Validated on the staging CA first (2026-08-22): real
           # "(STAGING) Let's Encrypt" cert obtained and served for
           # offsystem.fr/*.offsystem.fr, confirmed via openssl s_client —
-          # proved the DNS-01/gandiv5 pipeline end-to-end before touching
+          # proved the DNS-01 pipeline end-to-end before touching
           # production rate limits. No caServer override here now:
           # Traefik's own default is the real production ACME directory.
           dnsChallenge:
-            provider: gandiv5
+            provider: __DNS_PROVIDER__
     # Real gap found deploying Mailu on the mini PC (2026-08-24): the dev
     # cluster's mailu-outpost-callback IngressRoute (gitops/manifests/
     # mailu-forwardauth/) routes cross-namespace (mailu -> authentik) and

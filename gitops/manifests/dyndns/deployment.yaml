@@ -1,0 +1,76 @@
+# Keeps the domain's public DNS records pointed at this network's current
+# public IP (home connections rarely get a fixed address). ddns-updater
+# (github.com/qdm12/ddns-updater) supports dozens of DNS providers, so the
+# provider is not baked in here: its settings — provider, domain, token —
+# live entirely in the `dyndns-config` Secret, created by scripts/install.sh
+# (never committed; manuel-installation.md §16 has a worked example).
+#
+# Every PERIOD it fetches the public IP, resolves each record and only calls
+# the provider's API when they differ — no blind PUT every 5 minutes like
+# the script it replaces.
+#
+# Never set LOG_LEVEL=debug here: it prints the whole CONFIG, token
+# included, into the pod logs (seen testing on dev, 2026-10-27).
+#
+# RESOLVER_ADDRESS: a public resolver, not CoreDNS — CoreDNS rewrites the
+# service names to Traefik's internal address (split horizon), which would
+# never match the public IP and trigger an update on every check.
+#
+# hostNetwork: the pod network has no IPv6 egress (k3s single-stack flannel),
+# so AAAA records could never be checked or updated from a regular pod —
+# same fix and reasoning as Tuwunel and LiveKit. Outbound calls only; the web
+# UI is disabled. Recreate: two hostNetwork pods can't share the health
+# listener during a rolling update on a single node.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dyndns
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dyndns
+  template:
+    metadata:
+      labels:
+        app: dyndns
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+      containers:
+        - name: ddns-updater
+          image: ghcr.io/qdm12/ddns-updater:v2.10.0
+          env:
+            - name: CONFIG
+              valueFrom:
+                secretKeyRef:
+                  name: dyndns-config
+                  key: config.json
+            - name: PERIOD
+              value: 5m
+            - name: SERVER_ENABLED
+              value: "no"
+            - name: RESOLVER_ADDRESS
+              value: "9.9.9.9:53"
+            - name: DATADIR
+              value: /updater/data
+          volumeMounts:
+            - name: data
+              mountPath: /updater/data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        # Only holds updates.json (history of past IPs); the record check
+        # itself resolves DNS, so losing it on restart costs nothing.
+        - name: data
+          emptyDir: {}

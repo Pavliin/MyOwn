@@ -1,5 +1,0 @@
-apiVersion: v2
-name: gandi-dyndns
-description: Manifestes MyOwn (gandi-dyndns) — le domaine est injecté par l'Application parente (gitops/apps).
-type: application
-version: 1.0.0
