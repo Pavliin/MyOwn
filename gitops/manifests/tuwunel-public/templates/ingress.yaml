@@ -1,11 +1,6 @@
-# Separate Ingress rather than adding a second host to the existing
-# gitops/manifests/tuwunel/ingress.yaml: that Ingress's single `tls` entry
-# uses a static `secretName` (mkcert) for myown-tuwunel.local — mixing a
-# static-secret host and a certResolver host under one Ingress object's
-# annotations (which apply Ingress-wide, not per-host) risked the
-# certResolver being applied to the .local host too. A separate object
-# keeps the two completely independent. Reuses the wildcard cert already
-# obtained via the Uptime Kuma canary.
+# Only Ingress for Tuwunel (single naming scheme; the old mkcert
+# myown-tuwunel.local Ingress is gone). Reuses the wildcard cert declared
+# on the uptime-kuma-public Ingress.
 #
 # Client-server API only (port 8008, same as the existing Ingress) — real
 # Matrix federation (8448) and the well-known server_name wiring needed

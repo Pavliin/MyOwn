@@ -18,12 +18,6 @@ Usage:
     # Optional: also wire up the shared Matrix alert room (run
     # tuwunel-alertbot-setup.py first to get these two values):
     #   TUWUNEL_ALERTBOT_TOKEN=... TUWUNEL_ALERT_ROOM_ID=... python3 uptime-kuma-setup.py
-    # Requires the uptime-kuma pod to trust the mkcert dev CA for its own
-    # outbound HTTPS call to Tuwunel — Node.js bundles its own CA store,
-    # separate from the OS one `mkcert -install` configures, so this
-    # doesn't work without NODE_EXTRA_CA_CERTS (see gitops/apps/templates/uptime-kuma.yaml).
-    # Real bug found via an actual Matrix notification test (silent
-    # "unable to verify the first certificate" failure), not a dry-run.
 
 uptime-kuma-api 1.2.1 (latest on PyPI at the time of writing) predates
 several Uptime Kuma 2.x schema changes and needs three workarounds below,
