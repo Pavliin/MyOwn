@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.28](https://github.com/Pavliin/MyOwn/compare/v0.1.27...v0.1.28) (2026-10-27)
+
+### Fonctionnalités
+
+* **secrets:** plaintext Authentik blueprints and Tuwunel config, OIDC secrets generated in-cluster ([2d734c4](https://github.com/Pavliin/MyOwn/commit/2d734c404d8a7393c32b126a0381001023a98995))
+
+### Documentation
+
+* plaintext blueprints and Tuwunel config, blueprint instance relink ([c95553c](https://github.com/Pavliin/MyOwn/commit/c95553c41987e06fc54e4cf491f47e9f2292798f))
+* record the step 2 production rollout ([ab70598](https://github.com/Pavliin/MyOwn/commit/ab70598af0de8d412cbbb61e34979f7c19d20ae7))
 ## [0.1.27](https://github.com/Pavliin/MyOwn/compare/v0.1.26...v0.1.27) (2026-10-27)
 
 ### Fonctionnalités
