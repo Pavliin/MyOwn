@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.29](https://github.com/Pavliin/MyOwn/compare/v0.1.28...v0.1.29) (2026-10-27)
+
+### Fonctionnalités
+
+* **secrets:** every service secret generated in-cluster, KSOPS sources removed ([d5029e5](https://github.com/Pavliin/MyOwn/commit/d5029e54c5291646131636979e108c9d6b082038))
+
+### Documentation
+
+* record the step 3a production rollout ([d55a557](https://github.com/Pavliin/MyOwn/commit/d55a557e3aa0dec04d38d9559bc2656187470f03))
+* secrets generated in-cluster, KSOPS no longer needed to install ([948948d](https://github.com/Pavliin/MyOwn/commit/948948decd32aac88ca60f10c8a707d17fa238c9))
 ## [0.1.28](https://github.com/Pavliin/MyOwn/compare/v0.1.27...v0.1.28) (2026-10-27)
 
 ### Fonctionnalités
