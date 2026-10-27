@@ -94,7 +94,7 @@ MYOWN_DOMAIN_APPS=(dyndns)
 
 # Applications d'infrastructure toujours déployées, quel que soit le choix
 # des services (jamais proposées dans la liste).
-MYOWN_INFRA_APPS=(argocd-access)
+MYOWN_INFRA_APPS=(argocd-access secrets-backup)
 
 svc_is_core() {
   local s

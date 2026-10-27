@@ -19,6 +19,8 @@ Commandes :
   release   Retire le suivi ArgoCD de ces mêmes Secrets, APRÈS cette
       synchronisation : ils deviennent des objets ordinaires du cluster,
       valeurs inchangées.
+  check-backup   Vérifie (sans cluster) que chaque Secret du catalogue est
+      dans la liste sauvegardée (gitops/manifests/secrets-backup/values.yaml).
 
 Codes de sortie : 0 succès, 3 provisoire (l'installeur réessaie), 1 sinon.
 """
@@ -191,6 +193,10 @@ CATALOG = {
         ("admin-user", const("admin")),
         ("admin-password", rand),
     ])],
+    # Mot de passe du dépôt Restic des Secrets eux-mêmes : la seule valeur à
+    # garder hors du cluster, elle ouvre toutes les autres. Toujours créé
+    # (infrastructure), jamais inclus dans la sauvegarde qu'il chiffre.
+    "secrets-backup": [("myown-backup", "secrets-backup", [("RESTIC_PASSWORD", rand)])],
     "tuwunel": [
         ("tuwunel", "tuwunel-secrets", [("RESTIC_PASSWORD", rand)]),
         ("tuwunel", "tuwunel-config-secrets", [
@@ -312,6 +318,19 @@ def release():
         print(f"  {ns}/{name} : détaché d'ArgoCD" if args else f"  {ns}/{name} : déjà détaché")
 
 
+def check_backup():
+    values = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
+                          "gitops", "manifests", "secrets-backup", "values.yaml")
+    listed = set(re.findall(r"^\s*-\s*([a-z0-9-]+/[a-z0-9-]+)\s*$", open(values).read(), re.M))
+    missing = [f"{ns}/{name}" for ns, name in catalog_secrets()
+               if name != "secrets-backup" and f"{ns}/{name}" not in listed]
+    if "authentik/authentik-sso-clients" not in listed:
+        missing.append("authentik/authentik-sso-clients")
+    if missing:
+        sys.exit("Secrets du catalogue absents de la sauvegarde : " + ", ".join(missing))
+    print(f"sauvegarde : les {len(listed)} Secrets listés couvrent le catalogue")
+
+
 def installed_apps():
     res = kubectl("get", "applications", "-n", "argocd", "-o", "jsonpath={.items[*].metadata.name}")
     return set(res.stdout.split())
@@ -325,7 +344,7 @@ def root_domain():
 
 def main():
     p = argparse.ArgumentParser(description="Secrets MyOwn générés dans le cluster.")
-    p.add_argument("command", choices=["ensure", "protect", "release"])
+    p.add_argument("command", choices=["ensure", "protect", "release", "check-backup"])
     p.add_argument("--apps", help="services installés, séparés par des virgules")
     p.add_argument("--domain")
     p.add_argument("--admin-email", default=os.environ.get("MYOWN_ADMIN_EMAIL"))
@@ -334,7 +353,10 @@ def main():
         return protect()
     if ctx.command == "release":
         return release()
+    if ctx.command == "check-backup":
+        return check_backup()
     ctx.apps = set(ctx.apps.split(",")) if ctx.apps else installed_apps()
+    ctx.apps.add("secrets-backup")
     ctx.domain = ctx.domain or root_domain()
     if "immich" in ctx.apps and not ctx.domain:
         sys.exit("domaine inconnu : relancer avec --domain.")

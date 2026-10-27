@@ -1,0 +1,33 @@
+# Lecture des seuls Secrets listés, par leur nom (resourceNames), dans
+# n'importe quel namespace — jamais `list` : le CronJob ne peut rien lire
+# d'autre que ce qu'il sauvegarde.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secrets-backup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: myown-secrets-backup
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames:
+      {{- range .Values.secrets }}
+      - {{ splitList "/" . | last }}
+      {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: myown-secrets-backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: myown-secrets-backup
+subjects:
+  - kind: ServiceAccount
+    name: secrets-backup
+    namespace: {{ .Release.Namespace }}

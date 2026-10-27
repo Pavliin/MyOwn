@@ -39,3 +39,5 @@ jobs:
           python-version: "3.12"
       - run: pip install pyyaml
       - run: python3 scripts/check-sops-files.py
+      # Tout Secret généré (scripts/lib/secrets.py) doit être dans la sauvegarde.
+      - run: python3 scripts/lib/secrets.py check-backup

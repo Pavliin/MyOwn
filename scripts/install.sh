@@ -412,4 +412,9 @@ Installation terminée.
   - Suivi : kubectl get applications -n argocd${KUBECONFIG:+   (KUBECONFIG=$KUBECONFIG)}
   - Ajouter ou arrêter un service plus tard : relancer ce script.
   - Usage de chaque service : docs/manuel-utilisateur.md
+
+À FAIRE UNE FOIS : ranger hors de cette machine (coffre de mots de passe,
+papier) le mot de passe de la sauvegarde des secrets — sans lui, aucun
+secret ne peut être restauré. Pour l'afficher (jamais fait par ce script) :
+  kubectl get secret secrets-backup -n myown-backup -o jsonpath='{.data.RESTIC_PASSWORD}' | base64 -d; echo
 EOF
