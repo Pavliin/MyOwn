@@ -77,9 +77,6 @@ spec:
             type: LoadBalancer
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/jellyfin
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/jellyfin-backup
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}

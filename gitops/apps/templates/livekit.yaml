@@ -123,9 +123,6 @@ spec:
             type: Recreate
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/livekit
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/lk-jwt-service
       helm:
         valuesObject:

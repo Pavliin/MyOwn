@@ -222,9 +222,6 @@ spec:
                 subPath: snuffleupagus.rules.tpl
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/mailu
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-public
       helm:
         valuesObject:

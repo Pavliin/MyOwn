@@ -194,9 +194,6 @@ spec:
             enabled: false
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/nextcloud
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-backup
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
