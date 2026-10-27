@@ -108,7 +108,7 @@ spec:
           loadBalancer:
             # No cloud LB here — the chart skips creating an Ingress
             # entirely when disabled, so the WS port is exposed via our
-            # own raw Ingress (gitops/manifests/livekit-ingress/) instead.
+            # own raw Ingress (gitops/manifests/livekit-public/) instead.
             type: disable
           # Real deadlock found live (2026-08-22) rolling out the TURN
           # change above: default RollingUpdate tries to surge a second
@@ -124,9 +124,6 @@ spec:
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/livekit
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
-      path: gitops/manifests/livekit-ingress
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/lk-jwt-service

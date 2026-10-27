@@ -41,19 +41,10 @@ spec:
           valkey:
             enabled: true
           server:
+            # Pas d'Ingress du chart : nom unique <service>.<domaine>, servi par l'Ingress public (gitops/manifests/immich-public).
             ingress:
               main:
-                enabled: true
-                className: traefik
-                # The chart's default nginx.ingress.kubernetes.io/proxy-body-size
-                # annotation stays (Helm map-merge doesn't let `annotations: {}`
-                # clear a populated default) — harmless no-op on Traefik.
-                hosts:
-                  - host: myown-immich.local
-                    paths:
-                      - path: "/"
-                        service:
-                          identifier: main
+                enabled: false
           machine-learning:
             persistence:
               cache:

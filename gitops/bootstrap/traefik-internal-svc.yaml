@@ -15,12 +15,6 @@ spec:
     app.kubernetes.io/name: traefik
     app.kubernetes.io/instance: traefik-kube-system
   ports:
-    - name: web-8090
-      port: 8090
-      targetPort: web
-    - name: websecure-8453
-      port: 8453
-      targetPort: websecure
     # Added for LiveKit/MatrixRTC federation discovery: Matrix's standard
     # server-discovery algorithm fetches .well-known/matrix/server from the
     # bare server_name domain on the standard port 443 (not whatever custom

@@ -36,7 +36,7 @@ import time
 
 import requests
 
-BASE = os.environ.get("TUWUNEL_URL", "https://myown-tuwunel.local:8453")
+BASE = os.environ.get("TUWUNEL_URL", "https://tuwunel.offsystem.fr")
 TOKEN = os.environ.get("TUWUNEL_ALERTBOT_TOKEN")
 BOT_USER_ID = "@alertbot:offsystem.fr"
 

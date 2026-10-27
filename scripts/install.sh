@@ -44,18 +44,13 @@
 #   MYOWN_GENERATE_AGE_KEY  1 pour générer la clé age d'une toute première install
 #   (k3s : l'installeur règle aussi les limites inotify du noyau et les
 #   résolveurs DNS du cluster — voir les étapes correspondantes)
-#   MYOWN_SKIP_MKCERT       1/0 — défaut 0 en k3d, 1 en k3s (domaine réel)
-#   MYOWN_SKIP_HOSTS        1 pour ne pas toucher /etc/hosts (k3d uniquement)
-#   k3d seulement : MYOWN_CLUSTER_NAME, MYOWN_PORT_HTTP, MYOWN_PORT_HTTPS,
-#   MYOWN_PORT_443, MYOWN_PORT_LIVEKIT_WS, MYOWN_PORT_LIVEKIT_TCP,
+#   k3d seulement : MYOWN_CLUSTER_NAME, MYOWN_PORT_443, MYOWN_PORT_LIVEKIT_WS, MYOWN_PORT_LIVEKIT_TCP,
 #   MYOWN_PORT_LIVEKIT_UDP
 
 set -euo pipefail
 
 TARGET="${MYOWN_TARGET:-k3s}"
 case "$TARGET" in k3s|k3d) ;; *) echo "MYOWN_TARGET doit valoir k3s ou k3d" >&2; exit 1 ;; esac
-if [ "$TARGET" = "k3d" ]; then SKIP_MKCERT="${MYOWN_SKIP_MKCERT:-0}"; else SKIP_MKCERT="${MYOWN_SKIP_MKCERT:-1}"; fi
-SKIP_HOSTS="${MYOWN_SKIP_HOSTS:-0}"
 DOMAIN_SETUP="${MYOWN_DOMAIN_SETUP:-0}"
 # Versions qui tournent réellement sur le mini PC (relevé du 2026-10-10) —
 # une réinstallation reproduit la production plutôt que « la dernière ».
@@ -71,6 +66,22 @@ step() { echo -e "\n\033[1;34m==> $1\033[0m"; }
 die() { echo -e "\033[1;31mERREUR : $1\033[0m" >&2; exit 1; }
 
 svc_check_catalog gitops/apps/templates || exit 1
+
+# Domaine de l'installation (valeur `domain` du chart gitops/apps, rendue
+# obligatoire par le chart). Relance : celui déjà configuré dans root, jamais
+# changé en silence. Installation neuve : MYOWN_DOMAIN. Appelée dès l'étape
+# DNS (CoreDNS en a besoin), puis avant le bootstrap GitOps.
+resolve_domain() {
+  MYOWN_DOMAIN_VALUE="$(kubectl get application root -n argocd -o jsonpath='{.spec.source.helm.valuesObject.domain}' 2>/dev/null || true)"
+  if [ -n "${MYOWN_DOMAIN:-}" ] && [ -n "$MYOWN_DOMAIN_VALUE" ] && [ "$MYOWN_DOMAIN" != "$MYOWN_DOMAIN_VALUE" ]; then
+    die "domaine déjà configuré : $MYOWN_DOMAIN_VALUE (MYOWN_DOMAIN=$MYOWN_DOMAIN). Changer de domaine n'est pas pris en charge par une simple relance."
+  fi
+  MYOWN_DOMAIN_VALUE="${MYOWN_DOMAIN_VALUE:-${MYOWN_DOMAIN:-}}"
+  [ -n "$MYOWN_DOMAIN_VALUE" ] || die "aucun domaine configuré : relancez avec MYOWN_DOMAIN=<votre-domaine>."
+  export MYOWN_DOMAIN_VALUE
+  echo "Domaine : $MYOWN_DOMAIN_VALUE"
+}
+
 
 step "Vérification des outils requis ($TARGET)"
 if [ "$TARGET" = "k3d" ]; then
@@ -92,10 +103,6 @@ if ! command -v sops >/dev/null; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 command -v age-keygen >/dev/null || die "manquant : age-keygen — installez le paquet 'age' puis relancez."
-if [ "$SKIP_MKCERT" != "1" ]; then
-  command -v mkcert >/dev/null || die "manquant : mkcert — installez-le puis relancez (ou MYOWN_SKIP_MKCERT=1)."
-fi
-
 step "Clé de chiffrement des secrets (age)"
 AGE_KEY="$HOME/.config/sops/age/keys.txt"
 if [ ! -f "$AGE_KEY" ]; then
@@ -118,7 +125,6 @@ if [ "$TARGET" = "k3d" ]; then
     echo "Cluster $CLUSTER_NAME déjà présent, réutilisation."
   else
     k3d cluster create "$CLUSTER_NAME" \
-      -p "${MYOWN_PORT_HTTP:-8090}:80@loadbalancer" -p "${MYOWN_PORT_HTTPS:-8453}:443@loadbalancer" \
       -p "${MYOWN_PORT_443:-443}:443@loadbalancer" \
       -p "${MYOWN_PORT_LIVEKIT_WS:-7880}:7880@loadbalancer" -p "${MYOWN_PORT_LIVEKIT_TCP:-7881}:7881@loadbalancer" \
       -p "${MYOWN_PORT_LIVEKIT_UDP:-7882}:7882/udp@loadbalancer" \
@@ -194,12 +200,12 @@ else
   kubectl wait --for=condition=Ready node --all --timeout=60s
 
   step "Traefik et DNS interne (bootstrap hors GitOps)"
-  # k3s fournit déjà Traefik sur 80/443 ; ces Services ajoutent 8090/8453 et
-  # l'alias interne, CoreDNS résout les noms des services vers Traefik
-  # (manuel, section 14.2).
-  kubectl apply -f gitops/bootstrap/traefik-external-svc.yaml
+  # k3s fournit déjà Traefik sur 80/443. Le Service interne et CoreDNS font
+  # résoudre <service>.<domaine> vers Traefik depuis les pods (manuel, §14.2) ;
+  # coredns-custom.yaml est un gabarit, __DOMAIN__ remplacé par le domaine.
+  resolve_domain
   kubectl apply -f gitops/bootstrap/traefik-internal-svc.yaml
-  kubectl apply -f gitops/bootstrap/coredns-custom.yaml
+  sed "s/__DOMAIN__/$MYOWN_DOMAIN_VALUE/g" gitops/bootstrap/coredns-custom.yaml | kubectl apply -f -
   kubectl rollout restart deployment coredns -n kube-system
   kubectl rollout status deployment coredns -n kube-system --timeout=120s
 
@@ -283,19 +289,9 @@ if [ "$TARGET" = "k3s" ] && grep -qx nextcloud <<<"$WANTED"; then
   echo "$NC_DIR prêt."
 fi
 
-# Domaine de l'installation (valeur `domain` du chart gitops/apps, rendue
-# obligatoire par le chart). Relance : celui déjà configuré dans root, jamais
-# changé en silence. Installation neuve : MYOWN_DOMAIN (la question
-# interactive et les niveaux A/B/C viennent avec l'étape 4 de
-# docs/installation-utilisateur.md).
-MYOWN_DOMAIN_VALUE="$(kubectl get application root -n argocd -o jsonpath='{.spec.source.helm.valuesObject.domain}' 2>/dev/null || true)"
-if [ -n "${MYOWN_DOMAIN:-}" ] && [ -n "$MYOWN_DOMAIN_VALUE" ] && [ "$MYOWN_DOMAIN" != "$MYOWN_DOMAIN_VALUE" ]; then
-  die "domaine déjà configuré : $MYOWN_DOMAIN_VALUE (MYOWN_DOMAIN=$MYOWN_DOMAIN). Changer de domaine n'est pas pris en charge par une simple relance."
-fi
-MYOWN_DOMAIN_VALUE="${MYOWN_DOMAIN_VALUE:-${MYOWN_DOMAIN:-}}"
-[ -n "$MYOWN_DOMAIN_VALUE" ] || die "aucun domaine configuré : relancez avec MYOWN_DOMAIN=<votre-domaine>."
-export MYOWN_DOMAIN_VALUE
-echo "Domaine : $MYOWN_DOMAIN_VALUE"
+# Domaine (voir resolve_domain ; la question interactive et les niveaux A/B/C
+# viennent avec l'étape 4 de docs/installation-utilisateur.md).
+resolve_domain
 
 # Plages autorisées à joindre les outils d'admin (ArgoCD, Grafana, Ollama,
 # admin Uptime Kuma : <outil>.<domaine>). Relance : la valeur déjà configurée.
@@ -331,7 +327,6 @@ if [ -n "${MYOWN_REVISION:-}" ]; then
     -p "{\"spec\":{\"source\":{\"targetRevision\":\"$MYOWN_REVISION\"}}}" >/dev/null
 fi
 echo "root suit : $(kubectl get application root -n argocd -o jsonpath='{.spec.source.targetRevision}')"
-kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
 MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
 [ "$HAS_DOMAIN" = 1 ] && svc_kick_cert_sync "$WANTED"
 
@@ -368,62 +363,6 @@ if grep -qx jellyfin <<<"$WANTED"; then
     echo "  Ajouter chaque membre au groupe : manuel-admin.md (occ group:adduser famille <compte>)."
   else
     echo "Nextcloud pas encore installé après 15 min — relancer ce script plus tard pour créer la médiathèque (Jellyfin attendra)."
-  fi
-fi
-
-if [ "$SKIP_MKCERT" != "1" ]; then
-  step "Certificats TLS locaux (mkcert)"
-  mkcert -install
-  TMPDIR_CERTS="$(mktemp -d)"
-  # service:host:namespace:secret — namespace explicite, pas dérivé du nom
-  # d'hôte (myown-livekit-jwt.local vit dans « livekit », trouvé en vrai le
-  # 2026-08-20, notes-techniques.md).
-  for entry in \
-    "vaultwarden:myown-vaultwarden.local:vaultwarden:vaultwarden-tls" \
-    "nextcloud:myown-nextcloud.local:nextcloud:nextcloud-tls" \
-    "tuwunel:myown-tuwunel.local:tuwunel:tuwunel-tls" \
-    "livekit:myown-livekit.local:livekit:livekit-tls" \
-    "livekit:myown-livekit-jwt.local:livekit:livekit-jwt-tls"; do
-    IFS=: read -r svc host ns secret <<<"$entry"
-    grep -qx "$svc" <<<"$WANTED" || continue
-    mkcert -cert-file "$TMPDIR_CERTS/$host.pem" -key-file "$TMPDIR_CERTS/$host-key.pem" "$host"
-    kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-    kubectl create secret tls "$secret" -n "$ns" \
-      --cert="$TMPDIR_CERTS/$host.pem" --key="$TMPDIR_CERTS/$host-key.pem" \
-      --dry-run=client -o yaml | kubectl apply -f -
-  done
-  for entry in "livekit:livekit" "uptime-kuma:monitoring"; do
-    IFS=: read -r svc ns <<<"$entry"
-    grep -qx "$svc" <<<"$WANTED" || continue
-    kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-    kubectl create configmap mkcert-ca -n "$ns" --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem" \
-      --dry-run=client -o yaml | kubectl apply -f -
-  done
-  rm -rf "$TMPDIR_CERTS"
-fi
-
-if [ "$TARGET" = "k3d" ] && [ "$SKIP_HOSTS" != "1" ]; then
-  step "Entrées /etc/hosts"
-  MISSING=""
-  for host in myown-argocd.local myown-grafana.local myown-uptime.local myown-authentik.local \
-    myown-vaultwarden.local myown-nextcloud.local myown-immich.local myown-tuwunel.local \
-    myown-livekit.local myown-livekit-jwt.local myown-ollama.local; do
-    existing="$(awk -v h="$host" '$1 !~ /^#/ { for (i = 2; i <= NF; i++) if ($i == h) print $1 }' /etc/hosts | head -1)"
-    if [ -z "$existing" ]; then
-      MISSING="${MISSING}127.0.0.1 $host
-"
-    elif [ "$existing" != "127.0.0.1" ]; then
-      # Ne jamais ajouter une 2e ligne contradictoire : c'est la 1re qui gagne,
-      # le conflit resterait invisible (roadmap Phase 4, ambiguïté dev/minipc).
-      echo "  $host pointe déjà vers $existing (pas 127.0.0.1) — laissé tel quel, à corriger à la main si ce n'est pas voulu."
-    fi
-  done
-  if [ -n "$MISSING" ]; then
-    echo "Ajout à /etc/hosts (sudo requis) :"
-    echo -n "$MISSING"
-    echo -n "$MISSING" | sudo tee -a /etc/hosts >/dev/null
-  else
-    echo "Rien à ajouter."
   fi
 fi
 

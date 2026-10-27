@@ -2,7 +2,7 @@
 # Ingress routed "/" — the whole app, admin dashboard and login included,
 # was reachable from the internet behind nothing but Uptime Kuma's own
 # password. The paths below are exactly what the status page loads (read
-# from its HTML and JS bundle); the admin UI moved to uptime.<domain>,
+# from its HTML and JS bundle; /serviceWorker.js found from a real phone visit); the admin UI moved to uptime.<domain>,
 # restricted to the LAN/VPN (chart gitops/manifests/admin-access).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -68,6 +68,13 @@ spec:
                 port:
                   number: 3001
           - path: /favicon.ico
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma
+                port:
+                  number: 3001
+          - path: /serviceWorker.js
             pathType: Prefix
             backend:
               service:

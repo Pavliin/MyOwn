@@ -49,13 +49,13 @@ Remplacer la clé publique dans `.sops.yaml` par celle affichée, committer.
 
 ```bash
 k3d cluster create myown-dev \
-  -p "8090:80@loadbalancer" -p "8453:443@loadbalancer" -p "443:443@loadbalancer" \
+  -p "443:443@loadbalancer" \
   -p "7880:7880@loadbalancer" -p "7881:7881@loadbalancer" -p "7882:7882/udp@loadbalancer" \
   --wait
 kubectl config use-context k3d-myown-dev
 ```
 
-Le mapping de ports doit être fait **à la création** — impossible à ajouter après coup sans recréer le cluster. Le port `443` littéral (en plus de `8453:443`) est nécessaire pour LiveKit/MatrixRTC : la découverte Matrix (`.well-known/matrix/client` et `/matrix/server`) est fetchée sur le port standard 443, implicite dans le nom de domaine, indépendamment du port `8453` utilisé partout ailleurs dans ce projet. Les trois ports `78xx` sont pour le SFU LiveKit (signalisation WebSocket, repli ICE TCP, média UDP — cf. section LiveKit de `notes-techniques.md`).
+Le mapping de ports doit être fait **à la création** — impossible à ajouter après coup sans recréer le cluster. `443` sert tous les services web (un seul schéma de noms, `<service>.<domaine>`, en HTTPS) ; les trois ports `78xx` sont pour le SFU LiveKit (signalisation WebSocket, repli ICE TCP, média UDP — cf. section LiveKit de `notes-techniques.md`). Les ports `8090`/`8453` des anciens noms `myown-*.local` ont été retirés le 2026-10-27 ; un cluster de dev créé avant les a encore, sans effet.
 
 ## 5. Installer ArgoCD
 
@@ -113,75 +113,28 @@ kubectl patch configmap argocd-cm -n argocd --type merge \
 
 ```bash
 kubectl apply -f gitops/bootstrap/root-app.yaml
-kubectl apply -f gitops/bootstrap/argocd-ingress.yaml
 ```
+
+Puis poser dans les valeurs de `root` le domaine et les plages autorisées pour les outils d'admin (c'est ce que fait l'installeur, §14.3) : `spec.source.helm.valuesObject.domain` et `.adminSourceRanges`. L'accès à ArgoCD lui-même (`argocd.<domaine>`, réservé au réseau local et au VPN) est ensuite créé par ArgoCD (Application `argocd-access`).
 
 À partir de là, tout le reste (monitoring, Authentik, futurs services) se synchronise automatiquement depuis `gitops/apps/` — plus aucune commande manuelle nécessaire pour les services eux-mêmes.
 
-## 9. TLS local (mkcert) — nécessaire pour certains services
+## 9. Noms et certificats
 
-Certains services exigent HTTPS pour des raisons différentes selon le cas — Vaultwarden a besoin de l'API Subtle Crypto du navigateur, indisponible en HTTP sur un nom d'hôte personnalisé même pointé vers `127.0.0.1` (seuls `localhost`/`127.0.0.1` littéraux ou HTTPS comptent comme "contexte sécurisé") ; Nextcloud, lui, n'a pas cette contrainte pour son usage normal, mais son app SSO `user_oidc` refuse tout simplement de fonctionner en HTTP, quel que soit le navigateur ; Tuwunel, lui, fonctionne très bien en HTTP nu, mais le cookie de session que sa brique SSO pose pendant l'échange avec Authentik (`tuwunel_grant_session`) est marqué `Secure` — un navigateur le rejette silencieusement en HTTP, cassant la connexion (`"Missing cookie"` au retour de callback, constaté lors d'un test de connexion réel). Trois raisons différentes, même conséquence : ces services sont exposés en HTTPS sur le port 8453 plutôt qu'en HTTP sur 8090.
+Un seul schéma de noms : `<service>.<domaine>` (`authentik`, `vaultwarden`, `nextcloud`…, et pour les outils d'admin `argocd`, `grafana`, `ollama`, `uptime`). Les certificats sont de vrais certificats Let's Encrypt, un seul wildcard pour tout le domaine, obtenus par validation DNS (section 16) — plus aucune autorité locale (mkcert) ni nom `myown-*.local` depuis le 2026-10-27.
 
-```bash
-mkcert -install   # une fois par machine — installe une CA locale de confiance
-mkcert -cert-file myown-vaultwarden.local.pem -key-file myown-vaultwarden.local-key.pem myown-vaultwarden.local
-kubectl create secret tls vaultwarden-tls -n vaultwarden \
-  --cert=myown-vaultwarden.local.pem --key=myown-vaultwarden.local-key.pem
+HTTPS n'est pas un confort ici : Vaultwarden a besoin de l'API Subtle Crypto du navigateur (contexte sécurisé obligatoire), l'app SSO de Nextcloud (`user_oidc`) refuse le HTTP, et le cookie de session SSO de Tuwunel est marqué `Secure`.
 
-mkcert -cert-file myown-nextcloud.local.pem -key-file myown-nextcloud.local-key.pem myown-nextcloud.local
-kubectl create secret tls nextcloud-tls -n nextcloud \
-  --cert=myown-nextcloud.local.pem --key=myown-nextcloud.local-key.pem
+Résolution des noms :
 
-mkcert -cert-file myown-tuwunel.local.pem -key-file myown-tuwunel.local-key.pem myown-tuwunel.local
-kubectl create secret tls tuwunel-tls -n tuwunel \
-  --cert=myown-tuwunel.local.pem --key=myown-tuwunel.local-key.pem
+- **Depuis les pods** : CoreDNS réécrit chaque nom vers le Service interne de Traefik (`gitops/bootstrap/coredns-custom.yaml`, gabarit appliqué avec le domaine, §14.2) — les appels entre services ne sortent jamais du cluster.
+- **Depuis les appareils de la maison** : Pi-hole répond l'adresse locale du serveur pour ces mêmes noms (section 20) ; sans Pi-hole, le DNS public renvoie l'adresse publique et la box ramène le trafic à la maison.
 
-mkcert -cert-file myown-livekit.local.pem -key-file myown-livekit.local-key.pem myown-livekit.local
-kubectl create secret tls livekit-tls -n livekit \
-  --cert=myown-livekit.local.pem --key=myown-livekit.local-key.pem
+## 10. Accès depuis un navigateur
 
-mkcert -cert-file myown-livekit-jwt.local.pem -key-file myown-livekit-jwt.local-key.pem myown-livekit-jwt.local
-kubectl create secret tls livekit-jwt-tls -n livekit \
-  --cert=myown-livekit-jwt.local.pem --key=myown-livekit-jwt.local-key.pem
-```
+En production, rien à configurer sur les postes : les noms se résolvent par Pi-hole ou par le DNS public.
 
-Ces secrets sont volontairement **hors GitOps** (comme `sops-age`) : un certificat de dev est propre à chaque machine, pas quelque chose à committer ou à partager.
-
-`lk-jwt-service` a en plus besoin de faire confiance à ce même CA mkcert pour ses propres requêtes sortantes vers Tuwunel (vérification du jeton OpenID, découverte `.well-known`) — le conteneur ne fait pas confiance au magasin de certs de l'hôte par défaut. Un `ConfigMap` (pas un `Secret`, le CA est public) monté dans le pod via `SSL_CERT_FILE` :
-
-```bash
-kubectl create configmap mkcert-ca -n livekit --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem"
-```
-
-Même besoin pour Uptime Kuma (Phase 3.5, notification Matrix vers Tuwunel) — un `ConfigMap` séparé, un par namespace :
-
-```bash
-kubectl create configmap mkcert-ca -n monitoring --from-file=ca.pem="$(mkcert -CAROOT)/rootCA.pem"
-```
-
-**Si le navigateur affiche quand même "non sécurisé" après `mkcert -install`** (vécu avec Chromium/Firefox installés en snap — cas fréquent sur Ubuntu) :
-
-- `mkcert -install` peut répondre "already installed" sans avoir réellement rien fait : les navigateurs snap utilisent leur propre profil isolé (`~/snap/firefox/common/.mozilla/...`, `~/snap/chromium/<revision>/.local/share/pki/nssdb`), pas les emplacements standards. Vérifier avec `certutil -L -d sql:<chemin du profil>` que `mkcert development CA` y figure bien avec les droits `CT,C,C`.
-- Même avec cette entrée correcte, les versions récentes de Chrome/Chromium (Chrome Root Store) peuvent ignorer le magasin NSS système pour la validation TLS. Solution fiable : `chrome://certificate-manager` → **Personnalisé (installé par vous)** → **Certificats approuvés** → importer directement `$(mkcert -CAROOT)/rootCA.pem`. La section "Linux" du même écran peut lister le certificat mkcert en tant qu'« intermédiaire » sans qu'il serve réellement d'ancre de confiance — l'import manuel dans "Certificats approuvés" est ce qui a résolu le problème.
-- Toujours quitter le navigateur **complètement** (vérifier qu'aucun processus ne reste : `ps aux | grep -i chromium`) avant de retester — fermer la fenêtre ne suffit pas, le profil réel n'est relu qu'au prochain vrai démarrage.
-
-## 10. Accès local
-
-Ajouter à `/etc/hosts` (une ligne par service exposé — voir `gitops/apps/templates/*.yaml` pour la liste à jour) :
-
-```
-127.0.0.1 myown-argocd.local
-127.0.0.1 myown-grafana.local
-127.0.0.1 myown-uptime.local
-127.0.0.1 myown-authentik.local
-127.0.0.1 myown-vaultwarden.local
-127.0.0.1 myown-nextcloud.local
-127.0.0.1 myown-immich.local
-127.0.0.1 myown-tuwunel.local
-127.0.0.1 myown-livekit.local
-127.0.0.1 myown-livekit-jwt.local
-127.0.0.1 myown-jellyfin.local
-```
+Pour le **cluster de dev** (k3d, sur la machine de développement), les services répondent sur `127.0.0.1:443` sous les **mêmes noms** que la production. Pour tester sans risque de confusion, préférer `curl --resolve <nom>:443:127.0.0.1 https://<nom>/`. Une entrée `/etc/hosts` (`127.0.0.1 <nom>`) marche aussi pour un navigateur, mais elle masque la vraie production pour ce nom depuis cette machine — à retirer dès le test fini (piège déjà rencontré, `notes-techniques.md`).
 
 ## 11. Vérification
 
@@ -239,16 +192,15 @@ kubectl get nodes   # Ready après quelques dizaines de secondes
 
 k3s embarque Traefik par défaut (contrairement à k3d qui ne fournit qu'un load balancer nu) — inutile de le déployer via GitOps. Le Service Traefik généré par le Helm-controller de k3s écoute déjà nativement sur 80/443 (couvre le port 443 littéral requis par LiveKit/MatrixRTC, section 4 — rien à faire pour ça).
 
-Pour les ports 8090/8453 (remplace le mapping de ports Docker de k3d), un Service `LoadBalancer` séparé (ne touche pas au Service géré par Helm, pour survivre à une reconciliation) : `gitops/bootstrap/traefik-external-svc.yaml`. Comme `traefik-internal-svc.yaml`/`coredns-custom.yaml` déjà utilisés en dev (section 6), ces trois fichiers sont hors GitOps, à appliquer manuellement :
+Le Service interne de Traefik et la réécriture CoreDNS sont hors GitOps, appliqués par l'installeur — à la main, en remplaçant le domaine dans le gabarit CoreDNS :
 
 ```bash
-kubectl apply -f gitops/bootstrap/traefik-external-svc.yaml
 kubectl apply -f gitops/bootstrap/traefik-internal-svc.yaml
-kubectl apply -f gitops/bootstrap/coredns-custom.yaml
+sed 's/__DOMAIN__/<domaine>/g' gitops/bootstrap/coredns-custom.yaml | kubectl apply -f -
 kubectl rollout restart deployment coredns -n kube-system
 ```
 
-Le nœud répond alors directement sur son IP LAN réelle (`k3s`'s ServiceLB/klipper) : `myown-*.local` doit résoudre vers cette IP (pas `127.0.0.1`) partout où ces services sont utilisés — `/etc/hosts` du/des poste(s) client(s) (section 10), pas seulement du serveur.
+Le nœud répond directement sur son IP LAN réelle (ServiceLB/klipper de k3s), et Traefik voit l'adresse réelle des visiteurs (`externalTrafficPolicy: Local`, section 16).
 
 LiveKit n'a besoin d'aucun ajustement : ses ports RTC (`podHostNetwork: true`) se bindent directement sur la vraie interface du nœud, sans la couche de port-mapping Docker qu'il fallait pour k3d.
 
@@ -348,7 +300,7 @@ kubectl rollout restart deployment traefik -n kube-system
 
 ```bash
 dig +short A <sous-domaine> @ns1.gandi.net   # résolution DNS publique
-echo | openssl s_client -connect <IP mini PC>:8453 -servername <sous-domaine> 2>/dev/null | openssl x509 -noout -issuer
+echo | openssl s_client -connect <IP mini PC>:443 -servername <sous-domaine> 2>/dev/null | openssl x509 -noout -issuer
 ```
 
 **6. SSO vers les hostnames publics** — pour qu'une connexion SSO externe aboutisse (pas juste que la page charge), deux étapes supplémentaires par service intégré (Vaultwarden, Nextcloud, Immich, Tuwunel, Jellyfin) :

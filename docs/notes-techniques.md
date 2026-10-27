@@ -1217,3 +1217,18 @@ Le disque système de la machine de dev était plein à ~95 % depuis des semaine
 **Résolu** en libérant durablement de la place (cache de build Docker, ~33 Go — `docker builder prune --all`, l'option `--all` étant nécessaire, sans elle rien n'était récupérable ; cache `uv`, 24 Go ; arrêt du cluster `shuttlemind`), puis suppression des pods en phase `Failed` (leurs remplaçants existaient déjà) et resynchronisation de `root`. Disque à ~78 %, cluster de dev revenu à l'état antérieur.
 
 **À retenir** : sur un nœud k3d, le seuil qui compte est celui de kubelet (15 % libres), pas « le disque n'est pas plein ». Une simple mise à jour qui redémarre Docker suffit à déclencher la cascade sur une machine au-dessus de ~85 %.
+
+## Nom unique, seconde moitié : retrait des noms `myown-*.local` (2026-10-27)
+
+Seconde moitié de l'étape 1b, après vérification qu'aucune requête n'arrivait plus sur ces noms (sondes Uptime Kuma basculées sur les noms publics avec la première moitié). Retirés :
+
+- les Ingress `.local` des charts upstream (Authentik, Immich, Jellyfin, Grafana, Ollama, Uptime Kuma, Vaultwarden, Nextcloud — `ingress.enabled: false`, chacun remplacé par son Ingress public ou d'admin) et les Ingress `.local` bruts de LiveKit (dossier `livekit-ingress`), Tuwunel et `lk-jwt-service` ;
+- le Service `traefik-external` (ports `8090`/`8453`, qui n'existaient que pour ces noms) et l'Ingress bootstrap d'ArgoCD (remplacé par l'Application `argocd-access`) ; le Service `traefik-internal` ne garde que `443` ;
+- dans l'installeur : mkcert (certificats et CA de dev), l'étape `/etc/hosts`, les ports `8090`/`8453` du cluster k3d ;
+- CoreDNS réduit aux noms du domaine et devenu un gabarit (`__DOMAIN__` remplacé à l'application) ; au passage, trois règles en double ajoutées par la première moitié ont disparu.
+
+**Nextcloud** : son nom principal devient `nextcloud.<domaine>` (aussi utilisé comme `Host` par ses sondes), et le hook `before-starting` impose à chaque démarrage `trusted_domains` = `localhost` + le nom public, et `overwrite.cli.url` = l'adresse publique. La valeur `trustedDomains` du chart ne s'applique qu'à la toute première installation (le dev n'autorisait que `myown-nextcloud.local`, la production avait reçu son nom public à la main via `occ`), et `overwrite.cli.url` valait `https://localhost`, ce qui faussait les liens générés hors requête (tâches planifiées, e-mails).
+
+**Scripts** : `jellyfin-sso-setup.py` et `tuwunel-announce.py` prennent le domaine (`MYOWN_DOMAIN`) comme `uptime-kuma-setup.py` ; l'adresse par défaut de la Phase 5 passe au nom public. La page d'état autorise aussi `/serviceWorker.js`, seule ressource refusée lors du test depuis un vrai téléphone.
+
+Reste lié, traité par la PR de `lk-jwt-service` (#175) : sa valeur `LIVEKIT_FULL_ACCESS_HOMESERVERS` encore en `myown-tuwunel.local`, et sa CA mkcert.

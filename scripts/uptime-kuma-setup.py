@@ -162,7 +162,7 @@ def main():
                 }
             ],
         )
-        print(f"Status page published: {URL}/status/{STATUS_PAGE_SLUG}")
+        print(f"Status page published: https://status.{DOMAIN}/status/{STATUS_PAGE_SLUG}")
 
         if ALERTBOT_TOKEN and ALERT_ROOM_ID:
             notif_name = "Tuwunel État du système"
