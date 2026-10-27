@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.27](https://github.com/Pavliin/MyOwn/compare/v0.1.26...v0.1.27) (2026-10-27)
+
+### Fonctionnalités
+
+* **dns:** provider-agnostic ACME credentials and DynDNS via ddns-updater ([e8b07d4](https://github.com/Pavliin/MyOwn/commit/e8b07d41487bf6d137e2ab402ae14d2c3a19e4ce))
+
+### Correctifs
+
+* **livekit:** drop dev-only TLS overrides from lk-jwt-service, fix full-access homeserver ([743c519](https://github.com/Pavliin/MyOwn/commit/743c5192165d99c29bbb00764c98f20401beee30))
+* **livekit:** take the full-access homeserver from the install domain ([45a9eb2](https://github.com/Pavliin/MyOwn/commit/45a9eb2e2fc0c57c1602502c13f7829f8c68124c))
+* **uptime-kuma:** drop the leftover mkcert CA mount and stale mkcert comments ([60fbad4](https://github.com/Pavliin/MyOwn/commit/60fbad47ce5f9809c7fc6db8094b3619559bc915))
+
+### Documentation
+
+* generic DNS provider and DynDNS in the install and admin manuals ([623b481](https://github.com/Pavliin/MyOwn/commit/623b481795386d501d959b89fff2406a88608862))
 ## [0.1.26](https://github.com/Pavliin/MyOwn/compare/v0.1.25...v0.1.26) (2026-10-27)
 
 ### Fonctionnalités
