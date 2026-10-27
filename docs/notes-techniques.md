@@ -1261,3 +1261,14 @@ Objectif (`installation-utilisateur.md`) : qu'un autre foyer puisse prendre n'im
 **Une installation existante est migrée par l'installeur** : il reconnaît l'ancienne Application `gandi-dyndns` comme preuve d'un vrai domaine, et l'arrête proprement (finaliseur de cascade, sans quoi son CronJob aurait continué de tourner) une fois `dyndns-config` créé.
 
 **Le dev ne fait plus tourner de DynDNS.** Jusqu'ici, `gandi-dyndns` tournait aussi sur le cluster de dev, avec le vrai jeton, en contradiction avec la règle « jamais sur une machine de test ». C'était sans effet visible : même adresse IPv4 publique que le mini PC, et pas d'IPv6 dans les pods k3d. Mais avec `hostNetwork` et une machine de dev ayant sa propre adresse IPv6, les deux clusters réécriraient l'AAAA chacun leur tour. La liste `apps` du `root` de dev est donc posée explicitement, sans `dyndns`.
+
+**Déployé en prod (`v0.1.27`, 2026-10-27)**, dans cet ordre :
+
+1. Secrets génériques créés par l'utilisateur, avec un script qui copie le jeton déjà en place sans jamais l'afficher ni le passer en argument. Contrôle par empreinte : même jeton que l'ancien, 4 enregistrements dans `dyndns-config`.
+2. Nouvelle surcouche Traefik appliquée. Traefik a redémarré avec `envFrom: dns-provider-credentials`, et le certificat wildcard est resté servi.
+3. `gandi-dyndns` arrêté avec ses ressources (finaliseur de cascade) avant la synchronisation de `root`, puis `root` → `v0.1.27`. Toutes les Applications `Synced`/`Healthy`. `dyndns` tourne et ne signale aucune erreur ; les enregistrements publics (A et AAAA, apex et wildcard) sont inchangés.
+4. Suppression de l'ancien Secret `gandi-dns-credentials`, du namespace `gandi-dyndns` et des deux `ConfigMap` `mkcert-ca`, après avoir vérifié que plus rien ne les référençait.
+
+Dans la même release, `lk-jwt-service` démarre avec `SkipVerifyTLS=false` et `FULL_ACCESS_HOMESERVERS=["offsystem.fr"]`.
+
+**Dev** : `root` revenu sur `master` avec une liste `apps` explicite sans `dyndns` ; `gandi-dyndns` et les `mkcert-ca` retirés. Sa surcouche Traefik garde l'ancienne forme (Secret `gandi-dns-credentials`) : elle fonctionne, et la réappliquer demanderait de recopier le jeton.
