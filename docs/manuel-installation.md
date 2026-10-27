@@ -32,18 +32,13 @@ chmod +x ~/.local/bin/sops
 # age (age-keygen) — souvent disponible via le gestionnaire de paquets système
 ```
 
-## 3. Clé de chiffrement des secrets (age)
+## 3. Secrets : générés dans le cluster
 
-**Sur la toute première installation du projet** (pas votre cas si vous reproduisez ce dépôt) :
+**Depuis le 2026-10-27, le cluster n'a plus besoin de clé age ni de KSOPS.** Chaque service reçoit ses Secrets de `scripts/lib/secrets.py`, appelé par l'installeur avant la synchronisation : valeurs aléatoires générées dans le cluster, jamais écrites dans le dépôt, jamais affichées, jamais écrasées à une relance. Le secret OIDC côté Authentik est toujours dérivé de celui du service. Seul paramètre à fournir : `MYOWN_ADMIN_EMAIL` (compte initial d'Authentik et d'Immich).
 
-```bash
-mkdir -p ~/.config/sops/age
-age-keygen -o ~/.config/sops/age/keys.txt
-```
+**Conséquence** : ces Secrets n'existent plus que dans le cluster, leur sauvegarde est indispensable (`notes-techniques.md`, étape 3 de l'installation indépendante).
 
-Remplacer la clé publique dans `.sops.yaml` par celle affichée, committer.
-
-**Pour reproduire ce dépôt sur une nouvelle machine** (le cas normal) : restaurer le fichier `~/.config/sops/age/keys.txt` depuis votre sauvegarde. Sans lui, tous les secrets déjà chiffrés dans le dépôt (Authentik, etc.) sont définitivement illisibles — ce fichier n'est jamais dans git, il faut le sauvegarder soi-même ailleurs (gestionnaire de mots de passe, coffre chiffré...).
+La clé age (`~/.config/sops/age/keys.txt`, jamais dans git, à sauvegarder soi-même) ne sert plus qu'aux fichiers chiffrés **hors cluster** de l'installation de l'auteur : configurations WireGuard de l'hôte (`wireguard/`, `wireguard-mail-relay/`), notes d'identifiants admin (`gitops/secrets/argocd/`, `gitops/secrets/uptime-kuma/`), et les anciens fichiers chiffrés encore présents dans le dépôt jusqu'à leur retrait.
 
 ## 4. Créer le cluster
 
@@ -87,18 +82,9 @@ kubectl delete secret argocd-initial-admin-secret -n argocd
 
 Identifiants dans `gitops/secrets/argocd/argocd.sops.yaml` (hors GitOps, comme le bootstrap ArgoCD lui-même — ArgoCD ne peut pas déchiffrer via KSOPS un secret dont il a besoin pour exister).
 
-## 6. Activer KSOPS (déchiffrement automatique des secrets)
+## 6. KSOPS : retiré
 
-```bash
-kubectl create secret generic sops-age -n argocd \
-  --from-file=keys.txt=$HOME/.config/sops/age/keys.txt
-
-kubectl patch configmap argocd-cm -n argocd --type merge \
-  -p '{"data":{"kustomize.buildOptions":"--enable-alpha-plugins --enable-exec"}}'
-
-kubectl patch deployment argocd-repo-server -n argocd --type strategic \
-  --patch-file gitops/bootstrap/argocd-repo-server-ksops-patch.yaml
-```
+Plus aucune Application ne déchiffre de fichier SOPS depuis le 2026-10-27 (section 3) ; l'installeur n'installe plus KSOPS. Sur une installation antérieure, le patch KSOPS de `argocd-repo-server` reste en place sans effet.
 
 ## 7. Health check ArgoCD pour Prometheus Operator
 

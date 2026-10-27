@@ -15,9 +15,6 @@ spec:
           domain: {{ include "myown.domain" . }}
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/tuwunel
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/tuwunel-backup
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}

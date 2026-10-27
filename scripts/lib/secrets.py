@@ -8,16 +8,21 @@ lançable seul sur une installation existante, y compris à distance sans checko
 
     ssh <serveur> 'KUBECTL="sudo k3s kubectl" python3 - ensure' < scripts/lib/secrets.py
 
-Secrets gérés ici :
-  tuwunel/tuwunel-config-secrets     registration_token, client_secret
-      Lus par tuwunel.toml (*_file). Repris de l'ancien tuwunel.toml chiffré
-      (tuwunel-secrets) s'il existe, sinon générés.
-  authentik/authentik-sso-clients    <SERVICE>_CLIENT_SECRET par service OIDC installé
-      Lus par les blueprints (!Env). Toujours DÉRIVÉS du secret côté service :
-      les deux moitiés d'un client OIDC ne peuvent pas diverger. Si l'ancien
-      blueprint chiffré est encore là, son secret doit être identique, sinon
-      refus (rien n'est écrit).
+Commandes :
+  ensure [--apps a,b] [--domain d] [--admin-email e]
+      Crée les Secrets manquants (et les clés manquantes des Secrets existants)
+      des services installés. Sans --apps : services déduits des Applications
+      présentes ; sans --domain : domaine lu dans root.
+  protect   Pose Prune=false sur les Secrets du catalogue encore suivis par
+      ArgoCD (anciens Secrets KSOPS) : à faire AVANT la synchronisation qui
+      retire leurs sources, sinon ArgoCD les supprimerait.
+  release   Retire le suivi ArgoCD de ces mêmes Secrets, APRÈS cette
+      synchronisation : ils deviennent des objets ordinaires du cluster,
+      valeurs inchangées.
+
+Codes de sortie : 0 succès, 3 provisoire (l'installeur réessaie), 1 sinon.
 """
+import argparse
 import base64
 import json
 import os
@@ -29,72 +34,204 @@ import sys
 import tomllib
 
 KUBECTL = shlex.split(os.environ.get("KUBECTL", "kubectl"))
+LABEL = "myown.offsystem.fr/generated"
+TRACKING = "argocd.argoproj.io/tracking-id"
+SYNC_OPTIONS = "argocd.argoproj.io/sync-options"
 
 
 def kubectl(*args, stdin=None, check=True):
     return subprocess.run(KUBECTL + list(args), input=stdin, capture_output=True, text=True, check=check)
 
 
-def get_secret(ns, name):
-    """Données décodées d'un Secret, ou None s'il n'existe pas."""
-    res = kubectl("get", "secret", name, "-n", ns, "-o", "json", check=False)
+def get_object(kind, ns, name):
+    res = kubectl("get", kind, name, "-n", ns, "-o", "json", check=False)
     if res.returncode != 0:
         if "NotFound" in res.stderr:
             return None
-        sys.exit(f"lecture de {ns}/{name} impossible : {res.stderr.strip()}")
-    data = json.loads(res.stdout).get("data") or {}
-    return {k: base64.b64decode(v).decode() for k, v in data.items()}
+        sys.exit(f"lecture de {kind} {ns}/{name} impossible : {res.stderr.strip()}")
+    return json.loads(res.stdout)
+
+
+def get_secret(ns, name):
+    """Données décodées d'un Secret, ou None s'il n'existe pas."""
+    obj = get_object("secret", ns, name)
+    if obj is None:
+        return None
+    return {k: base64.b64decode(v).decode() for k, v in (obj.get("data") or {}).items()}
 
 
 def write_secret(ns, name, data):
     """Crée le Secret, ou y ajoute les clés manquantes (merge : jamais d'écrasement)."""
-    body = {
-        "apiVersion": "v1",
-        "kind": "Secret",
-        "metadata": {"name": name, "namespace": ns, "labels": {"myown.offsystem.fr/generated": "true"}},
-        "type": "Opaque",
-        "stringData": data,
-    }
+    if kubectl("get", "namespace", ns, check=False).returncode != 0:
+        kubectl("create", "namespace", ns)
     if get_secret(ns, name) is None:
+        body = {
+            "apiVersion": "v1",
+            "kind": "Secret",
+            "metadata": {"name": name, "namespace": ns, "labels": {LABEL: "true"}},
+            "type": "Opaque",
+            "stringData": data,
+        }
         kubectl("create", "-f", "-", stdin=json.dumps(body))
     else:
-        kubectl("patch", "secret", name, "-n", ns, "--type", "merge", "-p", json.dumps({"stringData": data}))
+        kubectl("patch", "secret", name, "-n", ns, "--type", "merge",
+                "-p", json.dumps({"metadata": {"labels": {LABEL: "true"}}, "stringData": data}))
 
 
-def app_installed(app):
-    return kubectl("get", "application", app, "-n", "argocd", check=False).returncode == 0
+# --- Générateurs -------------------------------------------------------------
+# Chaque valeur est une fonction (ctx, valeurs déjà connues du Secret) -> str.
+
+def rand(_ctx, _vals):
+    return rnd.token_urlsafe(36)  # 48 caractères
 
 
-def namespace_exists(ns):
-    return kubectl("get", "namespace", ns, check=False).returncode == 0
+def hexa(_ctx, _vals):
+    return rnd.token_hex(32)  # 64 caractères hexadécimaux
 
 
-def new_secret():
-    return rnd.token_urlsafe(48)
+def const(value):
+    return lambda _ctx, _vals: value
 
 
-def ensure_tuwunel():
-    ns, name = "tuwunel", "tuwunel-config-secrets"
-    current = get_secret(ns, name) or {}
-    wanted = {}
-    legacy = {}
-    old = get_secret(ns, "tuwunel-secrets") or {}
-    if "tuwunel.toml" in old:
-        cfg = tomllib.loads(old["tuwunel.toml"])["global"]
-        legacy["registration_token"] = cfg.get("registration_token")
-        idps = cfg.get("identity_provider") or []
-        legacy["client_secret"] = idps[0].get("client_secret") if idps else None
-    for key in ("registration_token", "client_secret"):
-        if key in current:
-            continue
-        wanted[key] = legacy.get(key) or new_secret()
-        print(f"  {ns}/{name} : {key} {'repris de tuwunel.toml' if legacy.get(key) else 'généré'}")
-    if wanted:
-        if not namespace_exists(ns):
-            kubectl("create", "namespace", ns)
-        write_secret(ns, name, wanted)
-    else:
-        print(f"  {ns}/{name} : déjà complet")
+def same_as(key):
+    return lambda _ctx, vals: vals[key]
+
+
+def admin_email(ctx, _vals):
+    if not ctx.admin_email:
+        print("e-mail de l'admin requis pour créer ce secret : relancer avec --admin-email "
+              "(installeur : MYOWN_ADMIN_EMAIL).", file=sys.stderr)
+        sys.exit(1)
+    return ctx.admin_email
+
+
+def livekit_keys(_ctx, vals):
+    return f"{vals['LIVEKIT_KEY']}: {vals['LIVEKIT_SECRET']}\n"
+
+
+def immich_oauth(ctx, _vals):
+    return (
+        "oauth:\n"
+        "  enabled: true\n"
+        f"  issuerUrl: https://authentik.{ctx.domain}/application/o/immich/\n"
+        "  clientId: immich\n"
+        f"  clientSecret: {rnd.token_urlsafe(33)}\n"
+        "  scope: openid email profile\n"
+        '  buttonText: "Se connecter via Authentik"\n'
+    )
+
+
+# Catalogue : service -> [(namespace, Secret, [(clé, générateur)])]. L'ordre des
+# clés compte : une clé dérivée (same_as, livekit_keys) suit celle dont elle dépend.
+# Les constantes et appariements reprennent ceux de l'installation de l'auteur,
+# vérifiés en prod par comparaison (jamais en lisant une valeur), 2026-10-27.
+CATALOG = {
+    "authentik": [("authentik", "authentik-secrets", [
+        ("AUTHENTIK_SECRET_KEY", rand),
+        ("AUTHENTIK_POSTGRESQL__HOST", const("authentik-postgresql")),
+        ("AUTHENTIK_POSTGRESQL__NAME", const("authentik")),
+        ("AUTHENTIK_POSTGRESQL__USER", const("authentik")),
+        ("AUTHENTIK_POSTGRESQL__PORT", const("5432")),
+        ("password", rand),
+        ("AUTHENTIK_POSTGRESQL__PASSWORD", same_as("password")),
+        ("postgres-password", rand),
+        ("RESTIC_PASSWORD", rand),
+        ("AUTHENTIK_BOOTSTRAP_PASSWORD", rand),
+        ("AUTHENTIK_BOOTSTRAP_EMAIL", admin_email),
+    ])],
+    "vaultwarden": [("vaultwarden", "vaultwarden-secrets", [
+        ("ADMIN_TOKEN", rand),
+        ("SSO_CLIENT_ID", const("vaultwarden")),
+        ("SSO_CLIENT_SECRET", rand),
+        ("RESTIC_PASSWORD", rand),
+    ])],
+    "nextcloud": [("nextcloud", "nextcloud-secrets", [
+        ("NEXTCLOUD_USERNAME", const("admin")),
+        ("NEXTCLOUD_PASSWORD", rand),
+        ("DB_USERNAME", const("nextcloud")),
+        ("password", rand),
+        ("postgres-password", rand),
+        ("REDIS_PASSWORD", rand),
+        ("OIDC_CLIENT_ID", const("nextcloud")),
+        ("OIDC_CLIENT_SECRET", rand),
+        ("RESTIC_PASSWORD", rand),
+    ])],
+    "immich": [
+        ("immich", "immich-secrets", [
+            ("DB_USERNAME", const("immich")),
+            ("DB_PASSWORD", hexa),
+            ("RESTIC_PASSWORD", rand),
+            ("ADMIN_EMAIL", admin_email),
+            ("ADMIN_PASSWORD", rand),
+        ]),
+        # Configuration OAuth partielle d'Immich (IMMICH_CONFIG_FILE) : contient
+        # le domaine, mais Immich ne sait pas lire un secret ailleurs que dans
+        # ce fichier — générée une fois, avec le domaine de l'installation.
+        ("immich", "immich-oauth-config", [("immich-config.yaml", immich_oauth)]),
+    ],
+    "jellyfin": [("jellyfin", "jellyfin-secrets", [
+        ("SSO_CLIENT_ID", const("jellyfin")),
+        ("SSO_CLIENT_SECRET", hexa),
+        ("ADMIN_PASSWORD", rand),
+        ("RESTIC_PASSWORD", rand),
+    ])],
+    "livekit": [("livekit", "livekit-secrets", [
+        ("LIVEKIT_KEY", const("livekit")),
+        ("LIVEKIT_SECRET", hexa),
+        ("keys.yaml", livekit_keys),
+    ])],
+    "mailu": [("mailu", "mailu-secrets", [
+        ("secret-key", hexa),
+        ("initial-account-password", rand),
+        ("roundcube-db-password", rand),
+        ("API_TOKEN", hexa),
+        ("RESTIC_PASSWORD", rand),
+    ])],
+    "monitoring": [("monitoring", "monitoring-secrets", [
+        ("admin-user", const("admin")),
+        ("admin-password", rand),
+    ])],
+    "tuwunel": [
+        ("tuwunel", "tuwunel-secrets", [("RESTIC_PASSWORD", rand)]),
+        ("tuwunel", "tuwunel-config-secrets", [
+            ("registration_token", rand),
+            ("client_secret", rand),
+        ]),
+    ],
+}
+
+
+def ensure_catalog(ctx):
+    for svc in ctx.apps:
+        for ns, name, keys in CATALOG.get(svc, []):
+            current = get_secret(ns, name) or {}
+            known = dict(current)
+            wanted = {}
+            for key, gen in keys:
+                if key in known:
+                    continue
+                if name == "tuwunel-config-secrets":
+                    value = legacy_tuwunel(key) or gen(ctx, known)
+                else:
+                    value = gen(ctx, known)
+                known[key] = wanted[key] = value
+            if wanted:
+                write_secret(ns, name, wanted)
+                print(f"  {ns}/{name} : {', '.join(wanted)} {'créé(s)' if current else '(Secret créé)'}")
+            else:
+                print(f"  {ns}/{name} : déjà complet")
+
+
+def legacy_tuwunel(key):
+    """Valeur reprise de l'ancien tuwunel.toml chiffré (installations antérieures à 2026-10-27)."""
+    old = (get_secret("tuwunel", "tuwunel-secrets") or {}).get("tuwunel.toml")
+    if not old:
+        return None
+    cfg = tomllib.loads(old)["global"]
+    if key == "registration_token":
+        return cfg.get("registration_token")
+    idps = cfg.get("identity_provider") or []
+    return idps[0].get("client_secret") if idps else None
 
 
 def immich_client_secret():
@@ -103,7 +240,8 @@ def immich_client_secret():
     return m.group(1) if m else None
 
 
-# Service -> (source du secret côté service). La moitié Authentik en est dérivée.
+# Service -> secret OIDC côté service. La moitié Authentik en est toujours dérivée :
+# les deux moitiés d'un client OIDC ne peuvent pas diverger.
 OIDC_SOURCES = {
     "vaultwarden": lambda: (get_secret("vaultwarden", "vaultwarden-secrets") or {}).get("SSO_CLIENT_SECRET"),
     "nextcloud": lambda: (get_secret("nextcloud", "nextcloud-secrets") or {}).get("OIDC_CLIENT_SECRET"),
@@ -113,48 +251,96 @@ OIDC_SOURCES = {
 }
 
 
-def legacy_blueprint_secret(svc):
-    """client_secret de l'ancien blueprint chiffré (Secret authentik-blueprint-<svc>-sso), s'il existe."""
-    bp = get_secret("authentik", f"authentik-blueprint-{svc}-sso") or {}
-    text = bp.get(f"{svc}-sso.yaml", "")
-    m = re.search(r"^\s*client_secret:\s*[\"']?([^\"'\s]+)", text, re.M)
-    return m.group(1) if m else None
-
-
-def ensure_authentik_sso():
+def ensure_authentik_sso(ctx):
     ns, name = "authentik", "authentik-sso-clients"
     current = get_secret(ns, name) or {}
     wanted = {}
     for svc, source in OIDC_SOURCES.items():
         key = f"{svc.upper()}_CLIENT_SECRET"
-        if not app_installed(svc) or key in current:
+        if svc not in ctx.apps or key in current:
             continue
         value = source()
         if not value:
-            # Pas encore créé (première synchronisation en cours) : code 3,
-            # l'installeur réessaie. Les autres échecs (code 1) sont définitifs.
-            print(f"{svc} installé mais son secret OIDC côté service n'existe pas encore : rien n'a été écrit.", file=sys.stderr)
+            print(f"{svc} installé mais son secret OIDC côté service n'existe pas encore : rien n'a été écrit.",
+                  file=sys.stderr)
             sys.exit(3)
-        legacy = legacy_blueprint_secret(svc)
-        if legacy is not None and legacy != value:
-            sys.exit(f"{svc} : le secret côté service diffère de celui de l'ancien blueprint — rien n'a été écrit.")
         wanted[key] = value
-        print(f"  {ns}/{name} : {key} dérivé du secret de {svc}" + (" (identique à l'ancien blueprint)" if legacy else ""))
-    if wanted:
+        print(f"  {ns}/{name} : {key} dérivé du secret de {svc}")
+    if wanted or not current:
         write_secret(ns, name, wanted)
-    elif current:
+    if not wanted:
         print(f"  {ns}/{name} : déjà complet")
-    else:
-        write_secret(ns, name, {})
-        print(f"  {ns}/{name} : créé vide (aucun service OIDC installé)")
+
+
+def catalog_secrets():
+    for entries in CATALOG.values():
+        for ns, name, _keys in entries:
+            yield ns, name
+
+
+def protect():
+    """Prune=false sur les Secrets du catalogue encore suivis par ArgoCD."""
+    for ns, name in catalog_secrets():
+        obj = get_object("secret", ns, name)
+        if obj is None:
+            continue
+        ann = obj["metadata"].get("annotations") or {}
+        if TRACKING not in ann:
+            continue
+        opts = ann.get(SYNC_OPTIONS, "")
+        if "Prune=false" not in opts:
+            opts = f"{opts},Prune=false" if opts else "Prune=false"
+            kubectl("annotate", "secret", name, "-n", ns, "--overwrite", f"{SYNC_OPTIONS}={opts}")
+        print(f"  {ns}/{name} : protégé (Prune=false)")
+
+
+def release():
+    """Retire le suivi ArgoCD des Secrets du catalogue (valeurs inchangées)."""
+    for ns, name in catalog_secrets():
+        obj = get_object("secret", ns, name)
+        if obj is None:
+            continue
+        ann = obj["metadata"].get("annotations") or {}
+        args = []
+        if TRACKING in ann:
+            args.append(f"{TRACKING}-")
+        if ann.get(SYNC_OPTIONS) == "Prune=false":
+            args.append(f"{SYNC_OPTIONS}-")
+        if args:
+            kubectl("annotate", "secret", name, "-n", ns, *args)
+        kubectl("label", "secret", name, "-n", ns, "--overwrite", f"{LABEL}=true")
+        print(f"  {ns}/{name} : détaché d'ArgoCD" if args else f"  {ns}/{name} : déjà détaché")
+
+
+def installed_apps():
+    res = kubectl("get", "applications", "-n", "argocd", "-o", "jsonpath={.items[*].metadata.name}")
+    return set(res.stdout.split())
+
+
+def root_domain():
+    res = kubectl("get", "application", "root", "-n", "argocd",
+                  "-o", "jsonpath={.spec.source.helm.valuesObject.domain}", check=False)
+    return res.stdout.strip() if res.returncode == 0 else ""
 
 
 def main():
-    if sys.argv[1:] != ["ensure"]:
-        sys.exit("usage : secrets.py ensure")
-    if app_installed("tuwunel"):
-        ensure_tuwunel()
-    ensure_authentik_sso()
+    p = argparse.ArgumentParser(description="Secrets MyOwn générés dans le cluster.")
+    p.add_argument("command", choices=["ensure", "protect", "release"])
+    p.add_argument("--apps", help="services installés, séparés par des virgules")
+    p.add_argument("--domain")
+    p.add_argument("--admin-email", default=os.environ.get("MYOWN_ADMIN_EMAIL"))
+    ctx = p.parse_args()
+    if ctx.command == "protect":
+        return protect()
+    if ctx.command == "release":
+        return release()
+    ctx.apps = set(ctx.apps.split(",")) if ctx.apps else installed_apps()
+    ctx.domain = ctx.domain or root_domain()
+    if "immich" in ctx.apps and not ctx.domain:
+        sys.exit("domaine inconnu : relancer avec --domain.")
+    ensure_catalog(ctx)
+    if "authentik" in ctx.apps:
+        ensure_authentik_sso(ctx)
 
 
 if __name__ == "__main__":

@@ -56,9 +56,6 @@ spec:
               existingSecretKey: SSO_CLIENT_SECRET
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/vaultwarden
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/vaultwarden-backup
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}

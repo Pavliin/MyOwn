@@ -42,9 +42,6 @@ spec:
                   name: authentik-sso-clients
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/authentik
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/authentik-blueprints
       helm:
         valuesObject:

@@ -53,9 +53,6 @@ spec:
                 accessMode: ReadWriteOnce
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/immich
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
       path: gitops/manifests/immich-postgres
     # Static hostPath-backed PV/PVC (immich-library), same name the chart
     # already references. Also closes a real gap found live: this PVC

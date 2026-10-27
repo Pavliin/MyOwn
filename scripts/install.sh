@@ -50,7 +50,8 @@
 #                           sur une installation neuve ; sur une relance, la
 #                           version en place n'est JAMAIS changée sans cette
 #                           variable (une mise à jour d'ArgoCD est un choix).
-#   MYOWN_GENERATE_AGE_KEY  1 pour générer la clé age d'une toute première install
+#   MYOWN_ADMIN_EMAIL       e-mail de l'admin (compte initial d'Authentik et
+#                           d'Immich) : requis seulement pour créer ces secrets
 #   (k3s : l'installeur règle aussi les limites inotify du noyau et les
 #   résolveurs DNS du cluster — voir les étapes correspondantes)
 #   k3d seulement : MYOWN_CLUSTER_NAME, MYOWN_PORT_443, MYOWN_PORT_LIVEKIT_WS, MYOWN_PORT_LIVEKIT_TCP,
@@ -103,29 +104,7 @@ else
   done
   [ "$(uname -m)" = "x86_64" ] || die "seule l'architecture x86_64 est prise en charge pour l'instant."
 fi
-if ! command -v sops >/dev/null; then
-  echo "sops absent, installation dans ~/.local/bin..."
-  mkdir -p ~/.local/bin
-  curl -fsSL -o ~/.local/bin/sops \
-    https://github.com/getsops/sops/releases/download/v3.10.2/sops-v3.10.2.linux.amd64
-  chmod +x ~/.local/bin/sops
-  export PATH="$HOME/.local/bin:$PATH"
-fi
-command -v age-keygen >/dev/null || die "manquant : age-keygen — installez le paquet 'age' puis relancez."
-step "Clé de chiffrement des secrets (age)"
-AGE_KEY="$HOME/.config/sops/age/keys.txt"
-if [ ! -f "$AGE_KEY" ]; then
-  echo "Aucune clé age trouvée à $AGE_KEY"
-  echo "  - Première installation du projet : relancez avec MYOWN_GENERATE_AGE_KEY=1"
-  echo "  - Sinon : restaurez votre clé depuis votre sauvegarde à cet emplacement, puis relancez."
-  if [ "${MYOWN_GENERATE_AGE_KEY:-0}" = "1" ]; then
-    mkdir -p ~/.config/sops/age
-    age-keygen -o "$AGE_KEY"
-    echo "Nouvelle clé générée — mettez à jour .sops.yaml avec la clé publique ci-dessus et committez, avant de continuer."
-  fi
-  exit 1
-fi
-echo "Clé présente."
+command -v python3 >/dev/null || die "manquant : python3 — installez-le puis relancez."
 
 if [ "$TARGET" = "k3d" ]; then
   CLUSTER_NAME="${MYOWN_CLUSTER_NAME:-myown-dev}"
@@ -285,19 +264,6 @@ kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge \
 kubectl rollout restart deployment argocd-server -n argocd
 kubectl rollout status deployment argocd-server -n argocd --timeout=120s
 
-step "Activation de KSOPS"
-kubectl create secret generic sops-age -n argocd \
-  --from-file=keys.txt="$AGE_KEY" \
-  --dry-run=client -o yaml | kubectl apply -f -
-kubectl patch configmap argocd-cm -n argocd --type merge \
-  -p '{"data":{"kustomize.buildOptions":"--enable-alpha-plugins --enable-exec"}}'
-kubectl patch deployment argocd-repo-server -n argocd --type strategic \
-  --patch-file gitops/bootstrap/argocd-repo-server-ksops-patch.yaml
-# Attendre le nouveau pod avant toute synchro : sinon le contrôleur compare
-# contre l'ancien repo-server sans KSOPS et met en cache une ComparisonError
-# (vu en vrai, notes-techniques.md).
-kubectl rollout status deployment argocd-repo-server -n argocd --timeout=120s
-
 step "Health check ArgoCD pour Prometheus Operator"
 kubectl patch configmap argocd-cm -n argocd --type merge \
   --patch-file gitops/bootstrap/argocd-cm-health-checks-patch.yaml
@@ -383,20 +349,21 @@ if [ "$HAS_DOMAIN" = 1 ] && kubectl get application gandi-dyndns -n argocd >/dev
     die "remplacement de l'ancien DynDNS : relancez avec MYOWN_DOMAIN_SETUP=1 et MYOWN_DDNS_CREDENTIALS_FILE (manuel, section 16)."
   svc_remove_app gandi-dyndns
 fi
-MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
-[ "$HAS_DOMAIN" = 1 ] && svc_kick_cert_sync "$WANTED"
 
 step "Secrets générés dans le cluster"
-# Ceux qui manquent seulement, jamais affichés (scripts/lib/secrets.py). Le
-# secret OIDC côté Authentik est dérivé de celui du service : on attend
-# qu'ArgoCD ait créé ce dernier (code 3), un autre échec arrête tout.
-for i in $(seq 1 30); do
-  rc=0
-  python3 scripts/lib/secrets.py ensure || rc=$?
-  [ "$rc" = 0 ] && break
-  [ "$rc" = 3 ] && [ "$i" -lt 30 ] || die "secrets générés : échec (voir ci-dessus)."
-  sleep 10
-done
+# Créés AVANT la synchronisation, pour que chaque service démarre avec les
+# siens : seulement ceux qui manquent, jamais écrasés ni affichés
+# (scripts/lib/secrets.py). Installation antérieure aux secrets générés
+# (Secrets alors produits par KSOPS depuis des fichiers chiffrés du dépôt) :
+# ils sont protégés de la suppression avant la synchronisation qui retire
+# leurs sources, puis détachés d'ArgoCD après — valeurs inchangées.
+python3 scripts/lib/secrets.py ensure --apps "$(paste -sd, <<<"$WANTED")" --domain "$MYOWN_DOMAIN_VALUE" \
+  || die "secrets générés : échec (voir ci-dessus)."
+python3 scripts/lib/secrets.py protect
+
+MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
+[ "$HAS_DOMAIN" = 1 ] && svc_kick_cert_sync "$WANTED"
+python3 scripts/lib/secrets.py release >/dev/null
 
 if grep -qx jellyfin <<<"$WANTED"; then
   step "Médiathèque partagée Nextcloud (lue par Jellyfin)"
