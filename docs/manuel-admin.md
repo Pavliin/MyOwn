@@ -97,7 +97,10 @@ des services — l'administration d'Uptime Kuma n'y est pas accessible.
   compte (nécessaire avant sa première connexion à Mailu).
 - Les intégrations SSO (Vaultwarden, Nextcloud, Immich, Tuwunel, Jellyfin,
   Mailu) sont définies par blueprint dans
-  `gitops/secrets/authentik-blueprints/` — jamais à la main dans l'UI.
+  `gitops/manifests/authentik-blueprints/` (en clair, rendus avec le domaine)
+  — jamais à la main dans l'UI. Leurs secrets OIDC sont dans le Secret
+  `authentik/authentik-sso-clients`, dérivés de ceux des services par
+  `scripts/lib/secrets.py`.
 - La récupération en libre-service (identification + TOTP) exige que
   l'utilisateur ait déjà un authentificateur configuré — sans quoi le flow
   refuse délibérément (`not_configured_action: deny`, pas de contournement

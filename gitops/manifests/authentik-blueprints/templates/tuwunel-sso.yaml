@@ -1,0 +1,45 @@
+{{- if has "tuwunel" .Values.apps }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-tuwunel-sso
+data:
+  tuwunel-sso.yaml: |
+    version: 1
+    metadata:
+      name: Tuwunel SSO
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        id: tuwunel-provider
+        identifiers:
+          name: tuwunel
+        attrs:
+          client_type: confidential
+          client_id: tuwunel
+          client_secret: !Env TUWUNEL_CLIENT_SECRET
+          sub_mode: user_uuid
+          grant_types:
+            - authorization_code
+            - refresh_token
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [name, "Vaultwarden: email (verified)"]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+          # Replaced, not appended: Tuwunel's own `callback_url` (single
+          # field, not a list — tuwunel.sops.yaml) only ever sends the
+          # new hostname, so the old entry could never be hit anyway.
+          redirect_uris:
+            - matching_mode: strict
+              url: 'https://tuwunel.{{ .Values.domain }}/_matrix/client/unstable/login/sso/callback/tuwunel'
+              redirect_uri_type: authorization
+      - model: authentik_core.application
+        identifiers:
+          slug: tuwunel
+        attrs:
+          name: Tuwunel
+          provider: !KeyOf tuwunel-provider
+          open_in_new_tab: false
+{{- end }}

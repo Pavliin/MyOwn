@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tuwunel-config
+data:
+  tuwunel.toml: |
+    [global]
+    # Migrated 2026-08-23 from "myown-tuwunel.local" to enable real Matrix
+    # federation — .local is a reserved, DNS-root-blocked TLD, structurally
+    # unresolvable by any external server, no config could ever have made
+    # federation work with the old value. No migration path exists for this
+    # (checked: no Matrix Spec Change proposal defines one, Synapse refuses
+    # to boot on a server_name change, Tuwunel/Continuwuity's own docs say
+    # "THIS CANNOT BE CHANGED AFTER WITHOUT A DATABASE WIPE") — this was a
+    # real reset: Restic backup taken first, then a full wipe of the data
+    # PVC, both real accounts (@robin, @kate) and the alert bot re-onboarded
+    # fresh afterward. Apex domain, not a subdomain like tuwunel.{{ .Values.domain }}:
+    # both Tuwunel/Continuwuity's and Dendrite's own docs recommend this for
+    # a from-scratch choice — cleaner IDs (@user:{{ .Values.domain }}, not exposing
+    # the software choice in every identifier), and this decision is exactly
+    # as permanent as the one it replaces.
+    server_name = "{{ .Values.domain }}"
+    database_path = "/var/lib/tuwunel"
+    # Default example config binds to 127.0.0.1/::1 only, which would be
+    # unreachable from the Kubernetes Service — set explicitly. Confirmed
+    # via live test: pod logs "Listening on tcp:0.0.0.0:8008".
+    address = "0.0.0.0"
+    allow_registration = true
+    # Secrets read from files, not written here: this config is plain text in
+    # the repo (rendered with the install domain), the values live in the
+    # tuwunel-config-secrets Secret, created by scripts/lib/secrets.sh.
+    registration_token_file = "/etc/tuwunel/secrets/registration_token"
+    # Joins every newly-registered account (SSO first-login included —
+    # confirmed by reading src/api/client/session/sso.rs and
+    # src/service/users/register.rs upstream: SSO registration calls the
+    # same full_register() that runs this loop) to the shared "État du
+    # système" room with no manual matrix.to click needed. Requirements
+    # confirmed from src/core/config/mod.rs's own doc comment: the room
+    # must be public (satisfied — alertbot created it with
+    # preset: "public_chat") and already joined by this server at least
+    # once (satisfied — alertbot is a member). Existing accounts created
+    # before this setting was added are NOT retroactively joined, only
+    # future first-registrations.
+    auto_join_rooms = ["#etat-du-systeme:{{ .Values.domain }}"]
+
+    [[global.identity_provider]]
+    brand = "Authentik"
+    client_id = "tuwunel"
+    client_secret_file = "/etc/tuwunel/secrets/client_secret"
+    # authentik.{{ .Values.domain }}, not myown-authentik.local: Authentik mirrors
+    # the Host of whichever request fetches discovery into the browser
+    # login redirect too — this hostname is what an external user ends up
+    # redirected to. Resolves internally post split-horizon DNS either
+    # way (notes-techniques.md, "Nom de domaine réel + Let's Encrypt").
+    # Independent of server_name above (this is the OIDC login wiring, not
+    # the Matrix identity) despite both having changed in the same sitting.
+    issuer_url = "https://authentik.{{ .Values.domain }}/application/o/tuwunel/"
+    # https + real domain, not :8453 mkcert — same Secure-cookie
+    # constraint as before, now satisfied by the real Let's Encrypt cert.
+    callback_url = "https://tuwunel.{{ .Values.domain }}/_matrix/client/unstable/login/sso/callback/tuwunel"
+    # Authentik is the only identity provider this project operates —
+    # same trust reasoning already applied to Vaultwarden's email_verified
+    # scope mapping override.
+    trusted = true
+    # Without this, the generated Matrix localpart doesn't match the
+    # Authentik username — confirmed by another operator's real-world
+    # Authentik+Tuwunel setup (upstream issue #249).
+    userid_claims = ["preferred_username"]
+
+    # Without [global.well_known].client, Tuwunel doesn't serve
+    # .well-known/matrix/client at all (404, confirmed live) — also what
+    # the persistent "OIDC server (Next-gen auth) requires well_known.client"
+    # boot warning was actually about, unrelated to SSO (already works
+    # without it). livekit_url is the modern, single-key way to advertise
+    # the LiveKit SFU (org.matrix.msc4143.rtc_foci) — the older
+    # [[global.well_known.rtc_transports]] array form still exists but is
+    # superseded by this, confirmed against tuwunel's own example config
+    # rather than third-party guides (an earlier top-level `rtc_transports`
+    # attempt was silently ignored as an unknown key: wrong table nesting).
+    [global.well_known]
+    # Real federation delegation (2026-08-23), not the internal-only trick
+    # this used to be: server_name is now the apex ({{ .Values.domain }}), which
+    # doesn't serve Tuwunel directly (Traefik routes it to
+    # gitops/manifests/tuwunel-federation-delegation/ only for
+    # .well-known/matrix/server) — this value tells other homeservers'
+    # federation traffic to go to the real hosting subdomain instead,
+    # reusing the existing real Let's Encrypt cert/Ingress on port 443
+    # rather than opening a new 8448 port-forward. Validated via curl
+    # before this file changed at all (notes-techniques.md).
+    server = "tuwunel.{{ .Values.domain }}:443"
+    # client (client-server API base_url, this client -> this server)
+    # DOES need the public hostname: real bug found live via Element X
+    # — "we couldn't reach this homeserver" — the client correctly
+    # reached tuwunel.{{ .Values.domain }} for well-known discovery, then
+    # dutifully followed base_url to myown-tuwunel.local, unreachable
+    # from outside the LAN. Independent of server_name despite the
+    # similar-looking name — this is the actual hosting address, which
+    # hasn't moved even though the identity above has.
+    client = "https://tuwunel.{{ .Values.domain }}"
+    # {{ .Values.domain }}, not myown-livekit-jwt.local: this is what a Matrix
+    # client (Element Call) discovers as the SFU JWT issuer to contact
+    # for a call — a remote client needs a hostname it can actually
+    # reach. Independent of server_name/well_known.server above.
+    livekit_url = "https://livekit-jwt.{{ .Values.domain }}"

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: authentik-blueprints
+description: Authentik blueprints (SSO providers, account recovery, login flow), rendered with the install domain
+type: application
+version: 0.1.0

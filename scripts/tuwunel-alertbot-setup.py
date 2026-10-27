@@ -28,8 +28,8 @@ BOT_USER = "alertbot"
 ROOM_ALIAS = "etat-du-systeme"
 ROOM_NAME = "État du système"
 
-# Registration requires Tuwunel's registration_token — see
-# gitops/secrets/tuwunel/tuwunel.sops.yaml.
+# Registration requires Tuwunel's registration_token — Secret
+# tuwunel/tuwunel-config-secrets, key registration_token (scripts/lib/secrets.py).
 REG_TOKEN = None  # fill in before running, never commit a real value here
 
 BOT_PASS = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
@@ -41,7 +41,7 @@ s = requests.Session()
 # myown-tuwunel.local:8453 mkcert one.
 
 if not REG_TOKEN:
-    raise SystemExit("Set REG_TOKEN (from gitops/secrets/tuwunel/tuwunel.sops.yaml) before running.")
+    raise SystemExit("Set REG_TOKEN (Secret tuwunel/tuwunel-config-secrets, key registration_token) before running.")
 
 # Step 1: get a UIAA session
 r = s.post(f"{BASE}/_matrix/client/v3/register", json={})

@@ -23,22 +23,33 @@ spec:
             # Pas d'Ingress du chart : nom unique <service>.<domaine>, servi par l'Ingress public (gitops/manifests/authentik-public).
             ingress:
               enabled: false
+          # Blueprints en clair (gitops/manifests/authentik-blueprints), un
+          # par service installé. Leurs secrets OIDC (`!Env <SERVICE>_CLIENT_SECRET`)
+          # viennent du Secret authentik-sso-clients, créé par l'installeur à
+          # partir du secret côté service (scripts/lib/secrets.sh) — jamais commité.
           blueprints:
-            secrets:
-              - authentik-blueprint-vaultwarden-sso
-              - authentik-blueprint-nextcloud-sso
-              - authentik-blueprint-immich-sso
-              - authentik-blueprint-tuwunel-sso
-              - authentik-blueprint-jellyfin-sso
+            configMaps:
               - authentik-blueprint-account-recovery
-              - authentik-blueprint-mailu-sso
               - authentik-blueprint-login-mfa-optional
+              {{- range list "vaultwarden" "nextcloud" "immich" "tuwunel" "jellyfin" "mailu" }}
+              {{- if has . $.Values.apps }}
+              - authentik-blueprint-{{ . }}-sso
+              {{- end }}
+              {{- end }}
+          worker:
+            envFrom:
+              - secretRef:
+                  name: authentik-sso-clients
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/secrets/authentik
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
-      path: gitops/secrets/authentik-blueprints
+      path: gitops/manifests/authentik-blueprints
+      helm:
+        valuesObject:
+          domain: {{ include "myown.domain" . }}
+          apps: {{ toJson .Values.apps }}
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/authentik-backup

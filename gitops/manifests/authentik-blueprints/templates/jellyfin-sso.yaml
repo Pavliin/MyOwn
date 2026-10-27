@@ -1,0 +1,47 @@
+{{- if has "jellyfin" .Values.apps }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-jellyfin-sso
+data:
+  jellyfin-sso.yaml: |
+    version: 1
+    metadata:
+      name: Jellyfin SSO
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        id: jellyfin-provider
+        identifiers:
+          name: jellyfin
+        attrs:
+          client_type: confidential
+          client_id: jellyfin
+          client_secret: !Env JELLYFIN_CLIENT_SECRET
+          sub_mode: user_uuid
+          grant_types:
+            - authorization_code
+            - refresh_token
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [name, "Vaultwarden: email (verified)"]]
+            # Contient déjà "groups" dans ses claims par défaut (vérifié
+            # via ak shell sur l'expression du mapping système) — pas de
+            # mapping "groups" dédié nécessaire, contrairement à ce que
+            # la doc du plugin Authentik SSO Jellyfin pourrait laisser
+            # penser.
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+          redirect_uris:
+            - matching_mode: strict
+              url: 'https://jellyfin.{{ .Values.domain }}/authentik/callback'
+              redirect_uri_type: authorization
+      - model: authentik_core.application
+        identifiers:
+          slug: jellyfin
+        attrs:
+          name: Jellyfin
+          provider: !KeyOf jellyfin-provider
+          open_in_new_tab: false
+{{- end }}

@@ -1272,3 +1272,40 @@ Objectif (`installation-utilisateur.md`) : qu'un autre foyer puisse prendre n'im
 Dans la même release, `lk-jwt-service` démarre avec `SkipVerifyTLS=false` et `FULL_ACCESS_HOMESERVERS=["offsystem.fr"]`.
 
 **Dev** : `root` revenu sur `master` avec une liste `apps` explicite sans `dyndns` ; `gandi-dyndns` et les `mkcert-ca` retirés. Sa surcouche Traefik garde l'ancienne forme (Secret `gandi-dns-credentials`) : elle fonctionne, et la réappliquer demanderait de recopier le jeton.
+
+## Configurations en clair, secrets OIDC générés dans le cluster — étape 3a (2026-10-27)
+
+Première moitié de l'étape 3 de l'installation indépendante : sortir du chiffrement SOPS les fichiers qui mêlaient configuration et secrets, pour que la configuration vive en clair dans le dépôt (rendue avec le domaine) et que seuls les secrets restent dans des Secrets, créés dans le cluster.
+
+**Inventaire préalable, sans jamais déchiffrer de secret côté assistant** : la structure des 8 blueprints, de `tuwunel.toml` et de la configuration OAuth d'Immich a été lue dans des copies masquées produites par un script lancé par l'utilisateur (toute valeur sensible remplacée par `<MASQUÉ:longueur>`). Le premier jet du script laissait passer une valeur imbriquée sur une ligne (`keys.yaml: livekit: <secret>`) ; l'utilisateur l'a repéré à la relecture, et la valeur qu'il a citée était factice. Le masquage a été corrigé et la sortie régénérée avant toute lecture. Constat : seuls 5 vrais secrets dans les blueprints (le `client_secret` de Vaultwarden, Nextcloud, Immich, Tuwunel et Jellyfin) ; Mailu, la récupération de compte et le MFA optionnel n'en contenaient aucun.
+
+**Blueprints Authentik** : chart `gitops/manifests/authentik-blueprints` (ConfigMaps, valeurs `domain` et `apps`). Un blueprint par service installé, ce qui ferme au passage le trou « blueprints appliqués pour tous les services quelle que soit la sélection ». Chaque `client_secret` devient `!Env <SERVICE>_CLIENT_SECRET`, lu dans le Secret `authentik/authentik-sso-clients` monté sur le worker (`worker.envFrom`). Les adresses de retour `myown-*.local` sont retirées.
+
+**Tuwunel** : `tuwunel.toml` devient le ConfigMap `tuwunel-config` du chart, ses deux secrets passent par `registration_token_file` et `client_secret_file` (options présentes dès `v1.8.3`, vérifié dans l'exemple de configuration de ce tag), dans le Secret `tuwunel/tuwunel-config-secrets`. L'image n'a pas de shell : la vérification se fait sur le Secret monté.
+
+**`scripts/lib/secrets.py`** crée ces deux Secrets s'ils manquent, n'écrase jamais une clé existante et n'affiche aucune valeur :
+
+- `tuwunel-config-secrets` : repris de l'ancien `tuwunel.toml` chiffré s'il existe, sinon généré.
+- `authentik-sso-clients` : **toujours dérivé** du secret côté service (`SSO_CLIENT_SECRET` de Vaultwarden et Jellyfin, `OIDC_CLIENT_SECRET` de Nextcloud, `clientSecret` de la configuration OAuth d'Immich, `client_secret` de Tuwunel). Les deux moitiés d'un client OIDC ne peuvent donc pas diverger. Si l'ancien blueprint chiffré est encore présent, son secret doit être identique, sinon le script refuse sans rien écrire.
+
+Appelé par l'installeur après la synchronisation (code 3 = secret de service pas encore créé, il réessaie). Lançable seul sur une installation existante, sans checkout : `ssh <serveur> 'KUBECTL="sudo k3s kubectl" python3 - ensure' < scripts/lib/secrets.py`.
+
+**Piège trouvé sur le dev : la découverte des blueprints plante en boucle après le passage des Secrets aux ConfigMaps.** Le chemin de montage change (`mounted/secret-authentik-blueprint-*` → `mounted/cm-authentik-blueprint-*`), Authentik veut créer une nouvelle instance pour chaque fichier, mais une instance est unique par **nom** (`metadata.name` du blueprint), que l'ancienne porte déjà : `IntegrityError ... blueprintinstance_name ... already exists`, à chaque passage. Correctif : repointer les anciennes instances vers le nouveau chemin (elles gardent leur historique), puis relancer la découverte :
+
+```python
+# kubectl exec -i -n authentik deploy/authentik-worker -- ak shell < ce-fichier
+from authentik.blueprints.models import BlueprintInstance
+from authentik.blueprints.v1.tasks import blueprints_discovery
+for b in BlueprintInstance.objects.filter(path__startswith="mounted/secret-authentik-blueprint-"):
+    b.path = b.path.replace("mounted/secret-authentik-blueprint-", "mounted/cm-authentik-blueprint-", 1)
+    b.save()
+blueprints_discovery.send()
+```
+
+Ne concerne que les installations antérieures à ce changement (le dev et le mini PC) : une installation neuve n'a jamais eu d'instance sur l'ancien chemin.
+
+**Validé sur le dev**, avec empreintes relevées avant et après (jamais les valeurs) : les 5 secrets dérivés identiques aux anciens blueprints ; script rejouable (« déjà complet ») ; après synchronisation et repointage, les 8 blueprints `successful` depuis leurs ConfigMaps, **les 6 secrets de providers inchangés**, et seules les adresses `.local` disparues (Immich 5 → 3 adresses de retour, Nextcloud 4 → 2, Vaultwarden 2 → 1, Jellyfin 2 → 1) ; Tuwunel redémarré sans erreur, secret de son fichier identique à celui d'Authentik, redirection SSO vers Authentik correcte.
+
+**Déploiement en prod, dans cet ordre** : (1) `secrets.py ensure` lancé par l'utilisateur, **avant** la synchronisation (la vérification croisée lit les anciens blueprints, supprimés par la synchronisation) ; (2) release et synchronisation de `root` ; (3) repointage des instances de blueprints ; (4) contrôle des empreintes et vraie connexion SSO sur chaque service.
+
+Reste chiffré à ce stade (étape 3b et suivantes) : les Secrets de valeurs simples de chaque service, et la configuration OAuth d'Immich.

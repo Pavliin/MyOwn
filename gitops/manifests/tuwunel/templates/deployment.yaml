@@ -46,8 +46,8 @@ spec:
       containers:
         - name: tuwunel
           image: ghcr.io/matrix-construct/tuwunel:v1.8.3
-          # Config lives entirely in a mounted file (gitops/secrets/tuwunel/)
-          # rather than individual TUWUNEL_* env vars — the [[global.identity_provider]]
+          # Config lives entirely in a mounted file (templates/configmap.yaml,
+          # secrets beside it as *_file paths) rather than individual TUWUNEL_* env vars — the [[global.identity_provider]]
           # block needed for SSO can't be set via env vars at all (array-of-tables,
           # broken upstream: matrix-construct/tuwunel#340), and consolidating
           # everything into one file keeps a from-scratch install reproducible
@@ -74,12 +74,19 @@ spec:
             - name: data
               mountPath: /var/lib/tuwunel
             - name: config
-              mountPath: /etc/tuwunel
+              mountPath: /etc/tuwunel/tuwunel.toml
+              subPath: tuwunel.toml
+              readOnly: true
+            - name: config-secrets
+              mountPath: /etc/tuwunel/secrets
               readOnly: true
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: tuwunel-data
         - name: config
+          configMap:
+            name: tuwunel-config
+        - name: config-secrets
           secret:
-            secretName: tuwunel-secrets
+            secretName: tuwunel-config-secrets
