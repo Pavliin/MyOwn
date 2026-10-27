@@ -29,7 +29,7 @@ ROOM_ALIAS = "etat-du-systeme"
 ROOM_NAME = "État du système"
 
 # Registration requires Tuwunel's registration_token — Secret
-# tuwunel/tuwunel-config-secrets, key registration_token (scripts/lib/secrets.py).
+# tuwunel/tuwunel-config-secrets, key registration_token (scripts/lib/cluster-secrets.py).
 REG_TOKEN = None  # fill in before running, never commit a real value here
 
 BOT_PASS = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))

@@ -1,0 +1,90 @@
+# Sauvegarde quotidienne des Secrets générés dans le cluster
+# (scripts/lib/cluster-secrets.py) : ils n'existent nulle part ailleurs.
+#
+# 1. export : chaque Secret listé est lu par l'API (droits limités à ces noms,
+#    rbac.yaml) et écrit tel quel en JSON dans un volume en mémoire (tmpfs) —
+#    les valeurs ne touchent jamais le disque en clair.
+# 2. backup : Restic chiffre ce dossier dans son dépôt dédié.
+#
+# Le mot de passe de ce dépôt (Secret secrets-backup, créé par cluster-secrets.py) est
+# la seule valeur à garder HORS du cluster : il ouvre toutes les autres
+# (manuel-admin.md, « Sauvegarde des secrets »). Il n'est pas lui-même dans la
+# sauvegarde, qui serait illisible sans lui.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: secrets-restic-backup
+spec:
+  # Avant les sauvegardes des services (03:00 et après).
+  schedule: "30 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: secrets-backup
+          initContainers:
+            - name: export
+              image: curlimages/curl:8.21.0
+              env:
+                - name: SECRETS
+                  value: {{ join " " .Values.secrets | quote }}
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  SA=/var/run/secrets/kubernetes.io/serviceaccount
+                  TOKEN=$(cat "$SA/token")
+                  n=0
+                  for e in $SECRETS; do
+                    ns=${e%/*}; name=${e#*/}; out="/export/${ns}--${name}.json"
+                    code=$(curl -s -o "$out" -w '%{http_code}' --cacert "$SA/ca.crt" \
+                      -H "Authorization: Bearer $TOKEN" \
+                      "https://kubernetes.default.svc/api/v1/namespaces/${ns}/secrets/${name}")
+                    case "$code" in
+                      200) n=$((n + 1)) ;;
+                      404) rm -f "$out" ;;  # service non installé
+                      *) echo "ERREUR ${ns}/${name} : HTTP ${code}"; rm -f "$out"; exit 1 ;;
+                    esac
+                  done
+                  echo "${n} Secret(s) exporté(s)"
+              volumeMounts:
+                - name: export
+                  mountPath: /export
+          containers:
+            - name: restic-backup
+              image: restic/restic:0.19.1
+              env:
+                - name: RESTIC_REPOSITORY
+                  value: /repo
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: secrets-backup
+                      key: RESTIC_PASSWORD
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  restic snapshots >/dev/null 2>&1 || restic init
+                  restic backup /export --tag secrets
+                  restic forget --tag secrets --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
+              volumeMounts:
+                - name: export
+                  mountPath: /export
+                  readOnly: true
+                - name: repo
+                  mountPath: /repo
+          volumes:
+            - name: export
+              emptyDir:
+                medium: Memory
+                sizeLimit: 16Mi
+            - name: repo
+              persistentVolumeClaim:
+                claimName: secrets-restic-repo

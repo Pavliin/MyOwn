@@ -35,6 +35,7 @@ apps:
   - monitoring
   - nextcloud
   - ollama
+  - secrets-backup
   - tuwunel
   - uptime-kuma
   - vaultwarden

@@ -34,7 +34,7 @@ chmod +x ~/.local/bin/sops
 
 ## 3. Secrets : générés dans le cluster
 
-**Depuis le 2026-10-27, le cluster n'a plus besoin de clé age ni de KSOPS.** Chaque service reçoit ses Secrets de `scripts/lib/secrets.py`, appelé par l'installeur avant la synchronisation : valeurs aléatoires générées dans le cluster, jamais écrites dans le dépôt, jamais affichées, jamais écrasées à une relance. Le secret OIDC côté Authentik est toujours dérivé de celui du service. Seul paramètre à fournir : `MYOWN_ADMIN_EMAIL` (compte initial d'Authentik et d'Immich).
+**Depuis le 2026-10-27, le cluster n'a plus besoin de clé age ni de KSOPS.** Chaque service reçoit ses Secrets de `scripts/lib/cluster-secrets.py`, appelé par l'installeur avant la synchronisation : valeurs aléatoires générées dans le cluster, jamais écrites dans le dépôt, jamais affichées, jamais écrasées à une relance. Le secret OIDC côté Authentik est toujours dérivé de celui du service. Seul paramètre à fournir : `MYOWN_ADMIN_EMAIL` (compte initial d'Authentik et d'Immich).
 
 **Conséquence** : ces Secrets n'existent plus que dans le cluster, leur sauvegarde est indispensable (`notes-techniques.md`, étape 3 de l'installation indépendante).
 

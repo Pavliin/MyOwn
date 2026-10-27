@@ -100,7 +100,7 @@ des services — l'administration d'Uptime Kuma n'y est pas accessible.
   `gitops/manifests/authentik-blueprints/` (en clair, rendus avec le domaine)
   — jamais à la main dans l'UI. Leurs secrets OIDC sont dans le Secret
   `authentik/authentik-sso-clients`, dérivés de ceux des services par
-  `scripts/lib/secrets.py`.
+  `scripts/lib/cluster-secrets.py`.
 - La récupération en libre-service (identification + TOTP) exige que
   l'utilisateur ait déjà un authentificateur configuré — sans quoi le flow
   refuse délibérément (`not_configured_action: deny`, pas de contournement
@@ -370,3 +370,17 @@ reproductible, voir `notes-techniques.md`). Procédure de sauvegarde/
 restauration manuelle détaillée, service par service, dans
 `notes-techniques.md` — pas dupliquée ici pour éviter la dérive entre les
 deux documents.
+
+## Sauvegarde des secrets
+
+Les Secrets des services sont générés dans le cluster (`scripts/lib/cluster-secrets.py`) et n'existent nulle part ailleurs. Une sauvegarde quotidienne (02:30, Application `secrets-backup`, namespace `myown-backup`) les chiffre dans un dépôt Restic dédié.
+
+- **Mot de passe de cette sauvegarde** : la seule valeur à garder **hors du serveur** (coffre de mots de passe, papier) — sans lui, aucun secret ne peut être restauré, et sans les secrets, aucune autre sauvegarde ne s'ouvre (chaque service chiffre la sienne avec un mot de passe qui fait partie de ces Secrets). À relever une fois :
+
+```bash
+kubectl get secret secrets-backup -n myown-backup -o jsonpath='{.data.RESTIC_PASSWORD}' | base64 -d; echo
+```
+
+- **Contenu du dernier snapshot** : `scripts/secrets-restore.sh --list` (noms et nombre de clés, jamais de valeur).
+- **Restaurer un Secret** supprimé ou abîmé : `scripts/secrets-restore.sh <namespace>/<nom>` (plusieurs possibles, `SNAPSHOT=<id>` pour un autre que le dernier). Les valeurs passent d'un pod jetable directement à `kubectl apply`, sans être affichées ni écrites sur disque. Redémarrer ensuite le service concerné pour qu'il relise ses variables.
+- **Limite actuelle** : le dépôt de sauvegarde est sur le même disque que le cluster, comme celui des autres services. Il protège d'une erreur de manipulation ou d'une réinstallation du cluster, **pas de la perte du disque** : la copie hors machine (« nœud ami ») reste à faire.

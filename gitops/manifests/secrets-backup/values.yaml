@@ -1,0 +1,20 @@
+# Secrets sauvegardés : ceux du catalogue de scripts/lib/cluster-secrets.py (à tenir
+# identiques — vérifié par `cluster-cluster-secrets.py check-backup`). Un Secret absent (service
+# non installé) est simplement ignoré.
+secrets:
+  - authentik/authentik-secrets
+  - authentik/authentik-sso-clients
+  - vaultwarden/vaultwarden-secrets
+  - nextcloud/nextcloud-secrets
+  - immich/immich-secrets
+  - immich/immich-oauth-config
+  - jellyfin/jellyfin-secrets
+  - livekit/livekit-secrets
+  - mailu/mailu-secrets
+  - monitoring/monitoring-secrets
+  - tuwunel/tuwunel-secrets
+  - tuwunel/tuwunel-config-secrets
+  # Hors catalogue mais créés par l'installeur : identifiants du fournisseur
+  # DNS et configuration DynDNS (manuel-installation.md §16).
+  - kube-system/dns-provider-credentials
+  - dyndns/dyndns-config
