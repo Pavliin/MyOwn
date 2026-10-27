@@ -51,7 +51,7 @@ spec:
             # the 2026-08-23 server_name migration, silently downgrading
             # every real user to "restricted".
             - name: LIVEKIT_FULL_ACCESS_HOMESERVERS
-              value: offsystem.fr
+              value: {{ .Values.domain }}
             # No CA override, no TLS-verify bypass: offsystem.fr and
             # tuwunel.offsystem.fr serve the Let's Encrypt wildcard, which
             # the image's own system bundle trusts. The dev-era
