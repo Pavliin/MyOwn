@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-login-mfa-optional
+data:
+  login-mfa-optional.yaml: |
+    version: 1
+    metadata:
+      name: Login MFA Optional
+    entries:
+      # Real side effect found live (2026-08-24), user's explicit call
+      # to fix: enabling a real TOTP flow for account recovery
+      # (account-recovery.sops.yaml) meant the user first had to enroll
+      # a TOTP device — and default-authentication-flow (the shared
+      # login flow for every service, part of Authentik's own default
+      # bootstrap, not this project's own blueprint) already has an
+      # AuthenticatorValidateStage bound. It had been silently SKIPPED
+      # for every login until now, purely because nobody had a device
+      # enrolled (not_configured_action=skip only applies when *no*
+      # device exists — once one does, the stage always challenges).
+      # The instant TOTP got enrolled, every normal login across every
+      # SSO-integrated service (Vaultwarden, Nextcloud, Mailu, ...)
+      # started demanding a code too — never the intent, TOTP was only
+      # ever meant to secure account recovery specifically. Removes
+      # that binding outright rather than reworking it, since nothing
+      # in this project currently wants mandatory 2FA on normal login.
+      #
+      # To reinstate MFA-on-login later (e.g. if the whole family ends
+      # up wanting it), recreate this FlowStageBinding — the stage
+      # itself (default-authentication-mfa-validation) isn't deleted.
+      - model: authentik_flows.flowstagebinding
+        state: absent
+        identifiers:
+          target: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+          order: 30

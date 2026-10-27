@@ -1,0 +1,45 @@
+{{- if has "nextcloud" .Values.apps }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-nextcloud-sso
+data:
+  nextcloud-sso.yaml: |
+    version: 1
+    metadata:
+      name: Nextcloud SSO
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        id: nextcloud-provider
+        identifiers:
+          name: nextcloud
+        attrs:
+          client_type: confidential
+          client_id: nextcloud
+          client_secret: !Env NEXTCLOUD_CLIENT_SECRET
+          sub_mode: user_uuid
+          grant_types:
+            - authorization_code
+            - refresh_token
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [name, "Vaultwarden: email (verified)"]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+          redirect_uris:
+            - matching_mode: strict
+              url: 'https://nextcloud.{{ .Values.domain }}/apps/user_oidc/code'
+              redirect_uri_type: authorization
+            - matching_mode: strict
+              url: 'https://nextcloud.{{ .Values.domain }}'
+              redirect_uri_type: logout
+      - model: authentik_core.application
+        identifiers:
+          slug: nextcloud
+        attrs:
+          name: Nextcloud
+          provider: !KeyOf nextcloud-provider
+          open_in_new_tab: false
+{{- end }}

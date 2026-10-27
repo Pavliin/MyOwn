@@ -1,0 +1,4 @@
+# Domaine de l'installation et services installés, passés par l'Application
+# authentik (gitops/apps/templates/authentik.yaml).
+domain: ""
+apps: []

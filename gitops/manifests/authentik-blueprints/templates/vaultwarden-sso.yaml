@@ -1,0 +1,53 @@
+{{- if has "vaultwarden" .Values.apps }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-vaultwarden-sso
+data:
+  vaultwarden-sso.yaml: |
+    version: 1
+    metadata:
+      name: Vaultwarden SSO
+    entries:
+      - model: authentik_providers_oauth2.scopemapping
+        id: vaultwarden-email-mapping
+        identifiers:
+          name: "Vaultwarden: email (verified)"
+          scope_name: email
+        attrs:
+          description: "Comme le mapping email par défaut d'Authentik, mais avec email_verified forcé à true — ce projet est le seul opérateur/IdP, pas un tiers non fiable, donc pas de flux de vérification d'email séparé à faire porter aux comptes."
+          expression: |
+            return {
+                "email": request.user.email,
+                "email_verified": True,
+            }
+      - model: authentik_providers_oauth2.oauth2provider
+        id: vaultwarden-provider
+        identifiers:
+          name: vaultwarden
+        attrs:
+          client_type: confidential
+          client_id: vaultwarden
+          client_secret: !Env VAULTWARDEN_CLIENT_SECRET
+          grant_types:
+            - authorization_code
+            - refresh_token
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !KeyOf vaultwarden-email-mapping
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+          redirect_uris:
+            - matching_mode: strict
+              url: 'https://vaultwarden.{{ .Values.domain }}/identity/connect/oidc-signin'
+              redirect_uri_type: authorization
+      - model: authentik_core.application
+        identifiers:
+          slug: vaultwarden
+        attrs:
+          name: Vaultwarden
+          provider: !KeyOf vaultwarden-provider
+          open_in_new_tab: false
+{{- end }}

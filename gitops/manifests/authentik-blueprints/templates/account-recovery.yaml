@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-account-recovery
+data:
+  account-recovery.yaml: |
+    version: 1
+    metadata:
+      name: Account Recovery
+    entries:
+      # Real gap found live (2026-08-24): the original version of this
+      # flow (reusing only default-password-change-prompt/-write, no
+      # identification) was deliberately admin-link-only — self-service
+      # "forgot password" was never actually wired up, and silently
+      # failed with a misleading "no account" error when a user tried
+      # it from the login screen anyway (no pending_user in context,
+      # UserWriteStage in never_create mode). Fixed with real
+      # identification + TOTP verification, not email: this project
+      # already relies on Mailu for mail, and sending a recovery email
+      # through the very stack a user is locked out of is circular
+      # (the user's own objection, and a reasonable one) — TOTP has no
+      # such dependency and works even if Mailu/the mail relay is down.
+      #
+      # The admin-generated-link path (scripts/... via ak shell, see
+      # notes-techniques.md — same mechanism used for Katia, who has no
+      # TOTP enrolled) must keep working exactly as before: that link
+      # plans this flow with PLAN_CONTEXT_PENDING_USER already set, so
+      # myown-recovery-skip-if-preidentified skips identification+MFA
+      # in that case — otherwise every admin link would additionally
+      # demand identification *and* TOTP, which the target user might
+      # not have, defeating the whole fallback mechanism this flow
+      # existed for in the first place.
+      - model: authentik_policies_expression.expressionpolicy
+        id: myown-recovery-skip-if-preidentified
+        identifiers:
+          name: myown-recovery-skip-if-preidentified
+        attrs:
+          expression: |
+            # Evaluated with evaluate_on_plan=true, i.e. at the moment
+            # the flow plan is *built* — for an admin-generated link
+            # that's inside _create_recovery_link's own
+            # planner.plan(request, {PLAN_CONTEXT_PENDING_USER: user}),
+            # for genuine self-service it's the flow's normal
+            # (empty-context) planning. True = stage included in the
+            # plan.
+            return not bool(request.context.get("pending_user"))
+      - model: authentik_stages_identification.identificationstage
+        id: myown-recovery-identification
+        identifiers:
+          name: myown-recovery-identification
+        attrs:
+          user_fields: ["username", "email"]
+          case_insensitive_matching: true
+          show_matched_user: false
+          # Always behaves the same whether or not the typed username
+          # exists, so the flow can't be used to enumerate valid
+          # accounts by observing a difference in response/timing.
+          pretend_user_exists: true
+      - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+        id: myown-recovery-mfa-validation
+        identifiers:
+          name: myown-recovery-mfa-validation
+        attrs:
+          device_classes: ["totp"]
+          # Deliberate: a user without TOTP enrolled falls back to an
+          # admin-generated link (skipped above) rather than silently
+          # granting a password reset with no verification at all,
+          # which would defeat the entire point of this stage.
+          not_configured_action: deny
+      - model: authentik_flows.flow
+        id: myown-recovery-flow
+        identifiers:
+          slug: myown-recovery-flow
+        attrs:
+          name: Récupération de compte
+          # Was "Définissez votre mot de passe" — accurate when this
+          # flow started directly at the password stage, but now it
+          # starts with identification, so the flow-wide title (shown
+          # on every stage, confirmed via the flow-executor API
+          # response's flow_info.title) needs to fit the first screen
+          # too.
+          title: Récupération de compte
+          designation: recovery
+      - model: authentik_flows.flowstagebinding
+        id: myown-recovery-binding-identification
+        identifiers:
+          target: !KeyOf myown-recovery-flow
+          order: 0
+        attrs:
+          stage: !KeyOf myown-recovery-identification
+          evaluate_on_plan: true
+          re_evaluate_policies: true
+          policy_engine_mode: any
+      - model: authentik_flows.flowstagebinding
+        id: myown-recovery-binding-mfa
+        identifiers:
+          target: !KeyOf myown-recovery-flow
+          order: 10
+        attrs:
+          stage: !KeyOf myown-recovery-mfa-validation
+          evaluate_on_plan: true
+          re_evaluate_policies: true
+          policy_engine_mode: any
+      - model: authentik_flows.flowstagebinding
+        identifiers:
+          target: !KeyOf myown-recovery-flow
+          order: 20
+        attrs:
+          stage: !Find [authentik_stages_prompt.promptstage, [name, default-password-change-prompt]]
+      - model: authentik_flows.flowstagebinding
+        identifiers:
+          target: !KeyOf myown-recovery-flow
+          order: 30
+        attrs:
+          stage: !Find [authentik_stages_user_write.userwritestage, [name, default-password-change-write]]
+      - model: authentik_policies.policybinding
+        identifiers:
+          policy: !KeyOf myown-recovery-skip-if-preidentified
+          target: !KeyOf myown-recovery-binding-identification
+          order: 0
+        attrs:
+          negate: false
+          enabled: true
+          timeout: 30
+      - model: authentik_policies.policybinding
+        identifiers:
+          policy: !KeyOf myown-recovery-skip-if-preidentified
+          target: !KeyOf myown-recovery-binding-mfa
+          order: 0
+        attrs:
+          negate: false
+          enabled: true
+          timeout: 30
+      # Partial update — only sets flow_recovery, every other Brand field
+      # (domain, default flows already configured, branding) stays as-is.
+      - model: authentik_brands.brand
+        identifiers:
+          domain: authentik-default
+        attrs:
+          flow_recovery: !KeyOf myown-recovery-flow

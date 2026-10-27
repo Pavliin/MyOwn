@@ -386,6 +386,18 @@ fi
 MYOWN_DOMAIN_SETUP="$HAS_DOMAIN" svc_apply "$WANTED" "$DOMAIN_APPS"
 [ "$HAS_DOMAIN" = 1 ] && svc_kick_cert_sync "$WANTED"
 
+step "Secrets générés dans le cluster"
+# Ceux qui manquent seulement, jamais affichés (scripts/lib/secrets.py). Le
+# secret OIDC côté Authentik est dérivé de celui du service : on attend
+# qu'ArgoCD ait créé ce dernier (code 3), un autre échec arrête tout.
+for i in $(seq 1 30); do
+  rc=0
+  python3 scripts/lib/secrets.py ensure || rc=$?
+  [ "$rc" = 0 ] && break
+  [ "$rc" = 3 ] && [ "$i" -lt 30 ] || die "secrets générés : échec (voir ci-dessus)."
+  sleep 10
+done
+
 if grep -qx jellyfin <<<"$WANTED"; then
   step "Médiathèque partagée Nextcloud (lue par Jellyfin)"
   # Jellyfin lit le dossier de groupe Nextcloud n°1 (gitops/apps/templates/jellyfin.yaml)
