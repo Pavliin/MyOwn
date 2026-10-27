@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.26](https://github.com/Pavliin/MyOwn/compare/v0.1.25...v0.1.26) (2026-10-27)
+
+### Fonctionnalités
+
+* **gitops:** drop the myown-*.local names, one <service>.<domain> scheme ([b5bbcb9](https://github.com/Pavliin/MyOwn/commit/b5bbcb98e9d6ac0f42e82302dd0c3ba44581277a))
+
+### Documentation
+
+* describe the single naming scheme in the install manual and notes ([115db23](https://github.com/Pavliin/MyOwn/commit/115db2364e8e94ce2045b41fb151d6fd4dc186cf))
+* record the k3d eviction cascade on a full disk ([88b68a9](https://github.com/Pavliin/MyOwn/commit/88b68a98b3d928666f50e74320e5d3a8e0622586))
 ## [0.1.25](https://github.com/Pavliin/MyOwn/compare/v0.1.24...v0.1.25) (2026-10-22)
 
 ### Fonctionnalités
