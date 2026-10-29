@@ -192,25 +192,33 @@ LiveKit n'a besoin d'aucun ajustement : ses ports RTC (`podHostNetwork: true`) s
 
 ### 14.3 Installeur automatique et choix des services
 
-`scripts/install.sh` automatise tout ce chemin bare-metal (cible par défaut, `MYOWN_TARGET=k3s`) : installation de k3s, Services Traefik et CoreDNS de la section 14.2, ArgoCD, KSOPS, health check, dossier `hostPath` de Nextcloud (section 14.4) et bootstrap GitOps. La clé age doit être **restaurée** à l'avance dans `~/.config/sops/age/keys.txt` sur la nouvelle machine, jamais régénérée. Le cluster de dev reste accessible avec `MYOWN_TARGET=k3d`.
+`scripts/install.sh` automatise tout ce chemin bare-metal (cible par défaut, `MYOWN_TARGET=k3s`) : installation de k3s, Services Traefik et CoreDNS de la section 14.2, certificats Let's Encrypt et, au niveau C, DynDNS (section 16), ArgoCD, health check, secrets générés dans le cluster, dossier `hostPath` de Nextcloud (section 14.4) et bootstrap GitOps. Ni SOPS, ni KSOPS, ni clé age : les secrets sont créés par l'installeur et sauvegardés par `secrets-backup` (`manuel-admin.md`). Le cluster de dev reste accessible avec `MYOWN_TARGET=k3d`.
 
 ```bash
-scripts/install.sh
+MYOWN_DOMAIN=<domaine> MYOWN_ADMIN_EMAIL=<adresse> MYOWN_DNS_PROVIDER=<code lego> \
+  MYOWN_ACME_EMAIL=<adresse> MYOWN_DNS_CREDENTIALS_FILE=dns.env scripts/install.sh
 ```
+
+**Niveau réseau** (`installation-utilisateur.md`, « Les deux niveaux réseau ») : posé en premier, par une question, ou par `MYOWN_EXPOSURE` :
+
+- `lan` (**B**, défaut) — vrais certificats, services joignables à la maison seulement, rien d'ouvert vers internet. Mailu est retiré de la sélection, en l'expliquant.
+- `internet` (**C**) — B plus le DynDNS (`MYOWN_DDNS_CREDENTIALS_FILE` à la première fois, section 16) et les redirections de ports listées en fin d'installation.
+
+Le niveau est enregistré dans la valeur `exposure` de `root` ; une relance le garde. En changer = relancer avec l'autre valeur : de C à B, l'installeur arrête le DynDNS (son Secret est gardé pour un retour en C) et Mailu. Les enregistrements DNS déjà écrits chez le fournisseur restent en place. **Une machine de test doit avoir son propre sous-domaine** (`vm.<domaine>`…) : en C, le DynDNS le repointe vers elle.
 
 **Choix des services** : seul le socle est imposé, Authentik (identité) et Vaultwarden (reçoit les secrets générés, cf. `installation-utilisateur.md`). Le reste se coche dans une liste (Tuwunel, Uptime Kuma, Nextcloud, Immich, Jellyfin, LiveKit, Mailu, Ollama, supervision). Les dépendances sont ajoutées d'office (Jellyfin → Nextcloud, LiveKit → Tuwunel). Sans question : `MYOWN_SERVICES=nextcloud,immich` (ou `all`, ou `none` pour le socle seul).
 
 **Relancer le script** ajoute les services nouvellement cochés et **arrête** ceux décochés, après confirmation (`MYOWN_ASSUME_YES=1` en non interactif). Un service arrêté perd ses pods, jamais ses données : ses volumes sont marqués `Delete=false` avant suppression de son `Application`, et une réactivation les retrouve tels quels. Les dossiers `hostPath` ne sont jamais touchés. L'état installé n'est stocké nulle part ailleurs que dans le cluster (filtre `directory.include` de l'Application `root`). Une relance ne change jamais la version d'ArgoCD en place, ni la révision suivie par `root` (sauf `MYOWN_ARGOCD_VERSION` / `MYOWN_REVISION` explicites).
 
-**Réglages de la box internet** : l'installeur liste, pour les services choisis, les ports à rediriger vers la machine (443/tcp et réservation DHCP dès qu'un vrai domaine est utilisé ; LiveKit 7881/tcp, 7882/udp, 5349/tcp ; Mailu 993/tcp et 465/tcp, jamais le 25 — relais VPS), et ceux à **ne surtout pas** rediriger (Jellyfin 8096, réseau local uniquement).
+**Réglages de la box internet** : l'installeur liste, pour les services choisis, la réservation DHCP à faire dans tous les cas, puis, au niveau C seulement, les ports à rediriger vers la machine (443/tcp ; LiveKit 7881/tcp, 7882/udp, 5349/tcp ; Mailu 993/tcp et 465/tcp, jamais le 25 — relais VPS). Au niveau B, il indique qu'aucune redirection n'est nécessaire, et ceux à **ne surtout pas** rediriger (Jellyfin 8096, réseau local uniquement).
 
-**Services qui exigent un vrai domaine** : LiveKit et Mailu tirent leur certificat (TURN, IMAPS/SMTPS) du certificat Let's Encrypt de Traefik. Sans `MYOWN_DOMAIN_SETUP=1`, l'installeur les retire de la sélection en l'expliquant, plutôt que de laisser leurs pods bloqués. Avec un domaine, il lance tout de suite la première synchro de certificat au lieu d'attendre le passage quotidien de 05h05.
+**Certificat de LiveKit et Mailu** : ils tirent leur certificat (TURN, IMAPS/SMTPS) de celui de Traefik. L'installeur lance tout de suite la première synchro au lieu d'attendre le passage quotidien de 05h05.
 
 **Nextcloud et Jellyfin** : l'installeur pré-crée `config/` en `www-data` en plus du dossier de la section 14.4, et, si Jellyfin est choisi, crée le dossier partagé `Mediatheque` (groupe `famille`) une fois Nextcloud installé — les étapes de la section 15 n'ont plus à être faites à la main, sauf l'ajout de chaque membre au groupe.
 
 **Réglages de l'hôte** : limites inotify relevées (`/etc/sysctl.d/90-myown-inotify.conf` : 8192 instances, 524288 watches — la valeur Ubuntu par défaut de 128 instances est trop basse pour un nœud Kubernetes), et k3s reçoit ses propres résolveurs DNS (`/etc/rancher/k3s/myown-resolv.conf`, Quad9 `9.9.9.9` et Cloudflare `1.1.1.1`, qui valident tous deux DNSSEC — exigé par Mailu) au lieu de ceux de l'hôte. L'hôte et le réseau local gardent leur propre DNS (Pi-hole compris).
 
-**Domaine réel** : la section 16 (Let's Encrypt via Gandi, DynDNS) n'est activée qu'avec `MYOWN_DOMAIN_SETUP=1` (+ `MYOWN_GANDI_TOKEN_FILE` à la première fois). **Jamais sur une machine de test** : le DynDNS repointerait le domaine réel vers elle. Les étapes 15 et suivantes (dossier partagé, LiveKit externe, watchdog, DKIM, Pi-hole) restent manuelles.
+**Domaine** : la section 16 (Let's Encrypt, et DynDNS au niveau C) fait toujours partie de l'installation. Les étapes 17 et suivantes (LiveKit externe, watchdog, DKIM, Pi-hole) restent manuelles.
 
 Toutes les options sont décrites dans l'en-tête du script. Validé le 2026-10-10 dans une VM Ubuntu 26.04 neuve : socle seul, puis ajout, arrêt et réactivation d'un service avec ses données retrouvées (`notes-techniques.md`).
 
@@ -262,14 +270,14 @@ curl -X POST "http://<jellyfin>/Library/VirtualFolders?name=Films&collectionType
 
 Vrais certificats Let's Encrypt sur le domaine de l'installation, par **défi DNS-01** : pas besoin d'exposer le port 80, et un seul certificat **wildcard** (`*.<domaine>` + apex) sert tous les services. N'importe quel fournisseur DNS pris en charge par [lego](https://go-acme.github.io/lego/dns/) (la bibliothèque ACME intégrée à Traefik, plus d'une centaine de fournisseurs) convient ; le fournisseur n'apparaît nulle part dans le code, seulement dans les paramètres de l'installeur. Choix techniques (pourquoi pas `cert-manager`, réutilisation du wildcard) dans `notes-techniques.md`.
 
-L'installeur fait tout avec `MYOWN_DOMAIN_SETUP=1` (jamais sur une machine de test : le DynDNS repointerait le vrai domaine) et quatre paramètres :
+L'installeur fait tout, à chaque installation, avec quatre paramètres (le dernier au niveau C seulement) :
 
 | Variable | Contenu |
 |---|---|
 | `MYOWN_DNS_PROVIDER` | code lego du fournisseur (page du fournisseur dans la doc lego) |
 | `MYOWN_ACME_EMAIL` | e-mail du compte Let's Encrypt (avis d'expiration) |
 | `MYOWN_DNS_CREDENTIALS_FILE` | fichier `CLE=valeur` des variables qu'attend lego pour ce fournisseur → Secret `kube-system/dns-provider-credentials` |
-| `MYOWN_DDNS_CREDENTIALS_FILE` | fichier JSON des réglages [ddns-updater](https://github.com/qdm12/ddns-updater/tree/master/docs) du fournisseur, **sans** le domaine → Secret `dyndns/dyndns-config` |
+| `MYOWN_DDNS_CREDENTIALS_FILE` | (C) fichier JSON des réglages [ddns-updater](https://github.com/qdm12/ddns-updater/tree/master/docs) du fournisseur, **sans** le domaine → Secret `dyndns/dyndns-config` |
 
 Les deux Secrets ne sont créés que s'ils manquent, jamais commités. Une relance garde le fournisseur et l'e-mail déjà en place. Supprimer les deux fichiers d'identifiants une fois l'installation faite.
 
@@ -285,7 +293,7 @@ GANDIV5_PERSONAL_ACCESS_TOKEN=<jeton>
 ```
 
 ```bash
-MYOWN_DOMAIN_SETUP=1 MYOWN_DNS_PROVIDER=gandiv5 MYOWN_ACME_EMAIL=<adresse> \
+MYOWN_EXPOSURE=internet MYOWN_DNS_PROVIDER=gandiv5 MYOWN_ACME_EMAIL=<adresse> \
   MYOWN_DNS_CREDENTIALS_FILE=dns.env MYOWN_DDNS_CREDENTIALS_FILE=ddns.json \
   scripts/install.sh
 ```
@@ -295,7 +303,7 @@ Le `ttl` vaut 300 parce que Gandi refuse toute valeur inférieure (`notes-techni
 **Ce que fait l'installeur** :
 
 1. **Résolveur ACME de Traefik** : `gitops/bootstrap/traefik-acme-helmchartconfig.yaml` est un gabarit (`__DNS_PROVIDER__`, `__ACME_EMAIL__`), appliqué comme surcouche du `HelmChart` Traefik géré par k3s (ne jamais éditer ce dernier). Le Secret des identifiants est chargé tel quel en variables d'environnement de Traefik.
-2. **DynDNS** : l'Application `dyndns` (ddns-updater) vérifie toutes les 5 minutes que l'apex et le wildcard pointent sur l'IP publique, et ne modifie un enregistrement que s'il diffère. AAAA tenus à jour aussi si la machine a une route IPv6 par défaut (`MYOWN_DDNS_IPV6=0/1` pour forcer).
+2. **DynDNS** (niveau C) : l'Application `dyndns` (ddns-updater) vérifie toutes les 5 minutes que l'apex et le wildcard pointent sur l'IP publique, et ne modifie un enregistrement que s'il diffère. AAAA tenus à jour aussi si la machine a une route IPv6 par défaut (`MYOWN_DDNS_IPV6=0/1` pour forcer).
 
 Pour valider un nouveau fournisseur sans brûler les quotas Let's Encrypt, passer d'abord par le serveur **staging** (`caServer: https://acme-staging-v02.api.letsencrypt.org/directory` sous `acme:`), puis le retirer, réappliquer, **et purger le certificat staging en cache**, sinon Traefik continue de le servir :
 
@@ -307,7 +315,7 @@ kubectl rollout restart deployment traefik -n kube-system
 
 **Changer de jeton** (rotation) : remplacer la valeur dans les deux Secrets, puis redémarrer Traefik et `dyndns` (`manuel-admin.md`).
 
-**Port-forward Freebox** — `mafreebox.freebox.fr` → Paramètres avancés → **Gestion des ports** → rediriger le port **443/tcp uniquement** (pas 80, inutile pour DNS-01) vers l'IP LAN du mini PC.
+**Port-forward Freebox** (niveau C) — `mafreebox.freebox.fr` → Paramètres avancés → **Gestion des ports** → rediriger vers l'IP LAN du mini PC les ports listés par l'installeur : 443/tcp pour les services web (jamais 80, inutile pour DNS-01), plus ceux de LiveKit et Mailu s'ils sont installés.
 
 **Vérification** :
 

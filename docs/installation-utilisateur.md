@@ -31,69 +31,65 @@ Implémenté dans `scripts/install.sh` + `scripts/lib/services.sh`, mode d'emplo
 
 ## Installation indépendante — niveaux réseau, configuration, secrets (décidé le 2026-10-22)
 
-Objectif : qu'un autre foyer puisse installer MyOwn avec son propre domaine (ou sans domaine), sans dépendre de l'installation de l'auteur. État des lieux de départ (2026-10-22) : le domaine `offsystem.fr` était écrit en dur dans 26 fichiers GitOps, 12 scripts **et dans 12 secrets chiffrés** (blueprints SSO, config Tuwunel…), et tous les secrets étaient chiffrés avec la clé de l'auteur — l'installeur ne savait que réinstaller cette installation-là.
+Objectif : qu'un autre foyer puisse installer MyOwn avec son propre domaine, sans dépendre de l'installation de l'auteur. État des lieux de départ (2026-10-22) : le domaine `offsystem.fr` était écrit en dur dans 26 fichiers GitOps, 12 scripts **et dans 12 secrets chiffrés** (blueprints SSO, config Tuwunel…), et tous les secrets étaient chiffrés avec la clé de l'auteur — l'installeur ne savait que réinstaller cette installation-là.
 
-Principe directeur : **une installation n'exige que ce que réclament les services cochés.** Un foyer qui ne veut que Jellyfin et Immich n'a besoin ni de nom de domaine, ni de fournisseur DNS, ni de serveur loué ; le mail, lui, exige tout cela.
+Principe directeur : **une installation n'exige que ce que réclament les services cochés.** Un foyer qui n'ouvre rien vers internet n'a besoin ni de DynDNS ni de redirection de ports ; le mail, lui, exige en plus un serveur relais loué.
 
-### Les trois niveaux réseau
+### Les deux niveaux réseau
 
-Avoir un **nom de domaine** et être **accessible depuis internet** sont deux choses différentes : un domaine suffit à obtenir de vrais certificats (le cadenas du navigateur) sans ouvrir la moindre porte vers la maison. D'où trois niveaux, choisis en premier à l'installation.
+Avoir un **nom de domaine** et être **accessible depuis internet** sont deux choses différentes : un domaine suffit à obtenir de vrais certificats (le cadenas du navigateur) sans ouvrir la moindre porte vers la maison. D'où deux niveaux, choisis en premier à l'installation. Le nom de domaine est donc **obligatoire** : c'est la seule barrière d'entrée, une dizaine d'euros par an.
 
-#### A — Sans nom de domaine
+**Pas de niveau sans domaine** (prévu au départ comme « niveau A », abandonné le 2026-10-29 avant d'être implémenté). En HTTP, sans certificat, il ne restait qu'Immich derrière Authentik : Vaultwarden, Nextcloud, Tuwunel, LiveKit et Mailu exigent HTTPS, Jellyfin dépend de Nextcloud, Ollama ne sert qu'au tri des mails. Les identifiants y auraient circulé en clair sur le réseau de la maison (Wi-Fi invité compris), passer ensuite à un domaine aurait changé toutes les adresses, et il aurait fallu maintenir des Ingress HTTP en double et imposer Pi-hole pour la résolution des noms. À réintroduire seulement si un vrai besoin « photos seules, zéro domaine » apparaît.
 
-**En clair** : tout reste à la maison, sur le réseau de la box, sans rien acheter ni rien régler sur la box. C'est l'installation la plus simple. En contrepartie, il n'y a pas de cadenas dans le navigateur : les services qui exigent une connexion sécurisée — les mots de passe, les fichiers et l'agenda, la messagerie, les appels, le mail — ne sont pas disponibles. Les services restent inaccessibles en dehors de la maison, et toute personne connectée au même réseau (Wi-Fi d'un invité compris) pourrait en théorie lire ce qui y circule, mots de passe de connexion inclus.
+#### B — Accès à la maison seulement
 
-**Techniquement** :
-
-- Services servis en **HTTP**, sous un suffixe local (`<service>.<suffixe>`) résolu par Pi-hole ou `/etc/hosts`.
-- Aucun certificat valide (une autorité locale type mkcert est possible mais doit être installée sur chaque appareil, et n'est pas reconnue par la plupart des applications mobiles — non retenu).
-- Compatibles : Authentik, Jellyfin, Immich, Ollama, Uptime Kuma, supervision.
-- Exclus : Vaultwarden (le chiffrement côté navigateur exige un contexte sécurisé), Nextcloud (`user_oidc` refuse le HTTP), Tuwunel (cookie de session SSO marqué `Secure`), LiveKit, Mailu.
-- Le trafic, y compris l'authentification SSO, circule en clair sur le réseau local.
-
-#### B — Nom de domaine, accès à la maison seulement
-
-**En clair** : on achète un nom (par exemple `famille-dupont.fr`, une dizaine d'euros par an) chez un fournisseur dont le service DNS est compatible. Tous les services fonctionnent, avec le cadenas, sur tous les appareils et dans les applications mobiles — sauf le mail. Mais uniquement à la maison : en déplacement, rien n'est accessible. C'est le niveau le plus prudent, puisque rien n'est ouvert vers internet. Passer plus tard au niveau C se fait sans rien perdre ni rien renommer.
+**En clair** : on achète un nom (par exemple `famille-dupont.fr`) chez un fournisseur dont le service DNS est compatible. Tous les services fonctionnent, avec le cadenas, sur tous les appareils et dans les applications mobiles — sauf le mail. Mais uniquement à la maison : en déplacement, rien n'est accessible. C'est le niveau le plus prudent, puisque rien n'est ouvert vers internet. Passer plus tard au niveau C se fait sans rien perdre ni rien renommer.
 
 **Techniquement** :
 
 - Certificats Let's Encrypt obtenus par **défi DNS-01** (lego, via l'API du fournisseur DNS) : aucun port entrant n'est ouvert.
-- DNS « split-horizon » : Pi-hole (ou CoreDNS pour le cluster) résout `*.domaine` vers l'adresse locale du serveur.
-- Le fournisseur DNS doit être pris en charge par lego — plus d'une centaine le sont. **Premier fournisseur testé : Gandi.**
+- DNS « split-horizon » : CoreDNS résout `*.domaine` vers Traefik pour le cluster ; pour les appareils de la maison, c'est le wildcard public (ou Pi-hole, optionnel) qui fait de même.
+- Le fournisseur DNS doit être pris en charge par lego — plus d'une centaine le sont. **Fournisseur testé : Gandi.**
 - Tuwunel sans fédération, mais son identité Matrix (`server_name` = le domaine) est définitive dès maintenant — c'est ce qui permet de passer en C sans recréer les comptes.
 - LiveKit : appels possibles entre appareils de la maison seulement.
-- Exclu : Mailu (recevoir du mail exige d'être joignable depuis internet).
+- Exclu : Mailu (recevoir du mail exige d'être joignable depuis internet) — l'installeur le retire de la sélection en l'expliquant.
 - Accès d'administration à distance toujours possible via le VPN WireGuard (réservé à l'admin, pas aux services familiaux).
 
-#### C — Nom de domaine, accessible partout
+#### C — Accessible partout
 
 **En clair** : comme B, mais les services sont joignables partout — depuis le téléphone en 4G, en vacances, par la famille qui habite loin. C'est aussi ce niveau qui permet les appels vidéo hors de la maison, d'échanger avec des personnes inscrites sur d'autres serveurs Matrix, et d'avoir sa propre adresse mail (ce dernier point demande en plus de louer un petit serveur relais, quelques euros par mois). La contrepartie : la maison devient visible depuis internet, et garder les mises à jour et les sauvegardes à jour devient indispensable.
 
 **Techniquement** :
 
 - B, plus des redirections de ports sur la box (listées par l'installeur selon les services choisis) : `443/tcp` ; LiveKit `7881/tcp`, `7882/udp`, `5349/tcp` (TURN) ; Mailu `993/tcp`, `465/tcp`.
-- DynDNS (ddns-updater) si l'adresse IP publique change.
+- DynDNS (ddns-updater) : l'apex et le wildcard, en IPv4 et (si la machine en a) en IPv6.
 - Fédération Matrix via `.well-known/matrix/server`.
-- Mailu : en plus, un VPS relais (le port 25 sortant est bloqué par la plupart des box résidentielles), un enregistrement PTR, et les enregistrements DNS MX/SPF/DKIM/DMARC — l'installeur les affiche, à créer chez le fournisseur.
+- Mailu : en plus, un VPS relais (le port 25 sortant est bloqué par la plupart des box résidentielles), un enregistrement PTR, et les enregistrements DNS MX/SPF/DKIM/DMARC — à créer chez le fournisseur.
 - Tous les services web sont exposés, derrière l'authentification Authentik ; les outils d'administration (ArgoCD, `kubectl`, SSH) ne le sont jamais.
 - Lacunes connues : IPv6 entrant non pris en charge par le cluster (voir `notes-techniques.md`).
 
 #### Compatibilité par service
 
-| Service | A | B | C | Contrainte |
-|---|---|---|---|---|
-| Authentik, Jellyfin, Immich, Ollama, Uptime Kuma, supervision | ✅ | ✅ | ✅ | — |
-| Vaultwarden | — | ✅ | ✅ | HTTPS obligatoire |
-| Nextcloud | — | ✅ | ✅ | HTTPS obligatoire |
-| Tuwunel | — | ✅ sans fédération | ✅ | identité Matrix définitive |
-| LiveKit | — | ✅ à la maison | ✅ | certificat TURN |
-| Mailu | — | — | ✅ + VPS | réception internet, relais |
+| Service | B | C | Contrainte |
+|---|---|---|---|
+| Authentik, Vaultwarden, Nextcloud, Jellyfin, Immich, Ollama, Uptime Kuma, supervision | ✅ | ✅ | — |
+| Tuwunel | ✅ sans fédération | ✅ | identité Matrix définitive |
+| LiveKit | ✅ à la maison | ✅ | certificat TURN |
+| Mailu | — | ✅ + VPS | réception internet, relais |
 
-**Changer de niveau** : de B à C, il suffit d'ouvrir les ports et d'activer le DynDNS — mêmes noms, mêmes données. De A à B, les adresses des services changent (suffixe local → domaine) et les appareils doivent être reconfigurés. Conseil donné à l'installation : choisir B dès qu'un passage à C est envisageable.
+**Changer de niveau** : relancer l'installeur avec `MYOWN_EXPOSURE=internet` (ou `lan`) — mêmes noms, mêmes données. De B à C, il démarre le DynDNS et liste les ports à ouvrir ; de C à B, il arrête le DynDNS (son Secret est conservé pour un retour en C) et Mailu s'il était installé. Les enregistrements DNS publics déjà écrits restent chez le fournisseur : à supprimer à la main si l'on veut que le nom ne pointe plus vers la maison. Validé en VM le 2026-10-29 dans les deux sens (`notes-techniques.md`).
+
+#### Quel domaine ?
+
+- **Le cas courant** : un domaine acheté chez un registraire qui fournit aussi le DNS, inclus dans le prix (Gandi, OVH, Infomaniak…). Vérifier avant d'acheter que ce fournisseur figure dans la [liste de lego](https://go-acme.github.io/lego/dns/). On peut aussi acheter le domaine n'importe où et confier son DNS gratuitement à un fournisseur compatible (Cloudflare, deSEC).
+- **Pour essayer gratuitement : un sous-domaine `<nom>.dedyn.io` de [deSEC](https://desec.io)** (association à but non lucratif, DNS géré par API, pris en charge par lego et ddns-updater). Suffisant pour une installation complète en B. Limites à connaître avant de s'en servir :
+  - **l'identité Matrix est définitive** : les comptes seraient `@marie:<nom>.dedyn.io`, et passer plus tard à un vrai domaine obligerait à recréer les comptes de messagerie ;
+  - **le mail n'y est pas crédible** : les grandes messageries se méfient des domaines gratuits ;
+  - **la création de sous-domaines `dedyn.io` est suspendue** par deSEC depuis octobre 2026 (vague d'enregistrements abusifs), sans date de reprise — l'option ne vaut que lorsqu'elle sera rouverte, et n'a donc pas encore été testée avec MyOwn.
+- **Ne conviennent pas** : le nom offert par la box (`xxxx.freeboxos.fr`) — ni sous-noms, ni accès au DNS par API pour le défi DNS-01 ; DuckDNS — un seul enregistrement de vérification à la fois, incompatible avec un certificat apex + wildcard.
 
 #### Prérequis et protections transverses (ajoutés le 2026-10-22)
 
-- **Pi-hole est un prérequis du niveau A.** Sans domaine public, rien d'autre ne fait connaître aux appareils de la maison les noms `<service>.<suffixe>` : l'installeur met Pi-hole en place avec une entrée couvrant tout le suffixe, et la seule action manuelle est de régler, dans la box, le DNS distribué aux appareils sur l'adresse du serveur. Suffixe recommandé : `home.arpa` (RFC 8375, réservé aux réseaux domestiques) — jamais `.local`, réservé à la découverte automatique (mDNS) et source de conflits sur macOS/iOS/Linux. En B et C, Pi-hole reste optionnel (il ne sert qu'au filtrage et à éviter le détour par la box).
 - **Vérification des signatures de commits par ArgoCD, avant toute ouverture à d'autres foyers.** Une installation applique ce que dit le dépôt suivi, avec tous les droits sur le cluster : suivre le dépôt du projet, c'est faire confiance au compte qui le publie (un compte compromis atteindrait toutes les installations qui synchronisent). Synchronisation manuelle et tags limitent déjà ce risque ; ArgoCD peut en plus refuser tout commit non signé par une clé de confiance. Le paramètre `repoURL` (suivre un fork) n'ajoute pas ce risque, il le rend seulement visible.
 - **Adresse réelle des visiteurs** : le Service de Traefik est en `externalTrafficPolicy: Local` (corrigé le 2026-10-22, voir `notes-techniques.md`). C'est la condition pour que le filtrage par adresse des outils d'administration (ArgoCD, Grafana, Ollama : `<outil>.<domaine>`, réservés au réseau local et au VPN) ait un sens, et pour qu'Authentik distingue un attaquant du reste de la famille.
 
@@ -103,9 +99,9 @@ Un seul jeu de paramètres, dans les valeurs du chart `gitops/apps` lues par l'A
 
 | Valeur | Rôle |
 |---|---|
-| `domain` | domaine (niveaux B/C) ou suffixe local (niveau A) |
-| `exposure` | `none` / `lan` / `internet` (A / B / C) |
-| `dnsProvider` | nom du fournisseur pour lego (B/C) — générique dans le code, Gandi n'est cité que dans la documentation. Finalement **hors des valeurs de `root`** : seul Traefik s'en sert, et sa configuration est du bootstrap ; l'installeur le pose dans la surcouche Traefik et l'y relit à chaque relance (fait le 2026-10-27, avec l'e-mail ACME) |
+| `domain` | domaine de l'installation (obligatoire) |
+| `exposure` | `lan` / `internet` (B / C) |
+| `dnsProvider` | nom du fournisseur pour lego — générique dans le code, Gandi n'est cité que dans la documentation. Finalement **hors des valeurs de `root`** : seul Traefik s'en sert, et sa configuration est du bootstrap ; l'installeur le pose dans la surcouche Traefik et l'y relit à chaque relance (fait le 2026-10-27, avec l'e-mail ACME) |
 | `repoURL` | dépôt suivi (celui du projet, ou un fork) |
 
 Un seul schéma de noms : `<service>.<domain>`, à la maison comme depuis internet. Les noms `myown-*.local` historiques sont retirés.
@@ -118,7 +114,7 @@ Les secrets ne sont **plus jamais commités**. L'installeur les génère dans le
 - **apparié** : les identifiants OIDC sont créés en une fois pour le service et pour Authentik ;
 - ce qui contient le domaine sans être secret (blueprints Authentik, configuration Tuwunel) devient un fichier en clair dans le dépôt, le domaine étant injecté par Helm et les secrets lus à part (balise `!Env` des blueprints Authentik).
 
-Environ 90 % des secrets sont aléatoires ou dérivés et se génèrent sans intervention ; restent à demander : l'e-mail de l'admin, les identifiants du fournisseur DNS (B/C), et ceux du relais mail (Mailu).
+Environ 90 % des secrets sont aléatoires ou dérivés et se génèrent sans intervention ; restent à demander : l'e-mail de l'admin, les identifiants du fournisseur DNS, et ceux du relais mail (Mailu).
 
 **Conséquence à ne pas sous-estimer** : les secrets n'existant plus ailleurs, leur sauvegarde devient critique — sauvegarde chiffrée des Secrets avec le reste (Restic), et dépôt dans le coffre Vaultwarden de l'admin (voir « Modèle de gestion des comptes admin » ci-dessous). SOPS, KSOPS et la clé age ne sont plus nécessaires à une nouvelle installation ; les fichiers `*.sops.yaml` de l'installation de l'auteur seront retirés du dépôt une fois sa propre installation migrée.
 
@@ -133,10 +129,10 @@ Environ 90 % des secrets sont aléatoires ou dérivés et se génèrent sans int
 
 Chaque étape laisse l'installation de l'auteur fonctionnelle, et se vérifie par un rendu identique avant tout déploiement :
 
-1. Domaine paramétré (les manifestes bruts deviennent de petits charts) et nouvelles valeurs `domain`/`exposure`/`dnsProvider`/`repoURL` ; retrait des noms `.local`.
+1. Domaine paramétré (les manifestes bruts deviennent de petits charts) et nouvelles valeurs `domain`/`dnsProvider`/`repoURL` ; retrait des noms `.local`.
 2. Fournisseur DNS générique et DynDNS via ddns-updater.
 3. Secrets générés, sauvegarde des secrets, migration de l'installation de l'auteur hors de KSOPS (les secrets existants conservés, jamais régénérés), retrait des fichiers SOPS. *Génération, sortie de KSOPS et sauvegarde faites le 2026-10-27 (`notes-techniques.md`) ; le retrait des fichiers chiffrés attend une copie hors machine de la sauvegarde (pour l'installation de l'auteur, ces fichiers sont aujourd'hui la seule copie hors machine des secrets).*
-4. Niveaux A/B/C dans l'installeur, validés en VM pour chaque niveau.
+4. Niveaux B/C dans l'installeur (valeur `exposure`), validés en VM pour chaque niveau et pour le passage de l'un à l'autre. *Fait le 2026-10-29 ; second fournisseur DNS (deSEC) à tester quand ses inscriptions rouvriront.*
 5. Flow admin : les secrets générés rangés dans le coffre Vaultwarden.
 
 ## Modèle de gestion des comptes admin

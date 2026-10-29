@@ -31,13 +31,17 @@ La plupart des projets d'auto-hébergement personnel s'essoufflent sur l'exploit
 | Fichiers, contacts, calendrier | Nextcloud |
 | Photos / vidéos | Immich |
 | Messagerie (groupes, appels vidéo, fédération) | Tuwunel + Element X + LiveKit |
-| Mail | Mailcow + façade VPS dédiée |
+| Mail | Mailu + façade VPS dédiée |
 | IA locale | Ollama |
 | Orchestration | k3s + ArgoCD (GitOps) + Traefik |
 | Monitoring | Prometheus + Grafana + Uptime Kuma |
 | Sauvegarde | Restic, chiffré, offsite chez un participant du projet |
 
 Détail et justification de chaque choix : [`architecture.md`](architecture.md#5-composants-applicatifs).
+
+## Ce qu'il faut pour l'installer chez soi
+
+Une machine à la maison et un **nom de domaine** — c'est la seule barrière d'entrée, et elle est délibérée : le domaine donne de vrais certificats (DNS-01, sans ouvrir de port), donc HTTPS partout dès le départ, sans lequel la moitié des services (mots de passe, fichiers, messagerie) ne fonctionne pas. Deux niveaux ensuite : **B**, accessible à la maison seulement, rien d'exposé ; **C**, accessible partout, requis pour le mail. On passe de l'un à l'autre en relançant l'installeur, sans renommer ni perdre de données. Pour un simple essai, un sous-domaine gratuit `dedyn.io` (deSEC) fait l'affaire, avec des limites réelles : identité Matrix à recréer si l'on change ensuite de domaine, mail peu crédible, et inscriptions suspendues par deSEC depuis octobre 2026. Détail : [`installation-utilisateur.md`](installation-utilisateur.md).
 
 ## Feuille de route condensée
 
@@ -47,7 +51,7 @@ MVP démontrable visé à 3-6 mois (mots de passe + fichiers/photos + messagerie
 2. **Mots de passe** (Vaultwarden) — premier service en usage réel
 3. **Fichiers & photos** (Nextcloud + Immich)
 4. **Messagerie** (Tuwunel + Element X + LiveKit) — *point de démo MVP*
-5. **Bascule infra réelle & Mail** (mini PC + domaine, façade VPS + Mailcow)
+5. **Bascule infra réelle & Mail** (mini PC + domaine, façade VPS + Mailu)
 6. **IA locale** (Ollama)
 7. **Montée en échelle** — profils de dimensionnement matériel, multi-nœuds, ouverture à d'autres serveurs fédérés
 
