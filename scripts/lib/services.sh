@@ -28,8 +28,8 @@ declare -A SVC_LABEL=(
   [nextcloud]="Nextcloud — fichiers, agenda, contacts"
   [immich]="Immich — photos et vidéos"
   [jellyfin]="Jellyfin — films et séries (requiert Nextcloud)"
-  [livekit]="LiveKit — appels audio/vidéo (requiert Tuwunel + vrai domaine)"
-  [mailu]="Mailu — mail (requiert un vrai domaine + relais VPS)"
+  [livekit]="LiveKit — appels audio/vidéo (requiert Tuwunel)"
+  [mailu]="Mailu — mail (niveau C + relais VPS)"
   [ollama]="Ollama — IA locale"
   [monitoring]="Prometheus/Grafana — supervision admin"
 )
@@ -349,9 +349,6 @@ svc_apply() {
 
   echo "Services installés après cette étape :"
   for s in $wanted; do echo "  + ${SVC_LABEL[$s]}"; done
-  local added=""
-  for s in $wanted; do grep -qx "$s" <<<"$installed" || added="$added $s"; done
-  [ -n "$added" ] && svc_print_box "$(tr ' ' '\n' <<<"$added")" "${MYOWN_EXPOSURE_VALUE:-lan}"
   if [ -n "$removed" ]; then
     echo "Services qui seront ARRÊTÉS (données conservées, réactivables plus tard) :"
     for s in $removed; do echo "  - ${SVC_LABEL[$s]}"; done
