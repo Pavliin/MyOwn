@@ -1,7 +1,7 @@
 # Jellyfin runs plain HTTP (myown-jellyfin.local:8090) today, no existing
 # TLS Ingress to conflict with. Separate raw Ingress for consistency with
-# the rest of this generalization pass. Reuses the wildcard cert already
-# obtained via the Uptime Kuma canary, no new ACME request needed. This is
+# the rest of this generalization pass. Reuses the wildcard cert declared
+# on the authentik-public Ingress, no new ACME request needed. This is
 # the concrete use case roadmap.md Phase 4 named for real internet
 # exposure (remote family member, 800km away) — DNS+cert reachability
 # only here, the real bandwidth/streaming validation is separate.
@@ -11,6 +11,10 @@ metadata:
   name: jellyfin-public
   annotations:
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # Same certificate on every public Ingress: one shared ACME order
+    # (gitops/manifests/authentik-public, comment at the top).
+    traefik.ingress.kubernetes.io/router.tls.domains.0.main: {{ .Values.domain }}
+    traefik.ingress.kubernetes.io/router.tls.domains.0.sans: "*.{{ .Values.domain }}"
 spec:
   ingressClassName: traefik
   tls:

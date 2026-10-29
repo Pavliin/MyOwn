@@ -10,10 +10,8 @@ metadata:
   name: uptime-kuma-public
   annotations:
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
-    # Only one Ingress in the whole cluster needs to declare the wildcard
-    # domain explicitly — Traefik caches the resulting cert in acme.json
-    # and reuses it automatically for any other router whose Host() falls
-    # under this SAN, no new ACME request needed.
+    # Same certificate on every public Ingress: one shared ACME order
+    # (gitops/manifests/authentik-public, comment at the top).
     traefik.ingress.kubernetes.io/router.tls.domains.0.main: {{ .Values.domain }}
     traefik.ingress.kubernetes.io/router.tls.domains.0.sans: "*.{{ .Values.domain }}"
 spec:
@@ -98,6 +96,10 @@ metadata:
   name: uptime-kuma-status-root
   annotations:
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # Same certificate on every public Ingress: one shared ACME order
+    # (gitops/manifests/authentik-public, comment at the top).
+    traefik.ingress.kubernetes.io/router.tls.domains.0.main: {{ .Values.domain }}
+    traefik.ingress.kubernetes.io/router.tls.domains.0.sans: "*.{{ .Values.domain }}"
     traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-uptime-kuma-status-root@kubernetescrd
 spec:
   ingressClassName: traefik

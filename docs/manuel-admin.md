@@ -286,14 +286,14 @@ des services — l'administration d'Uptime Kuma n'y est pas accessible.
 Les identifiants du fournisseur DNS vivent dans deux Secrets, créés par l'installeur et jamais commités (`manuel-installation.md` §16) : `kube-system/dns-provider-credentials` (Traefik, certificats Let's Encrypt) et `dyndns/dyndns-config` (ddns-updater).
 
 - **État du DynDNS** : `kubectl logs -n dyndns deploy/dyndns`. Rien n'est journalisé tant que les enregistrements sont à jour ; une mise à jour ou une erreur du fournisseur apparaît en clair. Ne jamais passer `LOG_LEVEL=debug` : ce niveau affiche la configuration, jeton compris.
-- **Rotation du jeton** : préparer les mêmes fichiers qu'à l'installation (`dns.env`, `ddns.json`), puis remplacer les deux Secrets et redémarrer leurs consommateurs. La configuration DynDNS se régénère avec le domaine : le plus simple est de supprimer `dyndns-config` et de relancer l'installeur avec `MYOWN_DOMAIN_SETUP=1 MYOWN_DDNS_CREDENTIALS_FILE=ddns.json`, qui ne recrée que ce qui manque.
+- **Rotation du jeton** : préparer les mêmes fichiers qu'à l'installation (`dns.env`, `ddns.json`), puis remplacer les deux Secrets et redémarrer leurs consommateurs. La configuration DynDNS se régénère avec le domaine : le plus simple est de supprimer `dyndns-config` et de relancer l'installeur avec `MYOWN_DDNS_CREDENTIALS_FILE=ddns.json`, qui ne recrée que ce qui manque (il garde le niveau C en place).
 
 ```bash
 kubectl create secret generic dns-provider-credentials -n kube-system --from-env-file=dns.env \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl rollout restart deployment traefik -n kube-system
 kubectl delete secret dyndns-config -n dyndns
-MYOWN_DOMAIN_SETUP=1 MYOWN_DDNS_CREDENTIALS_FILE=ddns.json scripts/install.sh
+MYOWN_DDNS_CREDENTIALS_FILE=ddns.json scripts/install.sh
 kubectl rollout restart deployment dyndns -n dyndns
 ```
 
