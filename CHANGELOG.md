@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.32](https://github.com/Pavliin/MyOwn/compare/v0.1.31...v0.1.32) (2026-10-29)
+
+### Fonctionnalités
+
+* **install:** network levels B (lan) and C (internet), no domainless level ([8b70db0](https://github.com/Pavliin/MyOwn/commit/8b70db0c01c1b9fe084c0dbd7c56c87f241c1df9))
+
+### Correctifs
+
+* **authentik:** every SSO blueprint declares the shared email scope mapping ([71e1f3b](https://github.com/Pavliin/MyOwn/commit/71e1f3b444c506dd3b81e401cb235a19914c1ea9))
+* **gitops:** declare the wildcard certificate on every public Ingress ([4cea06a](https://github.com/Pavliin/MyOwn/commit/4cea06ab9b4ba4aa9a7e9e208f072f3902745be1))
+* **install:** accurate LiveKit/Mailu labels, print box settings once ([c8d13da](https://github.com/Pavliin/MyOwn/commit/c8d13da27651cf8a02840d89904b094c6cc23699))
+* **install:** don't abort when the admin VPN interface is absent ([c6eba7e](https://github.com/Pavliin/MyOwn/commit/c6eba7e651111dd97145b14d83882a0b490ad086))
+
+### Documentation
+
+* network levels B/C, domain required, dedyn.io trial option ([84cabf0](https://github.com/Pavliin/MyOwn/commit/84cabf08361fe4a20871891da8abddc7058cfbe7))
 ## [0.1.31](https://github.com/Pavliin/MyOwn/compare/v0.1.30...v0.1.31) (2026-10-27)
 
 ### Correctifs
