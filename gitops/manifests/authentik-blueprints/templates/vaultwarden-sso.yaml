@@ -9,18 +9,7 @@ data:
     metadata:
       name: Vaultwarden SSO
     entries:
-      - model: authentik_providers_oauth2.scopemapping
-        id: vaultwarden-email-mapping
-        identifiers:
-          name: "Vaultwarden: email (verified)"
-          scope_name: email
-        attrs:
-          description: "Comme le mapping email par défaut d'Authentik, mais avec email_verified forcé à true — ce projet est le seul opérateur/IdP, pas un tiers non fiable, donc pas de flux de vérification d'email séparé à faire porter aux comptes."
-          expression: |
-            return {
-                "email": request.user.email,
-                "email_verified": True,
-            }
+      {{- include "myown.emailVerifiedMapping" . | nindent 6 }}
       - model: authentik_providers_oauth2.oauth2provider
         id: vaultwarden-provider
         identifiers:
@@ -37,7 +26,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
-            - !KeyOf vaultwarden-email-mapping
+            - !KeyOf email-verified-mapping
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
           redirect_uris:
             - matching_mode: strict

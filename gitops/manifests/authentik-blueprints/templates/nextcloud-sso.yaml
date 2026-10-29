@@ -9,6 +9,7 @@ data:
     metadata:
       name: Nextcloud SSO
     entries:
+      {{- include "myown.emailVerifiedMapping" . | nindent 6 }}
       - model: authentik_providers_oauth2.oauth2provider
         id: nextcloud-provider
         identifiers:
@@ -26,7 +27,7 @@ data:
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
-            - !Find [authentik_providers_oauth2.scopemapping, [name, "Vaultwarden: email (verified)"]]
+            - !KeyOf email-verified-mapping
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
           redirect_uris:
             - matching_mode: strict
