@@ -350,9 +350,12 @@ if [ -z "$MYOWN_ADMIN_RANGES_JSON" ] || [ "$MYOWN_ADMIN_RANGES_JSON" = "[]" ]; t
   if [ -n "${MYOWN_ADMIN_SOURCE_RANGES:-}" ]; then
     RANGES="$(tr ',' ' ' <<<"$MYOWN_ADMIN_SOURCE_RANGES")"
   else
-    LAN_IF="$(ip -4 route show default | awk '{print $5; exit}')"
-    LAN_CIDR="$(ip -4 route show dev "$LAN_IF" scope link 2>/dev/null | awk '$1 ~ /\// {print $1; exit}')"
-    WG_CIDR="$(ip -4 route show dev wg0 scope link 2>/dev/null | awk '$1 ~ /\// {print $1; exit}')"
+    # `|| true` : une interface absente (pas de VPN d'admin wg0 sur une
+    # machine neuve) fait échouer `ip`, ce qui sous pipefail arrêtait tout
+    # l'installeur sans message (vu en VM, 2026-10-29).
+    LAN_IF="$(ip -4 route show default | awk '{print $5; exit}' || true)"
+    LAN_CIDR="$(ip -4 route show dev "$LAN_IF" scope link 2>/dev/null | awk '$1 ~ /\// {print $1; exit}' || true)"
+    WG_CIDR="$(ip -4 route show dev wg0 scope link 2>/dev/null | awk '$1 ~ /\// {print $1; exit}' || true)"
     RANGES="$LAN_CIDR $WG_CIDR 10.42.0.0/16"
   fi
   MYOWN_ADMIN_RANGES_JSON="[$(for r in $RANGES; do printf '"%s",' "$r"; done | sed 's/,$//')]"

@@ -259,7 +259,7 @@ svc_prompt() {
 # $2 : niveau (lan|internet). N'affiche rien s'il n'y a rien.
 svc_print_box() {
   local wanted="$1" exposure="$2" ip s lines="" never=""
-  ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')"
+  ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}' || true)"
   if [ "$exposure" = "internet" ]; then
     lines="  - Accès depuis internet : $MYOWN_BOX_INTERNET\n"
     for s in $wanted; do
