@@ -1,12 +1,17 @@
 # Authentik's only Ingress (single naming scheme, authentik.<domain>).
 #
-# Also the one Ingress that declares the wildcard certificate (<domain> +
-# *.<domain>): Traefik caches it in acme.json and reuses it for every other
-# router whose Host() falls under it, no further ACME request. It lives here
-# because Authentik is always installed — it used to sit on Uptime Kuma's
-# status page, optional, and LiveKit's TURN cert-sync (which reads this exact
-# certificate) would then never get one on an install without Uptime Kuma
-# (found 2026-10-29 preparing the B/C installer tests).
+# Wildcard certificate (<domain> + *.<domain>), declared identically on EVERY
+# public Ingress (router.tls.domains annotations), so Traefik places a single
+# ACME order and every router shares it. Found on the first fresh install
+# (VM, 2026-10-29): with the wildcard declared on one Ingress only, the other
+# routers each ordered their own certificate in parallel; the apex one (Matrix
+# federation delegation, host = <domain>) used the same
+# _acme-challenge.<domain> TXT name as the wildcard order, and its cleanup
+# deleted the wildcard's challenge values — the wildcard order then waited
+# forever. LiveKit's TURN cert-sync and Mailu read this exact certificate. The
+# author's install never hit it: its wildcard predated the delegation Ingress.
+# Before that, it was declared only on Uptime Kuma's status page, optional, so
+# an install without Uptime Kuma never had one at all.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
