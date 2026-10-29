@@ -1,8 +1,8 @@
 # Immich runs plain HTTP (myown-immich.local:8090) today, no existing TLS
 # Ingress to conflict with — still a separate raw Ingress rather than
 # adding tls to the chart's own values, for consistency with every other
-# service in this generalization pass. Reuses the wildcard cert already
-# obtained via the Uptime Kuma canary, no new ACME request needed.
+# service in this generalization pass. Reuses the wildcard cert declared
+# on the authentik-public Ingress, no new ACME request needed.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

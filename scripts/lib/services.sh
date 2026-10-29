@@ -68,14 +68,22 @@ declare -A SVC_BOX_NEVER=(
   [jellyfin]="8096/tcp (téléviseurs Android, réservé au réseau local)"
 )
 
-# Réglage commun dès qu'un vrai domaine est utilisé (MYOWN_DOMAIN_SETUP=1).
-MYOWN_BOX_DOMAIN="443/tcp (tous les services web) + réservation DHCP pour que la machine MyOwn garde toujours la même adresse"
+# Niveaux réseau (installation-utilisateur.md) : `lan` (B, domaine et vrais
+# certificats, rien d'ouvert vers internet) ou `internet` (C, B + services
+# joignables partout). Pas de niveau sans domaine : un domaine est toujours
+# requis (abandonné le 2026-10-29, voir le design).
+#
+# Réglages communs selon le niveau, affichés à l'installation.
+MYOWN_BOX_INTERNET="443/tcp (tous les services web)"
+MYOWN_BOX_COMMON="réservation DHCP pour que la machine MyOwn garde toujours la même adresse"
 
-# Services inutilisables sans vrai domaine : leur certificat (TURN pour
-# LiveKit, IMAPS/SMTPS pour Mailu) est extrait du certificat Let's Encrypt de
-# Traefik par un CronJob (*-cert-sync). Sans domaine, ce certificat n'existe
-# jamais et leurs pods restent bloqués en ContainerCreating (vu en VM,
-# 2026-10-10). Valeur : le CronJob (kube-system) et le secret qu'il produit.
+# Services qui exigent le niveau C : recevoir du mail suppose d'être joignable
+# depuis internet.
+MYOWN_INTERNET_SERVICES=(mailu)
+
+# Services dont le certificat (TURN pour LiveKit, IMAPS/SMTPS pour Mailu) est
+# extrait du certificat Let's Encrypt de Traefik par un CronJob (*-cert-sync).
+# Valeur : le CronJob (kube-system) et le secret qu'il produit.
 declare -A SVC_CERT_SYNC=(
   [livekit]="livekit-turn-cert-sync livekit/livekit-turn-tls"
   [mailu]="mailu-cert-sync mailu/mailu-certificates"
@@ -86,10 +94,10 @@ MYOWN_CORE_SERVICES=(authentik vaultwarden)
 # Proposés cochés sur une installation neuve (relance : l'état réel prime).
 MYOWN_DEFAULT_SERVICES=(tuwunel uptime-kuma)
 
-# Applications d'infrastructure, jamais proposées dans la liste : liées au
-# domaine réel, pas un service que la famille utilise. dyndns réécrit
-# les enregistrements DNS publics vers l'IP de la machine — ne doit JAMAIS
-# tourner sur une machine de test (détournerait le vrai domaine).
+# Applications d'infrastructure du niveau C, jamais proposées dans la liste.
+# dyndns réécrit les enregistrements DNS publics du domaine vers l'IP de la
+# machine — une machine de test doit donc toujours avoir son propre domaine
+# (ou sous-domaine), jamais celui d'une installation réelle.
 MYOWN_DOMAIN_APPS=(dyndns)
 
 # Applications d'infrastructure toujours déployées, quel que soit le choix
@@ -169,14 +177,15 @@ svc_resolve() {
   return 0
 }
 
-# Retire d'une sélection les services qui exigent un vrai domaine quand il
-# n'y en a pas, en l'expliquant. $1 : 1 si domaine. Entrée/sortie : services.
-svc_filter_domain() {
-  local domain="$1" s
+# Retire d'une sélection les services qui exigent le niveau C quand
+# l'installation est en B, en l'expliquant. $1 : niveau (lan|internet).
+# Entrée/sortie : services, un par ligne.
+svc_filter_exposure() {
+  local exposure="$1" s
   while read -r s; do
     [ -z "$s" ] && continue
-    if [ "$domain" != "1" ] && [ -n "${SVC_CERT_SYNC[$s]:-}" ]; then
-      echo "  -> ${SVC_LABEL[$s]%% —*} retiré : il ne peut pas démarrer sans vrai domaine (relancer avec MYOWN_DOMAIN_SETUP=1)" >&2
+    if [ "$exposure" != "internet" ] && printf '%s\n' "${MYOWN_INTERNET_SERVICES[@]}" | grep -qx "$s"; then
+      echo "  -> ${SVC_LABEL[$s]%% —*} retiré : il exige le niveau C, accessible depuis internet (MYOWN_EXPOSURE=internet)" >&2
       continue
     fi
     echo "$s"
@@ -247,19 +256,26 @@ svc_prompt() {
 }
 
 # Liste les réglages de box pour une sélection. $1 : services (un par ligne),
-# $2 : 1 si le vrai domaine est configuré. N'affiche rien s'il n'y a rien.
+# $2 : niveau (lan|internet). N'affiche rien s'il n'y a rien.
 svc_print_box() {
-  local wanted="$1" domain="$2" ip s lines="" never=""
+  local wanted="$1" exposure="$2" ip s lines="" never=""
   ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')"
-  [ "$domain" = "1" ] && lines="  - Accès depuis internet : $MYOWN_BOX_DOMAIN\n"
+  if [ "$exposure" = "internet" ]; then
+    lines="  - Accès depuis internet : $MYOWN_BOX_INTERNET\n"
+    for s in $wanted; do
+      [ -n "${SVC_BOX[$s]:-}" ] && lines="$lines  - ${SVC_LABEL[$s]%% —*} : ${SVC_BOX[$s]}\n"
+    done
+  fi
   for s in $wanted; do
-    [ -n "${SVC_BOX[$s]:-}" ] && lines="$lines  - ${SVC_LABEL[$s]%% —*} : ${SVC_BOX[$s]}\n"
     [ -n "${SVC_BOX_NEVER[$s]:-}" ] && never="$never  - ${SVC_LABEL[$s]%% —*} : ${SVC_BOX_NEVER[$s]}\n"
   done
+  echo -e "\033[1;33mÀ FAIRE SUR VOTRE BOX INTERNET\033[0m${ip:+ (adresse de cette machine : $ip)} :"
+  echo "  - $MYOWN_BOX_COMMON"
   if [ -n "$lines" ]; then
-    echo -e "\033[1;33mÀ FAIRE SUR VOTRE BOX INTERNET\033[0m (redirection de ports vers cette machine${ip:+, $ip}) :"
+    echo "  Redirections de ports vers cette machine :"
     echo -ne "$lines"
-    [ "$domain" = "1" ] || echo "  (Sans vrai domaine — MYOWN_DOMAIN_SETUP=1 — ces redirections ne servent pas encore.)"
+  else
+    echo "  - aucune redirection de port : niveau B, rien n'est ouvert vers internet"
   fi
   if [ -n "$never" ]; then
     echo -e "\033[1;33mÀ NE PAS rediriger sur la box\033[0m (réseau local uniquement) :"
@@ -335,7 +351,7 @@ svc_apply() {
   for s in $wanted; do echo "  + ${SVC_LABEL[$s]}"; done
   local added=""
   for s in $wanted; do grep -qx "$s" <<<"$installed" || added="$added $s"; done
-  [ -n "$added" ] && svc_print_box "$(tr ' ' '\n' <<<"$added")" "${MYOWN_DOMAIN_SETUP:-0}"
+  [ -n "$added" ] && svc_print_box "$(tr ' ' '\n' <<<"$added")" "${MYOWN_EXPOSURE_VALUE:-lan}"
   if [ -n "$removed" ]; then
     echo "Services qui seront ARRÊTÉS (données conservées, réactivables plus tard) :"
     for s in $removed; do echo "  - ${SVC_LABEL[$s]}"; done
@@ -346,13 +362,13 @@ svc_apply() {
     fi
   fi
 
-  # Valeurs `domain` (MYOWN_DOMAIN_VALUE, résolu par install.sh) et `apps`
+  # Valeurs `domain`, `exposure` (résolus par install.sh) et `apps`
   # du chart gitops/apps. Le même patch pose aussi le paramètre
   # `revision` (la révision suivie par root, substituée par ArgoCD) et retire
   # l'ancien filtre `directory` — ce qui migre au passage une installation
   # antérieure au chart (root en simple lecture de dossier).
   apps_json="[$(for a in $apps; do printf '"%s",' "$a"; done | sed 's/,$//')]"
-  kubectl patch application root -n argocd --type merge -p "{\"spec\":{\"source\":{\"directory\":null,\"helm\":{\"parameters\":[{\"name\":\"revision\",\"value\":\"\$ARGOCD_APP_SOURCE_TARGET_REVISION\"}],\"valuesObject\":{\"domain\":\"$MYOWN_DOMAIN_VALUE\",\"adminSourceRanges\":${MYOWN_ADMIN_RANGES_JSON:-[]},\"apps\":$apps_json}}}}}" >/dev/null
+  kubectl patch application root -n argocd --type merge -p "{\"spec\":{\"source\":{\"directory\":null,\"helm\":{\"parameters\":[{\"name\":\"revision\",\"value\":\"\$ARGOCD_APP_SOURCE_TARGET_REVISION\"}],\"valuesObject\":{\"domain\":\"$MYOWN_DOMAIN_VALUE\",\"exposure\":\"${MYOWN_EXPOSURE_VALUE:-lan}\",\"adminSourceRanges\":${MYOWN_ADMIN_RANGES_JSON:-[]},\"apps\":$apps_json}}}}}" >/dev/null
 
   for s in $removed; do
     for a in ${SVC_APPS[$s]}; do svc_remove_app "$a"; done

@@ -6,10 +6,15 @@
 # en local.
 revision: master
 
-# Domaine de l'installation (niveaux B/C) ou suffixe local (niveau A) —
-# voir docs/installation-utilisateur.md. Obligatoire, posé par l'installeur
-# dans les valeurs de root ; jamais de valeur par défaut ici.
+# Domaine de l'installation — voir docs/installation-utilisateur.md.
+# Obligatoire, posé par l'installeur dans les valeurs de root ; jamais de
+# valeur par défaut ici.
 domain: ""
+
+# Niveau réseau : `lan` (B, rien d'ouvert vers internet) ou `internet` (C).
+# Posé par l'installeur ; il décide aussi du DynDNS et des services qui
+# exigent C (Mailu). Lu par l'installeur à chaque relance.
+exposure: lan
 
 # Dépôt suivi par toutes les sources (celui du projet, ou un fork).
 repoURL: https://github.com/Pavliin/MyOwn.git

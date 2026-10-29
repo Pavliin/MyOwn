@@ -1,22 +1,20 @@
-# Authentik runs plain HTTP (myown-authentik.local:8090) today, no
-# existing TLS Ingress to conflict with. Separate raw Ingress for
-# consistency with the rest of this generalization pass. Reuses the
-# wildcard cert already obtained via the Uptime Kuma canary.
+# Authentik's only Ingress (single naming scheme, authentik.<domain>).
 #
-# DNS+cert reachability only: makes the login page itself load externally,
-# but every downstream service's SSO config (Vaultwarden `sso.authority`,
-# Nextcloud's `--discoveryuri`, each Authentik blueprint's
-# `redirect_uris`) still points at myown-<service>.local — a real SSO
-# login started from a public hostname will not complete end-to-end until
-# those are updated too. Deliberately out of scope here, same as the rest
-# of this generalization pass (DNS+cert layer only, not full external
-# functional validation per service).
+# Also the one Ingress that declares the wildcard certificate (<domain> +
+# *.<domain>): Traefik caches it in acme.json and reuses it for every other
+# router whose Host() falls under it, no further ACME request. It lives here
+# because Authentik is always installed — it used to sit on Uptime Kuma's
+# status page, optional, and LiveKit's TURN cert-sync (which reads this exact
+# certificate) would then never get one on an install without Uptime Kuma
+# (found 2026-10-29 preparing the B/C installer tests).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: authentik-public
   annotations:
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.tls.domains.0.main: {{ .Values.domain }}
+    traefik.ingress.kubernetes.io/router.tls.domains.0.sans: "*.{{ .Values.domain }}"
 spec:
   ingressClassName: traefik
   tls:
