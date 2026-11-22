@@ -88,6 +88,9 @@ if not public_info["StartupWizardCompleted"]:
             "PreferredMetadataLanguage": "fr",
         },
     ).raise_for_status()
+    # Jellyfin 10.11 : POST /Startup/User répond 404 tant que GET
+    # /Startup/User n'a pas créé l'utilisateur initial de l'assistant.
+    s.get(f"{BASE}/Startup/User").raise_for_status()
     s.post(f"{BASE}/Startup/User", json={"Name": ADMIN_USER, "Password": ADMIN_PASS}).raise_for_status()
     s.post(
         f"{BASE}/Startup/RemoteAccess",
