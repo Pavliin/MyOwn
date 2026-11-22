@@ -133,7 +133,7 @@ Chaque étape laisse l'installation de l'auteur fonctionnelle, et se vérifie pa
 2. Fournisseur DNS générique et DynDNS via ddns-updater.
 3. Secrets générés, sauvegarde des secrets, migration de l'installation de l'auteur hors de KSOPS (les secrets existants conservés, jamais régénérés), retrait des fichiers SOPS. *Génération, sortie de KSOPS et sauvegarde faites le 2026-10-27 (`notes-techniques.md`) ; le retrait des fichiers chiffrés attend une copie hors machine de la sauvegarde (pour l'installation de l'auteur, ces fichiers sont aujourd'hui la seule copie hors machine des secrets).*
 4. Niveaux B/C dans l'installeur (valeur `exposure`), validés en VM pour chaque niveau et pour le passage de l'un à l'autre. *Fait le 2026-10-29 ; second fournisseur DNS (deSEC) à tester quand ses inscriptions rouvriront.*
-5. Flow admin : groupe `myown-admins`, secrets rangés dans une organisation Vaultwarden, remise des clés (« Modèle de gestion des comptes admin » ci-dessous). *Design redéfini le 2026-11-22 ; quatre points à valider en VM avant de coder.*
+5. Flow admin : groupe `myown-admins`, secrets rangés dans une organisation Vaultwarden, remise des clés (« Modèle de gestion des comptes admin » ci-dessous). *Design redéfini le 2026-11-22, ses quatre points validés en VM le même jour (« Résultats des validations en VM » ci-dessous) ; reste à coder.*
 
 ## Modèle de gestion des comptes admin (redéfini le 2026-11-22, étape 5)
 
@@ -162,10 +162,8 @@ Chaque étape laisse l'installation de l'auteur fonctionnelle, et se vérifie pa
 | Application | Lien entre le groupe et les droits d'admin |
 |---|---|
 | Authentik | droits super-utilisateur du groupe |
-| Nextcloud | groupes transmis par `user_oidc` vers le groupe `admin` *(à valider)* |
-| Immich | champ de rôle de la connexion OAuth *(à valider)* |
-| Jellyfin | rôles admin du plugin SSO *(à valider)* |
-| Tuwunel, Mailu | pas de lien natif : `myown-admin sync` applique l'appartenance au groupe (commande d'admin Tuwunel, API Mailu déjà scriptée) |
+| Jellyfin | `AdminGroup` du plugin SSO, lu à chaque connexion : droits donnés **et retirés** sans autre geste |
+| Nextcloud, Immich, Tuwunel, Mailu | pas de lien utilisable : `myown-admin sync` applique l'appartenance au groupe (`occ group:adduser admin` pour Nextcloud, API d'admin pour Immich et Mailu, commande d'admin pour Tuwunel) |
 | ArgoCD, Grafana, `/admin` Vaultwarden | comptes techniques locaux, identifiants rangés dans le coffre |
 
 `akadmin` reste un compte de secours, pas l'identité courante : chaque admin a un compte Authentik **nominatif**.
@@ -176,7 +174,7 @@ Les secrets vont dans une **organisation** Vaultwarden « MyOwn — administrati
 
 Deux collections, pour pouvoir un jour donner à un co-admin les comptes d'admin sans lui ouvrir l'infrastructure :
 
-- **Administration** : `akadmin` Authentik, compte local Nextcloud, ArgoCD, Grafana, jeton `/admin` Vaultwarden, compte bootstrap Mailu, compte admin Immich ; mot de passe de la sauvegarde des secrets ; configurations WireGuard ; note « que faire si… » renvoyant au manuel d'admin.
+- **Administration** : `akadmin` Authentik, compte local Nextcloud, ArgoCD, Grafana, jeton `/admin` Vaultwarden, compte bootstrap Mailu, comptes admin techniques Immich et Jellyfin ; mot de passe de la sauvegarde des secrets ; configurations WireGuard ; note « que faire si… » renvoyant au manuel d'admin.
 - **Infrastructure** : identifiants du fournisseur DNS, configuration DynDNS, mots de passe des bases de données, secrets OIDC, mots de passe Restic de chaque service, jeton d'API Mailu.
 
 Chaque entrée porte sa date et le Secret Kubernetes d'origine (`namespace/nom`, clé). Les clés privées SSH restent sur l'appareil de l'admin, jamais dans le coffre.
@@ -187,7 +185,10 @@ Chaque entrée porte sa date et le Secret Kubernetes d'origine (`namespace/nom`,
 
 1. **Socle** (étapes 1 à 4), terminé par une **sauvegarde immédiate des secrets** au lieu d'attendre le passage nocturne.
 2. **Compte de l'admin** : l'installeur crée son utilisateur Authentik nominatif dans `myown-admins` et affiche un **lien de définition du mot de passe** (flow de récupération existant) — il ne connaît jamais ce mot de passe.
-3. **Places « premier arrivé » occupées par l'installeur**, avant d'afficher la moindre adresse : compte admin Immich créé par l'API avec l'e-mail de l'admin (la connexion SSO s'y rattache par l'e-mail) ; Tuwunel : premier compte inscrit par l'installeur, puis promotion de l'admin humain *(mécanisme à valider)*.
+3. **Places « premier arrivé » occupées par l'installeur**, avant d'afficher la moindre adresse, chacune par un **compte technique** et non par le compte personnel de l'admin (sinon la remise des clés pourrait laisser l'application sans admin) :
+   - Immich : compte admin technique créé par `POST /api/auth/admin-sign-up` — tant qu'il n'existe pas, Immich affiche son formulaire d'inscription d'admin à la place du bouton SSO ;
+   - Tuwunel : le bot (`@alertbot`) inscrit en premier, il devient admin et sert ensuite à promouvoir les humains ;
+   - Jellyfin : assistant de premier démarrage terminé par `scripts/jellyfin-sso-setup.py` (compte local technique, puis plugin SSO avec `AdminGroup` = `myown-admins`).
 4. **Étapes humaines**, que l'installeur attend en interrogeant les API (il affiche l'adresse à ouvrir, sans tenter d'ouvrir un navigateur — il tourne en général par SSH sur un serveur sans écran) : première connexion Authentik ; création du coffre Vaultwarden et de son mot de passe maître ; création de l'organisation et de ses deux collections.
 5. **Remplissage du coffre** : l'admin colle sa clé d'API et tape son mot de passe maître ; `bw` crée ou met à jour les entrées.
 6. **Vérification** : chaque entrée relue et comparée par empreinte au Secret du cluster, sans rien afficher ; puis sauvegarde immédiate de Vaultwarden.
@@ -208,12 +209,15 @@ Deux temps qui ne se chevauchent jamais :
 - **Jamais de suppression de compte**, seulement des désactivations ; le préparateur n'est retiré qu'après vérification complète de l'accès du propriétaire.
 - **Deux secrets seulement vivent hors du cluster** : le mot de passe maître Vaultwarden et le mot de passe de la sauvegarde des secrets. L'installeur rappelle de les noter sur papier.
 
-### À valider en VM avant de coder
+### Résultats des validations en VM (2026-11-22)
 
-1. Le groupe Authentik comme source des droits d'admin dans Nextcloud (`user_oidc`), Immich (rôle OAuth) et Jellyfin (plugin SSO).
-2. La désignation d'un admin dans Tuwunel (commande d'admin, ou réglage de configuration).
-3. Les invitations d'organisation Vaultwarden **sans serveur mail** configuré.
-4. La connexion de `bw` par clé d'API sur un Vaultwarden configuré en SSO, puis la création d'entrées dans une collection d'organisation.
+1. **Le groupe comme source des droits d'admin** : seul Jellyfin le permet.
+   - Jellyfin : plugin SSO avec `"AdminGroup": "myown-admins"`, lu dans le claim `groups` du scope `profile` — droits accordés à la connexion d'un membre, retirés à la connexion suivante après sa sortie du groupe.
+   - Nextcloud : `user_oidc` hache les identifiants de groupe comme ceux des utilisateurs (option `uniqueUid`, active ici) ; il crée un groupe au nom illisible et ne peut pas viser le groupe `admin` existant. Désactiver `uniqueUid` changerait les identifiants de tous les comptes existants. D'où `occ group:adduser admin <uid>`, l'identifiant étant retrouvé par l'e-mail.
+   - Immich : le rôle transmis par OAuth n'est appliqué qu'à la **création** du compte, jamais aux connexions suivantes. D'où l'API d'admin des utilisateurs. Une connexion SSO se rattache bien par l'e-mail à un compte déjà créé par l'API.
+2. **Tuwunel (v1.8.3)** : le premier compte inscrit est admin. `!admin users make-user-admin @u:<serveur>`, envoyé dans le salon d'admin, en promeut un autre. Aucune commande de retrait : `!admin users force-leave-room @u:<serveur> <salon d'admin>` le fait, l'appartenance à ce salon étant ce que Tuwunel vérifie (son niveau de pouvoir y reste, sans effet). Ne pas passer par `admin_execute` (variable `TUWUNEL_ADMIN_EXECUTE`) : une commande en échec y fait planter le serveur au démarrage.
+3. **Invitations Vaultwarden sans serveur mail** : un membre invité **avant** d'avoir un compte voit son invitation acceptée d'office à la création de son coffre ; il ne voit l'organisation qu'une fois **confirmé** par un propriétaire (menu du membre → « Confirmer », avec comparaison d'empreinte) — c'est la confirmation qui lui transmet la clé de l'organisation. `myown-admin transfert` affichera ce geste et attendra le statut « confirmé ».
+4. **`bw` par clé d'API sur Vaultwarden en SSO** : connexion par la clé **personnelle** (`client_id` en `user.…` ; la clé d'API de l'organisation, au même endroit des menus, ne marche pas), déverrouillage par le mot de passe maître, entrée créée dans la collection `Infrastructure`, relue à l'identique, supprimée. Demande **Vaultwarden 1.37.4 ou plus** : avant, `bw` 2026.9.0+ échoue au déverrouillage (upstream #7750) — image épinglée en 1.37.5 pour cette raison.
 
 ### Prototype `bw` validé (2026-08-15)
 
