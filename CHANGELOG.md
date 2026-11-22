@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.33](https://github.com/Pavliin/MyOwn/compare/v0.1.32...v0.1.33) (2026-11-22)
+
+### Correctifs
+
+* **jellyfin:** create the wizard user before setting it ([1223865](https://github.com/Pavliin/MyOwn/commit/12238652b4f69d5442bb07a4c6abb45e379309d3))
+* **vaultwarden:** pin image 1.37.5 for current Bitwarden clients ([466e752](https://github.com/Pavliin/MyOwn/commit/466e75221a835a11d4bbe5339afd0da5a0deb3b6))
+
+### Documentation
+
+* bring CLAUDE.md current state up to date (independent install step 4) ([e785630](https://github.com/Pavliin/MyOwn/commit/e7856309d257290935148cdfcff7d58a43b7f3cb))
+* **install:** record step 5 VM validation results ([45300a1](https://github.com/Pavliin/MyOwn/commit/45300a1e39f30f87d28e3bfd4c559e87423ad8f9))
+* **install:** step 5 admin model — myown-admins group, Vaultwarden organization, handover ([82a72bb](https://github.com/Pavliin/MyOwn/commit/82a72bb8c0fc4ed0bbe987c651a826f5cac1632d))
 ## [0.1.32](https://github.com/Pavliin/MyOwn/compare/v0.1.31...v0.1.32) (2026-10-29)
 
 ### Fonctionnalités
