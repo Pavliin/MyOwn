@@ -133,59 +133,91 @@ Chaque étape laisse l'installation de l'auteur fonctionnelle, et se vérifie pa
 2. Fournisseur DNS générique et DynDNS via ddns-updater.
 3. Secrets générés, sauvegarde des secrets, migration de l'installation de l'auteur hors de KSOPS (les secrets existants conservés, jamais régénérés), retrait des fichiers SOPS. *Génération, sortie de KSOPS et sauvegarde faites le 2026-10-27 (`notes-techniques.md`) ; le retrait des fichiers chiffrés attend une copie hors machine de la sauvegarde (pour l'installation de l'auteur, ces fichiers sont aujourd'hui la seule copie hors machine des secrets).*
 4. Niveaux B/C dans l'installeur (valeur `exposure`), validés en VM pour chaque niveau et pour le passage de l'un à l'autre. *Fait le 2026-10-29 ; second fournisseur DNS (deSEC) à tester quand ses inscriptions rouvriront.*
-5. Flow admin : les secrets générés rangés dans le coffre Vaultwarden.
+5. Flow admin : groupe `myown-admins`, secrets rangés dans une organisation Vaultwarden, remise des clés (« Modèle de gestion des comptes admin » ci-dessous). *Design redéfini le 2026-11-22 ; quatre points à valider en VM avant de coder.*
 
-## Modèle de gestion des comptes admin
+## Modèle de gestion des comptes admin (redéfini le 2026-11-22, étape 5)
 
-**Constat de départ** (état réel du projet, vérifié service par service) : trois mécanismes différents et non coordonnés aujourd'hui.
+**Constat de départ** (vérifié service par service ; la ligne Authentik reflète l'état après l'étape 3) : des mécanismes différents et non coordonnés.
 
 | Service | Mécanisme actuel |
 |---|---|
-| Authentik | Assistant de premier démarrage — quiconque le complète en premier |
-| ArgoCD / Grafana | Mot de passe auto-généré, récupérable via `kubectl` |
+| Authentik | Compte `akadmin` créé au démarrage depuis les secrets générés (`AUTHENTIK_BOOTSTRAP_PASSWORD`/`_EMAIL`) — plus d'assistant de premier démarrage |
+| ArgoCD / Grafana | Comptes techniques locaux, mot de passe dans un Secret du cluster |
 | Vaultwarden (`/admin`) | Jeton partagé (`ADMIN_TOKEN`), pas un compte |
-| Nextcloud | Compte local `admin` pré-défini dans le secret de déploiement |
-| Immich, Tuwunel | Premier compte inscrit devient admin ("premier arrivé, premier servi") |
-| Mailu | Compte bootstrap `admin@<domaine>` (secret de déploiement), totalement séparé de l'identité SSO — celle-ci n'obtient les droits admin qu'après une promotion manuelle |
+| Nextcloud | Compte local `admin` défini par les secrets générés ; l'identité SSO de l'admin n'a aucun droit |
+| Immich, Tuwunel | Premier compte inscrit devient admin (« premier arrivé, premier servi ») |
+| Mailu | Compte bootstrap `admin@<domaine>`, séparé de l'identité SSO — droits admin donnés après coup par `scripts/mailu-promote-admin.py` |
 
-**Problème identifié** : rien ne garantit que la bonne identité récupère les bons droits, et les secrets d'infrastructure (ArgoCD, Grafana, clé privée SOPS) ne sont accessibles qu'à l'opérateur technique (Robin) — pas à l'utilisateur final, propriétaire réel de sa solution. Contraire au principe fondamental du projet ("reprendre possession de ses données", `architecture.md` §1).
+**Exigences** (posées par l'utilisateur, 2026-11-22) :
 
-**Modèle cible retenu** : Authentik reste la seule source de vérité pour l'identité admin humaine. **Tous les secrets générés à l'installation (y compris les identifiants d'infrastructure) sont poussés dans le coffre Vaultwarden de l'utilisateur** — l'opérateur/installeur ne conserve aucune copie résiduelle après la mise en place. Argument de confiance direct pour l'ambition business long terme : "aucun accès caché après installation" devient vérifiable, pas une promesse sur parole.
+1. La personne qui installe est **le premier utilisateur et l'admin** de chaque application — personne ne peut passer devant elle.
+2. Elle peut n'être qu'un **préparateur**, qui remet ensuite **les clés du camion** (droits d'admin, secrets) à un futur propriétaire, sans garder d'accès résiduel.
+3. **Aucune donnée ne manque ni ne peut être perdue** pendant l'installation ou la remise des clés.
+4. **Le maximum de secrets est rangé dans le coffre**, pour que l'admin les retrouve même après de longs mois sans y toucher.
 
-### Séquencement
+### Principe : un groupe Authentik `myown-admins`
 
-Deux étapes ne peuvent **pas** être automatisées, par design de sécurité (pas une limite technique contournable) :
+Être admin de MyOwn, c'est être membre de ce groupe. Chaque application en déduit les droits d'admin ; remettre les clés revient à changer un membre de groupe, pas à retoucher chaque application.
 
-1. **Premier flow Authentik** (création de l'identité admin racine) — nécessite un humain devant le navigateur.
-2. **Création du mot de passe maître Vaultwarden** — chiffrement zero-knowledge, dérivé uniquement côté navigateur, jamais connu du serveur (déjà documenté dans `manuel-utilisateur.md`). Aucun installeur ne peut le générer à la place de l'utilisateur sans casser cette garantie.
+| Application | Lien entre le groupe et les droits d'admin |
+|---|---|
+| Authentik | droits super-utilisateur du groupe |
+| Nextcloud | groupes transmis par `user_oidc` vers le groupe `admin` *(à valider)* |
+| Immich | champ de rôle de la connexion OAuth *(à valider)* |
+| Jellyfin | rôles admin du plugin SSO *(à valider)* |
+| Tuwunel, Mailu | pas de lien natif : `myown-admin sync` applique l'appartenance au groupe (commande d'admin Tuwunel, API Mailu déjà scriptée) |
+| ArgoCD, Grafana, `/admin` Vaultwarden | comptes techniques locaux, identifiants rangés dans le coffre |
 
-Tout le reste s'automatise une fois ces deux étapes passées, dans la continuité de la même séquence :
+`akadmin` reste un compte de secours, pas l'identité courante : chaque admin a un compte Authentik **nominatif**.
 
-1. Une fois le coffre déverrouillé pour la première fois, l'installeur pousse directement les secrets déjà générés (jeton admin Vaultwarden lui-même, mot de passe admin Nextcloud, mots de passe ArgoCD/Grafana, **clé privée age SOPS** — actuellement uniquement sur la machine de dev de Robin, cf. risque documenté dans `CLAUDE.md`) comme entrées dans ce coffre, via l'API Vaultwarden/Bitwarden.
-2. Pour les services "premier arrivé = admin" (Immich, Tuwunel) : l'installeur se connecte automatiquement avec l'identité Authentik qui vient d'être créée, immédiatement après le déploiement de chaque service — avant que quiconque d'autre puisse y accéder.
+### Le coffre : une organisation Vaultwarden
 
-### Validé (2026-08-15)
+Les secrets vont dans une **organisation** Vaultwarden « MyOwn — administration », pas dans un coffre personnel : remettre les clés revient à inviter le nouveau propriétaire dans l'organisation puis à en sortir, sans export ni copie.
+
+Deux collections, pour pouvoir un jour donner à un co-admin les comptes d'admin sans lui ouvrir l'infrastructure :
+
+- **Administration** : `akadmin` Authentik, compte local Nextcloud, ArgoCD, Grafana, jeton `/admin` Vaultwarden, compte bootstrap Mailu, compte admin Immich ; mot de passe de la sauvegarde des secrets ; configurations WireGuard ; note « que faire si… » renvoyant au manuel d'admin.
+- **Infrastructure** : identifiants du fournisseur DNS, configuration DynDNS, mots de passe des bases de données, secrets OIDC, mots de passe Restic de chaque service, jeton d'API Mailu.
+
+Chaque entrée porte sa date et le Secret Kubernetes d'origine (`namespace/nom`, clé). Les clés privées SSH restent sur l'appareil de l'admin, jamais dans le coffre.
+
+**`bw`** est le client en ligne de commande officiel de Bitwarden, compatible Vaultwarden : il déverrouille le coffre avec le mot de passe maître, tapé par l'admin, et chiffre chaque entrée **avant** de l'envoyer — le serveur ne voit que du chiffré. Il tourne là où tourne l'installeur (en général le serveur, par SSH) ; la connexion se fait par la **clé d'API personnelle** de l'admin (la connexion SSO de `bw` ouvre un navigateur local, inutilisable par SSH), et la session ne vit qu'en mémoire, fermée en fin d'étape.
+
+### Déroulé de l'installation
+
+1. **Socle** (étapes 1 à 4), terminé par une **sauvegarde immédiate des secrets** au lieu d'attendre le passage nocturne.
+2. **Compte de l'admin** : l'installeur crée son utilisateur Authentik nominatif dans `myown-admins` et affiche un **lien de définition du mot de passe** (flow de récupération existant) — il ne connaît jamais ce mot de passe.
+3. **Places « premier arrivé » occupées par l'installeur**, avant d'afficher la moindre adresse : compte admin Immich créé par l'API avec l'e-mail de l'admin (la connexion SSO s'y rattache par l'e-mail) ; Tuwunel : premier compte inscrit par l'installeur, puis promotion de l'admin humain *(mécanisme à valider)*.
+4. **Étapes humaines**, que l'installeur attend en interrogeant les API (il affiche l'adresse à ouvrir, sans tenter d'ouvrir un navigateur — il tourne en général par SSH sur un serveur sans écran) : première connexion Authentik ; création du coffre Vaultwarden et de son mot de passe maître ; création de l'organisation et de ses deux collections.
+5. **Remplissage du coffre** : l'admin colle sa clé d'API et tape son mot de passe maître ; `bw` crée ou met à jour les entrées.
+6. **Vérification** : chaque entrée relue et comparée par empreinte au Secret du cluster, sans rien afficher ; puis sauvegarde immédiate de Vaultwarden.
+7. **Premières connexions** de l'admin aux services, puis `myown-admin sync`, qui vérifie qu'il est admin partout et corrige ce qui manque.
+
+### Remise des clés (`myown-admin transfert`)
+
+Deux temps qui ne se chevauchent jamais :
+
+1. **Ajout** : le futur propriétaire est créé dans `myown-admins`, définit son mot de passe par un lien, crée son coffre, est invité et confirmé dans l'organisation. La commande vérifie qu'il est admin dans chaque application et qu'il voit les entrées.
+2. **Retrait**, seulement après confirmation explicite du premier temps : le préparateur sort du groupe et de l'organisation ; son compte Authentik est **désactivé, pas supprimé** ; ses clés SSH et pairs WireGuard sont retirés ; les identifiants d'admin qu'il a pu voir sont **régénérés** (ArgoCD, Grafana, `akadmin`, jeton Vaultwarden, compte local Nextcloud, compte bootstrap Mailu, mot de passe de la sauvegarde des secrets) puis le coffre est mis à jour. Les secrets internes (bases de données, OIDC) ne sont pas régénérés : ils ne servent qu'avec un accès à la machine, qui vient d'être retiré. C'est ce qui rend vérifiable « aucun accès résiduel ».
+
+### Garanties contre la perte de données
+
+- **Le cluster reste la source de vérité, le coffre en est une copie** : un coffre perdu ou un mot de passe maître oublié se reconstruit par un nouveau remplissage. Le remplissage est donc rejouable, et rejoué après chaque rotation ou nouveau service.
+- **Reprise sur coupure** : un marqueur sans secret dans le cluster retient les étapes faites ; une relance reprend où elle s'était arrêtée. Rien de généré n'est jamais écrasé (déjà le cas depuis l'étape 3).
+- **Sauvegarde avant chaque étape à risque** : après la génération des secrets, après le remplissage du coffre, avant les régénérations d'un transfert.
+- **Jamais de suppression de compte**, seulement des désactivations ; le préparateur n'est retiré qu'après vérification complète de l'accès du propriétaire.
+- **Deux secrets seulement vivent hors du cluster** : le mot de passe maître Vaultwarden et le mot de passe de la sauvegarde des secrets. L'installeur rappelle de les noter sur papier.
+
+### À valider en VM avant de coder
+
+1. Le groupe Authentik comme source des droits d'admin dans Nextcloud (`user_oidc`), Immich (rôle OAuth) et Jellyfin (plugin SSO).
+2. La désignation d'un admin dans Tuwunel (commande d'admin, ou réglage de configuration).
+3. Les invitations d'organisation Vaultwarden **sans serveur mail** configuré.
+4. La connexion de `bw` par clé d'API sur un Vaultwarden configuré en SSO, puis la création d'entrées dans une collection d'organisation.
+
+### Prototype `bw` validé (2026-08-15)
 
 **Création programmatique d'entrées Vaultwarden via API juste après un premier login** — prototypé et confirmé en conditions réelles contre un compte de test jetable (créé manuellement par l'utilisateur, la définition du mot de passe maître restant l'étape humaine incompressible identifiée plus haut), via le CLI officiel `bw` (installé en local dans un dossier de travail, pas globalement — évite le besoin de droits admin sur la machine, cohérent avec ce que ferait un vrai installeur). Deux types d'entrées testés avec succès : note sécurisée et identifiant complet (utilisateur/mot de passe/URL, le cas réel pour ArgoCD/Grafana). Propriété de sécurité vérifiée en plus du simple succès de l'opération : interrogation directe de l'API Vaultwarden (`GET /api/ciphers`, hors `bw`) pour confirmer que le serveur ne stocke que du chiffré (format `CipherString` Bitwarden `type.iv|ciphertext|mac`) — aucun mot de passe en clair, y compris dans la réponse API brute. Items de test supprimés et session fermée après validation.
-
-### Pas encore intégré à `scripts/install.sh` (2026-08-15, toujours vrai au 2026-10-10)
-
-Le mécanisme ci-dessus (push des secrets, auto-enregistrement admin sur Immich/Tuwunel) est validé isolément mais **jamais branché au script d'installation réel**. `scripts/install.sh` installe désormais le vrai k3s bare-metal avec choix des services (2026-10-10), mais s'arrête toujours après le bootstrap GitOps — il ne pilote ni le flow Authentik, ni la création du coffre Vaultwarden, ni le push de secrets qui devrait suivre.
-
-**Risque de séquencement identifié en réfléchissant à l'intégration** : l'étape de bootstrap GitOps (déjà dans le script) déploie tous les services d'un coup, y compris Immich et Tuwunel dont l'admin se décide au "premier arrivé, premier servi" — donc dans l'ordre actuel du script, ces deux services sont exposés et vulnérables à cette course **avant même** que l'admin ait fini son propre flow Authentik. Un vrai script d'installation doit soit retarder l'exposition de ces services jusqu'à ce que l'admin Authentik existe, soit accepter cette fenêtre de risque comme acceptable en LAN fermé (à trancher explicitement, pas par défaut).
-
-**Problème de cadencement plus large** : le script ne peut aujourd'hui ni savoir quand l'admin a fini le flow Authentik dans son navigateur, ni quand le coffre Vaultwarden est déverrouillé pour la première fois — ces deux étapes sont humaines et se passent dans un navigateur totalement découplé du script shell. Deux pistes possibles pour synchroniser script et navigateur :
-
-- **Poll + ouverture automatique du navigateur par défaut** (léger, dans l'esprit "un seul artefact à lancer" déjà retenu) : le script ouvre l'URL Authentik (`xdg-open`/`open`), interroge périodiquement l'API Authentik pour détecter qu'un compte admin existe désormais, puis ouvre automatiquement l'URL Vaultwarden, interroge son API pour détecter la création du compte/déverrouillage, et ne déclenche le push de secrets qu'une fois ces deux signaux confirmés — même mécanisme de principe que le polling déjà utilisé pour détecter la confirmation humaine dans le pipeline mail (`notes-techniques.md`).
-- **IHM graphique avec navigateur intégré** (proposée par l'utilisateur, 2026-08-15) : un vrai installeur graphique embarquant/capturant une fenêtre de navigateur pour afficher Authentik puis Vaultwarden à l'intérieur de sa propre IHM, garantissant visuellement le bon ordre. Plus robuste sur le cadencement (l'admin ne peut pas ouvrir les deux onglets dans le désordre), mais un saut d'investissement bien plus lourd : framework GUI + composant webview (type Tauri, plus léger qu'Electron mais toujours un moteur de rendu web à embarquer), packaging multi-plateforme — cohérent avec ce que `installation-utilisateur.md` qualifiait déjà plus haut de "palier 3", explicitement mis de côté "une fois une vraie demande palier 3 validée en usage réel — pas un point de départ".
-
-**Recommandation retenue pour l'instant** : partir sur poll + ouverture automatique du navigateur pour boucler `install.sh` de bout en bout au palier 2 actuel — ça résout le vrai problème (empêcher l'admin de faire les choses dans le désordre, ou du moins le détecter et attendre) sans changer de nature d'outil. L'IHM à navigateur intégré reste la bonne évolution palier 3, à reprendre si l'usage réel avec des utilisateurs non-techos montre que le polling en ligne de commande est insuffisant ou trop anxiogène pour eux.
-
-### À valider techniquement avant implémentation
-
-- Mapping groupe Authentik → groupe admin Nextcloud via `user_oidc` (piste pour remplacer le compte local `admin` par une identité SSO à terme — pas encore implémenté, le compte local resterait alors un filet de secours plutôt que l'identité admin courante).
-- **Promotion automatique de l'identité SSO en admin Mailu** : Mailu expose une vraie API REST pour ça (`PATCH /api/v1/user/<email>` avec `{"global_admin": true}`), protégée par un jeton (`API_TOKEN`, désactivé par défaut — à générer comme secret SOPS). Un script dans l'esprit de `scripts/jellyfin-sso-setup.py`/`scripts/authentik-outpost-config.sh` attendrait que le compte SSO cible existe réellement (auto-provisionné par `proxyAuth` à sa première connexion) avant d'appeler cette API — évite le contournement actuel (port-forward direct vers `mailu-admin`, connexion avec le compte bootstrap `admin@<domaine>`, promotion manuelle via l'UI). Existe aussi une commande CLI (`flask mailu admin`) côté conteneur, mais elle est pensée pour créer/mettre à jour un compte (exige un mot de passe en argument) — pas adaptée pour ne toucher que `global_admin` sur un compte existant sans effet de bord sur son mot de passe.
-- Intégration du push de secrets et de l'auto-enregistrement admin (Immich/Tuwunel) dans `scripts/install.sh`, avec le mécanisme de cadencement (poll + navigateur) décrit ci-dessus.
 
 ## Onboarding / dashboard familial — fusionnés
 
