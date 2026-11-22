@@ -17,6 +17,12 @@ spec:
           # callback/redirect URLs. Reachable from LAN too, post
           # split-horizon DNS (gitops/bootstrap/coredns-custom.yaml).
           domain: "https://vaultwarden.{{ include "myown.domain" . }}"
+          # Image épinglée au-dessus du défaut du chart (1.37.1) : les clients
+          # Bitwarden 2026.8.0+ exigent 1.37.2+, et `bw` 2026.9.0+ appelle
+          # POST /api/accounts/key-management/user-key-id, absent avant 1.37.4
+          # (404 puis plantage au déverrouillage, upstream #7750).
+          image:
+            tag: "1.37.5-alpine"
           adminToken:
             existingSecret: vaultwarden-secrets
             existingSecretKey: ADMIN_TOKEN

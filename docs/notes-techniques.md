@@ -14,7 +14,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | Uptime Kuma (chart `dirsigler/uptime-kuma-helm`) | chart 4.1.0, app 2.3.0 |
 | Authentik | chart/app 2026.5.6 |
 | PostgreSQL (Authentik, via sous-chart Bitnami) | 17.10-bookworm |
-| Vaultwarden (chart `guerzon/vaultwarden`) | chart 0.46.0, app 1.37.1 |
+| Vaultwarden (chart `guerzon/vaultwarden`) | chart 0.46.0, app 1.37.5 (image épinglée, le chart fournit 1.37.1) |
 | Restic (image `restic/restic`) | 0.19.1 |
 | Nextcloud (chart officiel `nextcloud/helm`) | chart 9.2.5, app 34.0.2 |
 | PostgreSQL (Nextcloud, via sous-chart Bitnami) | 17.5.0 |
@@ -1363,3 +1363,15 @@ Reste chiffré à ce stade (étape 3b et suivantes) : les Secrets de valeurs sim
 **Validé au retour en B** : « Changement de niveau : internet → lan », Application `dyndns` et ses pods supprimés, `exposure: lan` dans `root`. Les enregistrements publics déjà écrits restent chez le fournisseur (comportement voulu, documenté).
 
 **Non testé** : un second fournisseur DNS. deSEC (sous-domaine gratuit `dedyn.io`) était prévu, mais deSEC a suspendu la création de ces sous-domaines le jour du test. Le code ne contient aucun nom de fournisseur (lego et ddns-updater pris tels quels), mais seul Gandi a été réellement exercé.
+
+## Flow admin : quatre points du design validés en VM — étape 5 (2026-11-22)
+
+Avant de coder l'étape 5 (design dans `installation-utilisateur.md`, « Modèle de gestion des comptes admin »), quatre mécanismes vérifiés sur une installation neuve en niveau B. Résultats détaillés dans `installation-utilisateur.md` (« Résultats des validations en VM ») ; ici, ce qui n'a pas marché comme prévu.
+
+- **Vaultwarden 1.37.1 trop ancien pour `bw`** : `bw` 2026.10.1 se connecte par clé d'API puis plante au déverrouillage (`KeyIdBackfillError`) — il appelle `POST /api/accounts/key-management/user-key-id`, que Vaultwarden n'implémente qu'à partir de 1.37.4 (upstream #7750, corrigé par #7693). 1.37.1 est le défaut du chart 0.46.0 ; les notes de 1.37.2 le déclarent déjà obligatoire pour les clients Bitwarden 2026.8.0+. Image épinglée en `1.37.5-alpine`. L'avertissement `UserKeyIdBackfillMigration … User key is not available in key store` affiché ensuite à la connexion est sans conséquence.
+- **Clé d'API de l'organisation prise pour la clé personnelle** : les deux s'affichent dans des menus voisins ; `bw login --apikey` n'accepte que la personnelle (`client_id` en `user.…`). Avec l'autre, le script ne va pas plus loin que `GET /api/config`.
+- **Invitation Vaultwarden sans mail** : « renvoyer l'invitation » est grisé et le membre est marqué « confirmation nécessaire » — c'est le fonctionnement normal (statut 1 « accepté » en base, acceptation automatique à la création du coffre) ; rien n'est visible côté invité tant qu'un propriétaire ne l'a pas confirmé.
+- **Nextcloud : groupes hachés par `user_oidc`** : avec le provisionnement de groupes activé, `LocalIdService::getId` applique aux groupes le même hachage qu'aux utilisateurs quand `uniqueUid` vaut 1 (sha256 de `<providerId>_0_<gid>`) — un groupe au nom illisible est créé au lieu de rejoindre `admin`. Réglage annulé, groupe supprimé.
+- **Immich : rôle OAuth lu une seule fois** : le claim de rôle n'est appliqué que dans `createUser` (`auth.service.js`) ; un compte existant garde son rôle quelle que soit la valeur du claim. Tant qu'aucun admin n'existe, Immich n'affiche pas le bouton SSO mais son formulaire d'inscription d'admin ; `POST /api/auth/admin-sign-up` le remplace.
+- **Tuwunel : pas de retrait de droits, `admin_execute` dangereux** : v1.8.3 n'a pas de `revoke-admin` ; `user_is_admin` teste seulement l'appartenance au salon d'admin, donc `force-leave-room` sur ce salon retire les droits. Une commande inconnue ou en échec passée par `TUWUNEL_ADMIN_EXECUTE` met le pod en `CrashLoopBackOff` jusqu'au retrait de la variable.
+- **`scripts/jellyfin-sso-setup.py` en 404 sur Jellyfin 10.11** : `POST /Startup/User` répond 404 tant qu'un `GET /Startup/User` n'a pas créé l'utilisateur initial de l'assistant. `GET` ajouté avant le `POST`.
