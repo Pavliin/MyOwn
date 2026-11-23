@@ -14,6 +14,7 @@ secrets:
   - monitoring/monitoring-secrets
   - tuwunel/tuwunel-secrets
   - tuwunel/tuwunel-config-secrets
+  - tuwunel/tuwunel-bot
   # Hors catalogue mais créés par l'installeur : identifiants du fournisseur
   # DNS et configuration DynDNS (manuel-installation.md §16).
   - kube-system/dns-provider-credentials

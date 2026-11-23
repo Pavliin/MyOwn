@@ -163,7 +163,10 @@ CATALOG = {
             ("DB_USERNAME", const("immich")),
             ("DB_PASSWORD", hexa),
             ("RESTIC_PASSWORD", rand),
-            ("ADMIN_EMAIL", admin_email),
+            # Compte admin TECHNIQUE (scripts/myown-admin.py init), pas celui de la
+            # personne : la connexion SSO d'Immich se rattache par l'e-mail, et la
+            # remise des clés ne doit pas pouvoir laisser Immich sans admin.
+            ("ADMIN_EMAIL", lambda ctx, _vals: f"immich-admin@{ctx.domain}"),
             ("ADMIN_PASSWORD", rand),
         ]),
         # Configuration OAuth partielle d'Immich (IMMICH_CONFIG_FILE) : contient
@@ -202,6 +205,12 @@ CATALOG = {
         ("tuwunel", "tuwunel-config-secrets", [
             ("registration_token", rand),
             ("client_secret", rand),
+        ]),
+        # Bot de MyOwn : premier compte inscrit, donc admin du serveur Matrix ;
+        # promeut les admins humains (scripts/myown-admin.py).
+        ("tuwunel", "tuwunel-bot", [
+            ("username", const("alertbot")),
+            ("password", rand),
         ]),
     ],
 }
