@@ -49,6 +49,7 @@
 set -euo pipefail
 
 CONTAINER_NAME="pihole-myown"
+# renovate: datasource=docker depName=pihole/pihole
 IMAGE_TAG="${MYOWN_PIHOLE_IMAGE_TAG:-2026.07.2}"
 WEB_PORT="${MYOWN_PIHOLE_WEB_PORT:-8081}"
 DATA_DIR="${MYOWN_PIHOLE_DATA_DIR:-/opt/myown-pihole/etc-pihole}"

@@ -384,3 +384,15 @@ kubectl get secret secrets-backup -n myown-backup -o jsonpath='{.data.RESTIC_PAS
 - **Contenu du dernier snapshot** : `scripts/secrets-restore.sh --list` (noms et nombre de clés, jamais de valeur).
 - **Restaurer un Secret** supprimé ou abîmé : `scripts/secrets-restore.sh <namespace>/<nom>` (plusieurs possibles, `SNAPSHOT=<id>` pour un autre que le dernier). Les valeurs passent d'un pod jetable directement à `kubectl apply`, sans être affichées ni écrites sur disque. Redémarrer ensuite le service concerné pour qu'il relise ses variables.
 - **Limite actuelle** : le dépôt de sauvegarde est sur le même disque que le cluster, comme celui des autres services. Il protège d'une erreur de manipulation ou d'une réinstallation du cluster, **pas de la perte du disque** : la copie hors machine (« nœud ami ») reste à faire.
+
+## Mises à jour des briques
+
+**Renovate** (GitHub App, configuration `renovate.json`) ouvre, chaque lundi avant 9 h, une PR par nouvelle version détectée. Rien n'est fusionné automatiquement. Ce qu'il suit :
+
+- les charts Helm des Applications (`gitops/apps/templates/`) ;
+- les images des manifestes (`gitops/manifests/`, `gitops/bootstrap/`) ;
+- les tags d'image fixés dans les valeurs Helm et les versions des scripts (k3s, ArgoCD, Pi-hole), repérés par un commentaire `# renovate: datasource=… depName=…` juste au-dessus. Le contrôle CI `renovate` (`scripts/check-renovate-coverage.py`) refuse une source `chart:` ou un `tag:` de template qu'il ne verrait pas.
+
+Les montées majeures de Postgres sont désactivées (la version suit celle du serveur). Les commits sont en `fix(deps): …` : ils apparaissent dans le CHANGELOG et déclenchent une version de correctif à la release. Vue d'ensemble dans l'issue « Tableau de bord des mises à jour (Renovate) ».
+
+Fusionner une PR la déploie sur le cluster de dev (qui suit `master`) ; la production ne bouge qu'à la release suivante, après validation (`CLAUDE.md`, section Releases). Une PR qui modifie `scripts/install.sh` (k3s, ArgoCD) ne met pas à jour le mini PC : elle change la version d'une installation neuve, la montée de la production reste à faire à la main.
