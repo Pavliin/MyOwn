@@ -16,6 +16,12 @@ spec:
           hostnames:
             - mailu.{{ include "myown.domain" . }}
           timezone: Europe/Paris
+          # Tag of every ghcr.io/mailu/* image, ahead of the chart's own
+          # appVersion: Mailu ships security fixes (Roundcube, PHP) as
+          # 2024.06.x patch releases far more often than the chart is
+          # republished — chart 2.8.0 still defaults to 2024.06.58.
+          # renovate: datasource=docker depName=ghcr.io/mailu/admin versioning=regex:^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$
+          mailuVersion: "2024.06.72"
           existingSecret: mailu-secrets
           initialAccount:
             enabled: true
@@ -200,26 +206,6 @@ spec:
             # different header name, not just different casing.
             header: "X-authentik-email"
             create: "true"
-          # Real bug found live (2026-08-24): rcmcarddav (Roundcube's
-          # CardDAV plugin, already in roundcubePlugins by default) failed
-          # every "add address book" attempt against Nextcloud with a bare
-          # "Erreur de serveur" — traced via nginx/php-fpm logs to the
-          # image's own baked-in Snuffleupagus hardening dropping guzzle's
-          # curl_setopt(CURLOPT_SSL_VERIFYPEER/HOST, ...) call outright,
-          # even though it was *enabling* verification, not disabling it
-          # (the rule matches on the option constant alone, not the value).
-          # Full corrected copy of the template mounted over the image's
-          # own, see gitops/manifests/mailu-webmail-carddav-fix/ for the
-          # exact two lines added and why.
-          webmail:
-            extraVolumes:
-              - name: snuffleupagus-carddav-fix
-                configMap:
-                  name: mailu-webmail-snuffleupagus-rules
-            extraVolumeMounts:
-              - name: snuffleupagus-carddav-fix
-                mountPath: /etc/snuffleupagus.rules.tpl
-                subPath: snuffleupagus.rules.tpl
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-public
@@ -235,9 +221,6 @@ spec:
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-backup
-    - repoURL: {{ .Values.repoURL }}
-      targetRevision: {{ .Values.revision }}
-      path: gitops/manifests/mailu-webmail-carddav-fix
   destination:
     server: https://kubernetes.default.svc
     namespace: mailu

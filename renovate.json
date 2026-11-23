@@ -1,0 +1,91 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits"
+  ],
+  "semanticCommitType": "fix",
+  "semanticCommitScope": "deps",
+  "description": "Détection des nouvelles versions des briques de MyOwn : Renovate ouvre une PR par version, rien n'est fusionné automatiquement. Voir docs/manuel-admin.md, section « Mises à jour des briques ».",
+  "timezone": "Europe/Paris",
+  "schedule": [
+    "before 9am on monday"
+  ],
+  "platformCommit": "enabled",
+  "automerge": false,
+  "prConcurrentLimit": 15,
+  "prHourlyLimit": 0,
+  "labels": [
+    "dependencies"
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Tableau de bord des mises à jour (Renovate)",
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/^gitops/manifests/.+\\.ya?ml$/",
+      "/^gitops/bootstrap/.+\\.ya?ml$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Charts Helm upstream des Applications ArgoCD (templates Helm, illisibles par le manager argocd natif à cause des balises {{ }}).",
+      "managerFilePatterns": [
+        "/^gitops/apps/templates/.+\\.yaml$/"
+      ],
+      "matchStrings": [
+        "repoURL: (?<registryUrl>https?://\\S+?)/?\\s+chart: (?<depName>\\S+)\\s+targetRevision: \"?(?<currentValue>[^\"\\s]+)\"?"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "customType": "regex",
+      "description": "Versions annotées d'un commentaire « # renovate: datasource=… depName=… » (tags d'image dans les valeurs Helm, versions dans les scripts).",
+      "managerFilePatterns": [
+        "/^gitops/apps/templates/.+\\.yaml$/",
+        "/^scripts/.+\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s*\\n[^\\n]*?[:=]\\s*\"?(?:\\$\\{[A-Z0-9_]+:-)?(?<currentValue>[A-Za-z0-9.+_-]+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Restic est utilisé par tous les CronJobs de sauvegarde : une seule PR pour toutes les occurrences.",
+      "matchPackageNames": [
+        "restic/restic"
+      ],
+      "groupName": "restic"
+    },
+    {
+      "description": "Images Postgres des pg_dump et de la base Immich : la version majeure suit celle du serveur, jamais montée seule.",
+      "matchPackageNames": [
+        "postgres",
+        "ghcr.io/immich-app/postgres"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Images utilitaires des CronJobs (cert-sync, sauvegarde des secrets) : regroupées, faible enjeu.",
+      "matchPackageNames": [
+        "alpine/k8s",
+        "curlimages/curl",
+        "busybox"
+      ],
+      "groupName": "images utilitaires"
+    },
+    {
+      "description": "Montées majeures : PR séparée, étiquetée, à lire attentivement.",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "addLabels": [
+        "major"
+      ]
+    }
+  ]
+}

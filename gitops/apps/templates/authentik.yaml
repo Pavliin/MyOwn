@@ -12,6 +12,17 @@ spec:
       targetRevision: 2026.5.6
       helm:
         valuesObject:
+          global:
+            image:
+              # Image surchargée : le dépôt Helm s'arrête au chart 2026.5.6 pour
+              # la branche 2026.5, alors que 2026.5.7 corrige 5 CVE hautes
+              # (GHSA-cxwx-9x59-28qm, -m9h4-7j9c-55x9, -cqj8-fxxf-9pg7,
+              # -h6c5-mpvq-j4jc, -qgqp-xh8r-v73r) et 2026.5.8 est la dernière
+              # de la branche (correctifs seuls, pas de migration annoncée).
+              # À retirer dès que targetRevision passe à un chart ≥ 2026.5.8
+              # (ou 2026.8.x), sinon l'image resterait figée ici.
+              # renovate: datasource=docker depName=ghcr.io/goauthentik/server
+              tag: 2026.5.8
           authentik:
             existingSecret:
               secretName: authentik-secrets
