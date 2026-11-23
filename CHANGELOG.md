@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.34](https://github.com/Pavliin/MyOwn/compare/v0.1.33...v0.1.34) (2026-11-23)
+
+### Correctifs
+
+* **deps:** bump Authentik image to 2026.5.8 ([04e543a](https://github.com/Pavliin/MyOwn/commit/04e543a5a781b33bbb6ab873b7241806a55ff2c1))
+* **mailu:** bump images to 2024.06.72 for Roundcube security fixes ([d99aa1a](https://github.com/Pavliin/MyOwn/commit/d99aa1ae9a9e072012c218c5923a53b0f45637aa))
+
+### Documentation
+
+* **mailu:** document the 2024.06.72 upgrade and dropped override ([ce23548](https://github.com/Pavliin/MyOwn/commit/ce2354882fc754848fa7ae5b9a39d41f3607217f))
 ## [0.1.33](https://github.com/Pavliin/MyOwn/compare/v0.1.32...v0.1.33) (2026-11-22)
 
 ### Correctifs
