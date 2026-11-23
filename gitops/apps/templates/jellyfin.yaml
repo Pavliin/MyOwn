@@ -22,6 +22,7 @@ spec:
           # explicitly rather than relying on the chart default, same
           # pattern as LiveKit's image.tag pin.
           image:
+            # renovate: datasource=docker depName=jellyfin/jellyfin
             tag: "10.11.11"
           # Real bug hit live: crash on startup with "System.IO.IOException:
           # The configured user limit (128) on the number of inotify

@@ -41,3 +41,11 @@ jobs:
       - run: python3 scripts/check-sops-files.py
       # Tout Secret généré (scripts/lib/cluster-secrets.py) doit être dans la sauvegarde.
       - run: python3 scripts/lib/cluster-secrets.py check-backup
+
+  renovate:
+    # Les templates Helm de gitops/apps/ sont suivis par regex (renovate.json) :
+    # refuse toute version épinglée que Renovate ne verrait pas.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-renovate-coverage.py
