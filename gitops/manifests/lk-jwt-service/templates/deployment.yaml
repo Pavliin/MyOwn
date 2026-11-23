@@ -14,7 +14,12 @@ spec:
     spec:
       containers:
         - name: lk-jwt-service
-          image: ghcr.io/element-hq/lk-jwt-service:latest
+          # Version épinglée (plus `latest`) : le projet publie des tags
+          # versionnés sur ghcr.io, et `latest` faisait changer le binaire
+          # en silence à chaque redémarrage du pod (cf. notes-techniques.md,
+          # réécriture Rust arrivée le 2026-09-17). 0.9.0 = digest qui tournait
+          # en production au moment de l'épinglage (sha256:d210fd77…).
+          image: ghcr.io/element-hq/lk-jwt-service:0.9.0
           env:
             # The public-facing URL, not the in-cluster Service DNS name —
             # this is echoed back to the browser client as where to open
