@@ -43,6 +43,7 @@
       "description": "Versions annotées d'un commentaire « # renovate: datasource=… depName=… » (tags d'image dans les valeurs Helm, versions dans les scripts).",
       "managerFilePatterns": [
         "/^gitops/apps/templates/.+\\.yaml$/",
+        "/^gitops/bootstrap/.+\\.ya?ml$/",
         "/^scripts/.+\\.sh$/"
       ],
       "matchStrings": [
