@@ -66,7 +66,9 @@ TARGET="${MYOWN_TARGET:-k3s}"
 case "$TARGET" in k3s|k3d) ;; *) echo "MYOWN_TARGET doit valoir k3s ou k3d" >&2; exit 1 ;; esac
 # Versions qui tournent réellement sur le mini PC (relevé du 2026-10-10) —
 # une réinstallation reproduit la production plutôt que « la dernière ».
+# renovate: datasource=github-releases depName=k3s-io/k3s versioning=regex:^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)\+k3s(?<build>\d+)$
 K3S_VERSION="${MYOWN_K3S_VERSION:-v1.36.3+k3s1}"
+# renovate: datasource=github-releases depName=argoproj/argo-cd
 ARGOCD_DEFAULT_VERSION="v3.5.1"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

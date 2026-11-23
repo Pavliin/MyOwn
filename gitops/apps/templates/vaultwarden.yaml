@@ -22,6 +22,7 @@ spec:
           # POST /api/accounts/key-management/user-key-id, absent avant 1.37.4
           # (404 puis plantage au déverrouillage, upstream #7750).
           image:
+            # renovate: datasource=docker depName=vaultwarden/server
             tag: "1.37.5-alpine"
           adminToken:
             existingSecret: vaultwarden-secrets
