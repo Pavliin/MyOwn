@@ -53,8 +53,10 @@
 #                           sur une installation neuve ; sur une relance, la
 #                           version en place n'est JAMAIS changée sans cette
 #                           variable (une mise à jour d'ArgoCD est un choix).
-#   MYOWN_ADMIN_EMAIL       e-mail de l'admin (compte initial d'Authentik et
-#                           d'Immich) : requis seulement pour créer ces secrets
+#   MYOWN_ADMIN_EMAIL       e-mail de l'admin : requis sur une installation neuve
+#                           (compte de secours akadmin, puis compte nominatif de
+#                           l'admin dans myown-admins) ; une relance reprend celui
+#                           d'akadmin
 #   (k3s : l'installeur règle aussi les limites inotify du noyau et les
 #   résolveurs DNS du cluster — voir les étapes correspondantes)
 #   k3d seulement : MYOWN_CLUSTER_NAME, MYOWN_PORT_443, MYOWN_PORT_LIVEKIT_WS, MYOWN_PORT_LIVEKIT_TCP,
@@ -444,6 +446,14 @@ if grep -qx jellyfin <<<"$WANTED"; then
   fi
 fi
 
+step "Compte de l'admin et places « premier arrivé »"
+# Compte Authentik nominatif dans myown-admins (lien de définition du mot de
+# passe affiché, jamais connu du script), puis comptes techniques aux places que
+# le premier visiteur prendrait sinon : admin Immich, premier compte Tuwunel,
+# assistant de Jellyfin (installation-utilisateur.md, étape 5). Rejouable.
+python3 scripts/myown-admin.py init ${MYOWN_ADMIN_EMAIL:+--email "$MYOWN_ADMIN_EMAIL"} \
+  || die "compte de l'admin : échec (voir ci-dessus) — relancer ce script une fois corrigé."
+
 step "Vérification"
 echo "Les Applications convergent en arrière-plan (plusieurs minutes au premier lancement) :"
 kubectl get applications -n argocd
@@ -455,6 +465,14 @@ Installation terminée.
   - Suivi : kubectl get applications -n argocd${KUBECONFIG:+   (KUBECONFIG=$KUBECONFIG)}
   - Ajouter ou arrêter un service plus tard : relancer ce script.
   - Usage de chaque service : docs/manuel-utilisateur.md
+
+ENSUITE, l'admin (docs/manuel-admin.md, « Comptes et droits d'admin ») :
+  1. ouvre le lien de définition du mot de passe affiché plus haut ;
+  2. se connecte une fois à chaque service (bouton Authentik) ;
+  3. crée son coffre Vaultwarden, l'organisation « MyOwn » et ses collections
+     Administration et Infrastructure ;
+  4. sur ce serveur : python3 scripts/myown-admin.py coffre
+     puis              python3 scripts/myown-admin.py sync --apply
 
 À FAIRE UNE FOIS : ranger hors de cette machine (coffre de mots de passe,
 papier) le mot de passe de la sauvegarde des secrets — sans lui, aucun
