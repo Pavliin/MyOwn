@@ -15,7 +15,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | Authentik | chart 2026.5.6, app 2026.5.8 (image surchargée : pas de chart publié pour 2026.5.7/2026.5.8) |
 | PostgreSQL (Authentik, via sous-chart Bitnami) | 17.10-bookworm |
 | Vaultwarden (chart `guerzon/vaultwarden`) | chart 0.46.0, app 1.37.5 (image épinglée, le chart fournit 1.37.1) |
-| Restic (image `restic/restic`) | 0.19.1 |
+| Restic (image `restic/restic`) | 0.20.0 |
 | Nextcloud (chart officiel `nextcloud/helm`) | chart 9.2.5, app 34.0.2 |
 | PostgreSQL (Nextcloud, via sous-chart Bitnami) | 17.5.0 |
 | Immich (chart officiel `immich/immich`) | chart 0.12.0, app v2.6.3 |
