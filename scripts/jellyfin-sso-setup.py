@@ -33,6 +33,7 @@ already installed, always re-applies the plugin configuration).
 
 import os
 import secrets
+import shlex
 import string
 import subprocess
 import sys
@@ -123,19 +124,20 @@ if plugin is None:
 
     info("Restarting the Jellyfin pod (Jellyfin's own /System/Restart doesn't"
          " actually cycle the container in this deployment)...")
+    kubectl = shlex.split(os.environ.get("KUBECTL", "kubectl"))
+    subprocess.run(kubectl + ["rollout", "restart", "deployment/jellyfin", "-n", "jellyfin"], check=True)
     subprocess.run(
-        ["kubectl", "rollout", "restart", "deployment/jellyfin", "-n", "jellyfin"],
-        check=True,
-    )
-    subprocess.run(
-        ["kubectl", "rollout", "status", "deployment/jellyfin", "-n", "jellyfin", "--timeout=120s"],
+        kubectl + ["rollout", "status", "deployment/jellyfin", "-n", "jellyfin", "--timeout=300s"],
         check=True,
     )
 
     info("Waiting for the plugin to report Active...")
-    for _ in range(30):
-        time.sleep(2)
-        plugins = s.get(f"{BASE}/Plugins").json()
+    for _ in range(60):
+        time.sleep(3)
+        try:
+            plugins = s.get(f"{BASE}/Plugins").json()
+        except (requests.RequestException, ValueError):
+            continue  # Jellyfin encore en démarrage après le redémarrage du pod
         plugin = next((p for p in plugins if p["Name"] == PLUGIN_NAME), None)
         if plugin and plugin["Status"] == "Active":
             break
@@ -158,7 +160,7 @@ s.post(
         "AuthentikUrl": AUTHENTIK_URL,
         "ClientId": SSO_CLIENT_ID,
         "ClientSecret": SSO_CLIENT_SECRET,
-        "AdminGroup": "jellyfin-admins",
+        "AdminGroup": "myown-admins",  # groupe des admins de MyOwn (blueprint admins.yaml)
         "AllowedGroup": "",
         # Real bug found live once jellyfin.offsystem.fr (real domain, HTTPS
         # via Traefik) existed alongside myown-jellyfin.local (plain HTTP):
@@ -212,4 +214,4 @@ s.post(
     },
 ).raise_for_status()
 
-info(f"Done — SSO login available at {BASE}/authentik/login (button now on the login page too)")
+info(f"Done — SSO login available at https://jellyfin.{DOMAIN}/authentik/login (button now on the login page too)")
