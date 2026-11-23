@@ -40,7 +40,7 @@ spec:
   restartPolicy: Never
   initContainers:
     - name: restore
-      image: restic/restic:0.19.1
+      image: restic/restic:0.20.0
       env:
         - {name: RESTIC_REPOSITORY, value: /repo}
         - name: RESTIC_PASSWORD
