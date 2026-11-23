@@ -75,15 +75,74 @@ des services — l'administration d'Uptime Kuma n'y est pas accessible.
    |---|---|
    | Mailu | Refuse la connexion tant que l'email Authentik n'est pas en `@offsystem.fr` (erreur avec `domain=...`). |
    | Tuwunel | ID Matrix illisible (`@ai2f-…`) si le username Authentik contient une espace ou un accent — voir la section Tuwunel. |
-   | Jellyfin, Mailu | Le compte SSO créé n'a **pas** les droits admin — normal pour un utilisateur ; pour le vôtre, voir les sections correspondantes. |
+   | Tous | Le compte SSO créé n'a **pas** les droits admin — normal pour un utilisateur. Un admin se nomme par le groupe `myown-admins` (section suivante). |
 
-   Immich et Tuwunel donnent les droits admin au **tout premier** compte
-   créé : c'est déjà fait (le vôtre), rien à vérifier pour les suivants.
+   Les places d'admin « premier arrivé » d'Immich et de Tuwunel sont prises
+   à l'installation par des comptes techniques : rien à surveiller pour les
+   comptes suivants.
 
 6. Envoyer le [fichier de favoris](https://aide.offsystem.fr/downloads/myown-favoris.html){: download="myown-favoris.html" }
    et le lien du [manuel utilisateur](manuel-utilisateur.md) — ou simplement
    le lien de [l'accueil](https://aide.offsystem.fr), qui pointe déjà vers
    les deux.
+
+## Comptes et droits d'admin (`myown-admin`)
+
+Être admin de MyOwn, c'est être membre du groupe Authentik **`myown-admins`**
+(super-utilisateur Authentik, admin Jellyfin à la connexion suivante). Pour
+Nextcloud, Immich, Tuwunel et Mailu, le groupe ne suffit pas : la commande
+`sync` y reporte les droits. Conception : `installation-utilisateur.md`,
+« Modèle de gestion des comptes admin ».
+
+Toutes les commandes se lancent **sur le serveur**, dans le dépôt cloné :
+
+```bash
+python3 scripts/myown-admin.py <commande>
+```
+
+| Besoin | Commande |
+|---|---|
+| Voir qui manque ou a de trop des droits d'admin | `sync` (rien n'est changé) |
+| Les corriger | `sync --apply` |
+| Remettre le coffre à jour (nouveau service, restauration, après un retrait) | `coffre` |
+| Recréer son compte ou un lien de mot de passe, reprendre les comptes techniques | `init` (rejouable) |
+
+**Ajouter un co-admin** : l'ajouter au groupe `myown-admins` dans Authentik
+(Répertoire → Groupes), lui demander une connexion à chaque service, puis
+`sync --apply`. **En retirer un** : le sortir du groupe, puis `sync --apply`.
+Un membre qui ne s'est jamais connecté à un service y est signalé « pas
+encore de compte » : relancer `sync --apply` après sa connexion.
+
+**Le coffre** est l'organisation Vaultwarden dont le nom contient « MyOwn »,
+avec deux collections, **Administration** (comptes d'admin, mot de passe de
+la sauvegarde des secrets) et **Infrastructure** (tout le reste). À créer
+une fois dans Vaultwarden (Nouvelle organisation, puis les deux
+collections). `coffre` demande la **clé d'API personnelle** (Paramètres →
+Sécurité → Clés → Clé d'API : `client_id` en `user.…`, pas celle de
+l'organisation) puis le mot de passe maître, sans jamais les afficher ni les
+écrire. Les entrées viennent du cluster, qui reste la référence : une entrée
+modifiée à la main dans le coffre est réécrite à la relance suivante.
+
+**Remettre les clés** à un nouveau propriétaire, en trois temps :
+
+1. Préparateur : `transfert ajout --email <adresse>`. Le nouveau propriétaire
+   ouvre le lien affiché, se connecte une fois à chaque service, crée son
+   coffre ; le préparateur l'invite dans l'organisation (rôle
+   **Propriétaire**) puis le **confirme** (Membres → ⋮ → Confirmer — sans
+   serveur mail, l'invitation est acceptée d'office et seule la
+   confirmation lui ouvre l'organisation).
+2. Nouveau propriétaire, sur le serveur : `transfert verifier` (sa propre
+   clé d'API et son mot de passe maître). Rien n'est retiré tant que cette
+   vérification n'a pas réussi.
+3. Préparateur : `transfert retrait --preparateur <son nom d'utilisateur>`.
+   Son compte est désactivé (jamais supprimé), ses droits retirés, et tous
+   les identifiants d'admin régénérés. Puis, comme la commande le rappelle :
+   le nouveau propriétaire le retire de l'organisation et relance `coffre` ;
+   retirer ses clés SSH et pairs WireGuard ; remplacer les copies hors
+   machine de la sauvegarde des secrets.
+
+Une commande interrompue se relance telle quelle : elle reprend où elle
+s'était arrêtée.
 
 ## Authentik — identité (SSO)
 
@@ -183,18 +242,21 @@ des services — l'administration d'Uptime Kuma n'y est pas accessible.
 
 ## Immich — photos et vidéos
 
-- Pas de compte admin local séparé : l'admin est le tout premier compte créé
-  via l'assistant de première visite (déjà fait).
+- Le premier compte (admin d'office) est un **compte technique**,
+  `immich-admin@<domaine>`, créé à l'installation (mot de passe dans le
+  coffre). Les admins de MyOwn reçoivent les droits par `myown-admin sync`.
+  Installations antérieures à l'étape 5 : ce premier compte est le vôtre.
 - Réglages admin (gestion des utilisateurs, tâches de reconnaissance
   faciale/recherche sémantique) directement dans l'interface, menu
   Administration.
 
 ## Tuwunel — messagerie
 
-- L'admin est le tout premier compte enregistré sur le serveur ; il rejoint
-  automatiquement un salon d'administration où des commandes serveur
-  peuvent être envoyées comme des messages (voir la documentation Tuwunel
-  pour la liste).
+- Le tout premier compte enregistré est admin du serveur : c'est le bot
+  (`@alertbot`), inscrit à l'installation. Être admin, c'est être membre du
+  salon d'administration (`#admins`), où des commandes serveur s'envoient
+  comme des messages (voir la documentation Tuwunel). `myown-admin sync`
+  y fait entrer les membres de `myown-admins` et en fait sortir les autres.
 - **Identifiant Matrix illisible après la première connexion SSO**
   (`@ai2f-xt4jrh-vxtx:offsystem.fr` au lieu de `@prenomnom:offsystem.fr`) :
   le username Authentik contenait un espace (ou un caractère non permis dans
@@ -232,8 +294,9 @@ des services — l'administration d'Uptime Kuma n'y est pas accessible.
 - **Panneau admin** : <https://mailu.offsystem.fr/admin>, avec votre
   propre compte SSO — à condition qu'il ait été promu admin. Tout
   `mailu.offsystem.fr` passe par Authentik : le compte bootstrap ne peut
-  pas s'y connecter par cette adresse. Pour promouvoir un compte (après sa
-  première connexion SSO, qui crée sa boîte) :
+  pas s'y connecter par cette adresse. Les membres de `myown-admins` sont
+  promus par `myown-admin sync --apply` (après leur première connexion SSO,
+  qui crée leur boîte). Pour un autre compte, à la main :
 
   ```bash
   export MAILU_API_TOKEN=$(sops -d gitops/secrets/mailu/mailu.sops.yaml | yq '.stringData.API_TOKEN')
