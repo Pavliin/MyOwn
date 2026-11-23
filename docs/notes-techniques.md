@@ -22,7 +22,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | PostgreSQL (Immich, image officielle `ghcr.io/immich-app/postgres`, StatefulSet maison) | 14-vectorchord0.4.3-pgvectors0.2.0 |
 | Tuwunel (image officielle `ghcr.io/matrix-construct/tuwunel`, manifests maison) | v1.8.3 |
 | LiveKit (chart officiel `livekit/livekit-server`) | chart 1.9.0, image `livekit/livekit-server:v1.13.5` (surchargée, cf. section LiveKit) |
-| lk-jwt-service (image `ghcr.io/element-hq/lk-jwt-service`, manifests maison) | `latest` (pas de tag versionné publié par le projet) |
+| lk-jwt-service (image `ghcr.io/element-hq/lk-jwt-service`, manifests maison) | 0.9.0 (épinglée ; `latest` jusqu'au 2026-11-23, le projet publie désormais des tags versionnés) |
 | Ollama (chart `otwld/ollama-helm`) | chart 1.74.0, app 0.32.9, modèle `qwen3:8b` |
 | SOPS | 3.10.2 |
 | KSOPS | v4.5.1 |
