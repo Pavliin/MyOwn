@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-admins
+data:
+  admins.yaml: |
+    version: 1
+    metadata:
+      name: MyOwn admins
+    entries:
+      # Être admin de MyOwn = être membre de ce groupe (installation-utilisateur.md,
+      # « Modèle de gestion des comptes admin »). Super-utilisateur d'Authentik ;
+      # Jellyfin en déduit ses droits d'admin à chaque connexion (AdminGroup du
+      # plugin SSO, claim `groups` du scope `profile`) ; Nextcloud, Immich,
+      # Tuwunel et Mailu les reçoivent de `scripts/myown-admin.py sync`.
+      # Les membres ne sont jamais déclarés ici : ils sont posés par
+      # `myown-admin` (init, transfert), un blueprint les réimposerait à
+      # chaque application.
+      - model: authentik_core.group
+        id: myown-admins
+        identifiers:
+          name: myown-admins
+        attrs:
+          is_superuser: true
