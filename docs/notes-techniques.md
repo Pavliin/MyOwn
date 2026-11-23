@@ -12,7 +12,7 @@ Roadmap Phase 0 ("Socle") complète, sur un cluster **k3d local de développemen
 | ArgoCD | v3.5.0 |
 | kube-prometheus-stack | chart 88.1.5 |
 | Uptime Kuma (chart `dirsigler/uptime-kuma-helm`) | chart 4.1.0, app 2.3.0 |
-| Authentik | chart/app 2026.5.6 |
+| Authentik | chart 2026.5.6, app 2026.5.8 (image surchargée : pas de chart publié pour 2026.5.7/2026.5.8) |
 | PostgreSQL (Authentik, via sous-chart Bitnami) | 17.10-bookworm |
 | Vaultwarden (chart `guerzon/vaultwarden`) | chart 0.46.0, app 1.37.5 (image épinglée, le chart fournit 1.37.1) |
 | Restic (image `restic/restic`) | 0.19.1 |
