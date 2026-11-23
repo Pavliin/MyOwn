@@ -1376,6 +1376,28 @@ Avant de coder l'étape 5 (design dans `installation-utilisateur.md`, « Modèle
 - **Tuwunel : pas de retrait de droits, `admin_execute` dangereux** : v1.8.3 n'a pas de `revoke-admin` ; `user_is_admin` teste seulement l'appartenance au salon d'admin, donc `force-leave-room` sur ce salon retire les droits. Une commande inconnue ou en échec passée par `TUWUNEL_ADMIN_EXECUTE` met le pod en `CrashLoopBackOff` jusqu'au retrait de la variable.
 - **`scripts/jellyfin-sso-setup.py` en 404 sur Jellyfin 10.11** : `POST /Startup/User` répond 404 tant qu'un `GET /Startup/User` n'a pas créé l'utilisateur initial de l'assistant. `GET` ajouté avant le `POST`.
 
+## Flow admin codé : `scripts/myown-admin.py`, remise des clés validée en VM — étape 5 (2026-11-23)
+
+Design et commandes : `installation-utilisateur.md` (« Implémentation validée en VM ») et `manuel-admin.md` (« Comptes et droits d'admin »). Pièces posées : groupe `myown-admins` par blueprint (`authentik-blueprints/templates/admins.yaml`, sans membres déclarés), Secret `tuwunel/tuwunel-bot` (ajouté à la sauvegarde des secrets), admin technique Immich `immich-admin@<domaine>` pour les nouvelles installations, `AdminGroup` de Jellyfin sur `myown-admins`, étape `init` en fin d'`install.sh`.
+
+Choix de réalisation :
+
+- **Accès aux services depuis le serveur** : l'adresse interne du Service quand elle répond (k3s, joignable depuis le nœud), sinon `kubectl port-forward` (k3d). Le redémarrage du pod Jellyfin pendant l'installation du plugin coupe un port-forward, pas l'adresse interne.
+- **Code Authentik** passé à `ak shell -c`, données sur l'entrée standard en JSON, jamais sur la ligne de commande ; le lien de définition du mot de passe est fabriqué comme celui de l'admin Authentik (`FlowPlanner` + `FlowToken`, 24 h).
+- **`bw`** : archive officielle à version épinglée, empreinte sha256 vérifiée, session dans un dossier temporaire supprimé en sortie ; entrées passées en base64 sur l'entrée standard.
+- **Régénérations** rejouables : la nouvelle valeur est d'abord écrite dans un Secret de travail (`myown-backup/myown-admin-pending`), appliquée au service, puis recopiée dans le Secret d'origine ; un ConfigMap sans secret (`myown-admin-state`) retient ce qui est fait. Le dépôt Restic de la sauvegarde des secrets change de clé par `restic key add` puis `key remove` des autres : son contenu n'est pas rechiffré, donc une copie faite avant s'ouvre encore avec l'ancien mot de passe.
+
+Ce qui n'a pas marché du premier coup :
+
+- **`bw` refuse une adresse en HTTP** (« Insecure URL not allowed »), même vers l'adresse interne du Service : `coffre` passe par `https://vaultwarden.<domaine>` et vérifie d'abord que ce nom se résout depuis le serveur.
+- **Retrait interrompu après la première régénération** : `secrets "myown-admin-pending" already exists`. Le Secret de travail vidé par l'étape précédente était lu comme `{}`, pris pour « absent » (test de vérité au lieu de `is None`). Corrigé, et chaque régénération faite est désormais notée dans le ConfigMap d'état, pour qu'une relance ne refasse rien.
+- **Relancer l'installeur réinscrivait le préparateur** : après un retrait, `init` (e-mail par défaut : celui d'akadmin, donc du préparateur) retrouvait son compte désactivé et le remettait dans `myown-admins`. Sans effet immédiat (compte désactivé, `sync` ne compte que les comptes actifs), mais à un geste d'une réactivation. Un compte désactivé n'est plus jamais ajouté au groupe ; `transfert ajout` le refuse.
+- **Mot de passe ArgoCD hors de la sauvegarde des secrets** : `argocd-initial-admin-secret` n'y figure pas (ArgoCD le recrée à sa réinstallation). Il est dans le coffre ; après une restauration, relancer `coffre`.
+
+**Validé dans la VM** (niveau B, sans Mailu ni supervision) : `init` et ses relances ; `sync` dans les deux sens pour Nextcloud, Immich et Tuwunel ; `coffre` (28 entrées chiffrées côté client, relues par empreinte) ; remise des clés complète. Après le retrait, pour chaque identifiant régénéré : nouvelle valeur acceptée par le service, ancienne valeur (tirée de l'instantané Restic pris avant) refusée, instantané final contenant la nouvelle ; une seule clé restante sur le dépôt Restic. **Non testés** : les chemins Mailu et Grafana, et `init` sur une installation vierge.
+
+**Installation de l'auteur (pas encore faite)** : le groupe est créé vide par le blueprint, et le plugin Jellyfin garde `jellyfin-admins` tant que `jellyfin-sso-setup.py` n'est pas relancé. Le bot Tuwunel y existe déjà, inscrit avant le Secret `tuwunel-bot` : son mot de passe est à reprendre dans ce Secret avant de lancer `init`, qui sinon s'arrêterait sur `M_USER_IN_USE`.
+
 ## Suivi des versions par Renovate (2026-11-22)
 
 Renovate détecte les nouvelles versions et ouvre les PR ; l'analyse (vulnérabilités, impact des notes de version) reste humaine. Points non évidents :

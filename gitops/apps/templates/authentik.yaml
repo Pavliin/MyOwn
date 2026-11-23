@@ -42,6 +42,7 @@ spec:
             configMaps:
               - authentik-blueprint-account-recovery
               - authentik-blueprint-login-mfa-optional
+              - authentik-blueprint-admins
               {{- range list "vaultwarden" "nextcloud" "immich" "tuwunel" "jellyfin" "mailu" }}
               {{- if has . $.Values.apps }}
               - authentik-blueprint-{{ . }}-sso

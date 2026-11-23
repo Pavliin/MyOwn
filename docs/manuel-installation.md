@@ -142,18 +142,9 @@ Nécessite `sudo` de façon interactive (installation du paquet, écriture dans 
 
 ## 13. Jellyfin — droits admin via Authentik
 
-Après `scripts/jellyfin-sso-setup.py` (installe/configure le plugin SSO, voir `notes-techniques.md`) : un compte connecté via Authentik est créé automatiquement au premier login, mais **sans les droits administrateur** tant qu'il n'appartient pas au groupe Authentik `jellyfin-admins` (nom par défaut attendu par le plugin) — sans ça, "Bibliothèques" et le reste du tableau de bord restent invisibles dans l'IHM, même une fois connecté.
+`scripts/jellyfin-sso-setup.py` (lancé par `scripts/myown-admin.py init`, voir `notes-techniques.md`) termine l'assistant de premier démarrage avec un compte local technique `admin` et installe le plugin SSO, réglé avec `AdminGroup` = `myown-admins`. Un compte connecté via Authentik est créé à sa première connexion, avec les droits d'administrateur seulement s'il est membre de ce groupe : sans eux, « Bibliothèques » et le reste du tableau de bord restent invisibles.
 
-Ajouter le compte admin du foyer à ce groupe (`ak shell` sur le pod `authentik-server`, groupe créé automatiquement s'il n'existe pas encore) :
-
-```python
-from authentik.core.models import User, Group
-u = User.objects.get(username='<votre nom d’utilisateur Authentik>')
-g, _ = Group.objects.get_or_create(name='jellyfin-admins')
-g.users.add(u)
-```
-
-La synchronisation des droits se fait à la connexion, pas en direct sur une session déjà ouverte — se déconnecter/reconnecter côté Jellyfin après ce changement. Le compte local `admin` (mot de passe dans `gitops/secrets/jellyfin/jellyfin.sops.yaml`) reste utilisable en secours sans attendre cette étape.
+Les droits suivent le groupe à chaque connexion, pas en direct sur une session ouverte : se déconnecter puis se reconnecter côté Jellyfin après un changement. Le compte local `admin` (mot de passe dans le coffre, entrée « Jellyfin — admin technique ») reste utilisable en secours.
 
 ## 14. Installation en production (mini PC, k3s bare-metal)
 
@@ -217,6 +208,8 @@ Le niveau est enregistré dans la valeur `exposure` de `root` ; une relance le g
 **Nextcloud et Jellyfin** : l'installeur pré-crée `config/` en `www-data` en plus du dossier de la section 14.4, et, si Jellyfin est choisi, crée le dossier partagé `Mediatheque` (groupe `famille`) une fois Nextcloud installé — les étapes de la section 15 n'ont plus à être faites à la main, sauf l'ajout de chaque membre au groupe.
 
 **Réglages de l'hôte** : limites inotify relevées (`/etc/sysctl.d/90-myown-inotify.conf` : 8192 instances, 524288 watches — la valeur Ubuntu par défaut de 128 instances est trop basse pour un nœud Kubernetes), et k3s reçoit ses propres résolveurs DNS (`/etc/rancher/k3s/myown-resolv.conf`, Quad9 `9.9.9.9` et Cloudflare `1.1.1.1`, qui valident tous deux DNSSEC — exigé par Mailu) au lieu de ceux de l'hôte. L'hôte et le réseau local gardent leur propre DNS (Pi-hole compris).
+
+**Compte de l'admin** : dernière étape, `scripts/myown-admin.py init` crée le compte Authentik nominatif de l'admin dans le groupe `myown-admins` (adresse `MYOWN_ADMIN_EMAIL`) et affiche un lien de définition de son mot de passe, valable 24 h ; puis il prend par des comptes techniques les places d'admin « premier arrivé » (admin Immich, premier compte Tuwunel, assistant Jellyfin) et fait une sauvegarde immédiate des secrets. L'installeur s'arrête ensuite sur la liste des gestes de l'admin : premières connexions, création du coffre Vaultwarden, puis `myown-admin.py coffre` et `sync --apply` (`manuel-admin.md`, « Comptes et droits d'admin »).
 
 **Domaine** : la section 16 (Let's Encrypt, et DynDNS au niveau C) fait toujours partie de l'installation. Les étapes 17 et suivantes (LiveKit externe, watchdog, DKIM, Pi-hole) restent manuelles.
 
@@ -393,7 +386,7 @@ Le script n'écrit rien côté DNS lui-même. Mettez à jour `DKIM_PUBKEY` dans 
 dig +short TXT dkim._domainkey.offsystem.fr
 ```
 
-**Promotion d'un compte SSO en admin Mailu** — même API, même contournement du ForwardAuth : le compte bootstrap `admin@<domaine>` (chart `initialAccount`) est le seul admin par défaut, complètement déconnecté de l'identité SSO. Une fois qu'un utilisateur s'est connecté au moins une fois via SSO (mailbox auto-provisionnée par `proxyAuth`) :
+**Promotion d'un compte SSO en admin Mailu** — fait pour les membres de `myown-admins` par `scripts/myown-admin.py sync --apply` (`manuel-admin.md`) ; à la main, même API, même contournement du ForwardAuth : le compte bootstrap `admin@<domaine>` (chart `initialAccount`) est le seul admin par défaut, complètement déconnecté de l'identité SSO. Une fois qu'un utilisateur s'est connecté au moins une fois via SSO (mailbox auto-provisionnée par `proxyAuth`) :
 
 ```bash
 python3 scripts/mailu-promote-admin.py robin.chartier@offsystem.fr
