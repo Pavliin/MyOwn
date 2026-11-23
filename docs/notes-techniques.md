@@ -1375,3 +1375,13 @@ Avant de coder l'étape 5 (design dans `installation-utilisateur.md`, « Modèle
 - **Immich : rôle OAuth lu une seule fois** : le claim de rôle n'est appliqué que dans `createUser` (`auth.service.js`) ; un compte existant garde son rôle quelle que soit la valeur du claim. Tant qu'aucun admin n'existe, Immich n'affiche pas le bouton SSO mais son formulaire d'inscription d'admin ; `POST /api/auth/admin-sign-up` le remplace.
 - **Tuwunel : pas de retrait de droits, `admin_execute` dangereux** : v1.8.3 n'a pas de `revoke-admin` ; `user_is_admin` teste seulement l'appartenance au salon d'admin, donc `force-leave-room` sur ce salon retire les droits. Une commande inconnue ou en échec passée par `TUWUNEL_ADMIN_EXECUTE` met le pod en `CrashLoopBackOff` jusqu'au retrait de la variable.
 - **`scripts/jellyfin-sso-setup.py` en 404 sur Jellyfin 10.11** : `POST /Startup/User` répond 404 tant qu'un `GET /Startup/User` n'a pas créé l'utilisateur initial de l'assistant. `GET` ajouté avant le `POST`.
+
+## Suivi des versions par Renovate (2026-11-22)
+
+Renovate détecte les nouvelles versions et ouvre les PR ; l'analyse (vulnérabilités, impact des notes de version) reste humaine. Points non évidents :
+
+- **Le manager `argocd` natif de Renovate ne lit pas nos Applications** : depuis que `gitops/apps/` est un chart Helm (propagation de la révision de `root`, voir plus haut), chaque fichier commence par `{{- if has … }}`, ce qui n'est plus du YAML valide. Sortir du chart pour lui faire plaisir ramènerait `pin-release.sh` et les tags déplacés : remplacé par un manager regex sur le triplet `repoURL` / `chart` / `targetRevision`. Il ne modifie que des littéraux (version du chart amont, tags d'image), jamais `{{ .Values.revision }}` — les sources vers ce dépôt ont `path:`, pas `chart:`. Une montée suit donc le chemin normal : `master` → dev → release → tag en production.
+- **Fragilité de la regex** : elle dépend de l'ordre des clés. `scripts/check-renovate-coverage.py` (job CI `renovate`) échoue si une source `chart:` ou un `tag:` d'image d'un template n'est pas suivi — vérifié dans les deux sens (état actuel accepté ; clés inversées et commentaire retiré refusés).
+- **Type de commit** : `fix(deps)` et non le `chore(deps)` par défaut, masqué dans `.versionrc.json` — une montée de version, de sécurité notamment, doit apparaître dans le CHANGELOG et la version de release.
+- **Commits signés** : `master` les exige. `platformCommit: enabled` fait créer les commits par l'API GitHub, qui les signe.
+- `lk-jwt-service` tourne toujours en `:latest` : Renovate ne peut rien proposer pour une image non versionnée, à épingler.
