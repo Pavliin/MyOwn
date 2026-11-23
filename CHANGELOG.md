@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.35](https://github.com/Pavliin/MyOwn/compare/v0.1.34...v0.1.35) (2026-11-23)
+
+### Fonctionnalités
+
+* **authentik:** myown-admins group, source of truth for admin rights ([34e85a4](https://github.com/Pavliin/MyOwn/commit/34e85a4fbb47f8e780faf4acfc0951f58ad1f448))
+* **install:** myown-admin tool for the admin account, vault and handover ([c56cbe6](https://github.com/Pavliin/MyOwn/commit/c56cbe684d5b86f608d46ca9256737a3a0a9a3db))
+* **secrets:** generated Tuwunel bot credentials, technical Immich admin ([70af82f](https://github.com/Pavliin/MyOwn/commit/70af82fd34215b4ed04dc7e00a8434d219490d41))
+
+### Correctifs
+
+* **jellyfin:** admin rights follow myown-admins, setup runnable from the installer ([675c51f](https://github.com/Pavliin/MyOwn/commit/675c51f15ad9844aa5ef069e770123cef076467b))
+
+### Documentation
+
+* admin accounts, vault and handover with myown-admin ([1f04246](https://github.com/Pavliin/MyOwn/commit/1f042466578bff9d7440e1a4be62fbfe22ed929c))
+* **mailu:** record the server-side apply leftover hit in production ([2e2fcc7](https://github.com/Pavliin/MyOwn/commit/2e2fcc7759e2b8192772a2d6cc8175d79252a2ca))
 ## [0.1.34](https://github.com/Pavliin/MyOwn/compare/v0.1.33...v0.1.34) (2026-11-23)
 
 ### Correctifs
