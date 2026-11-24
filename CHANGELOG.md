@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.36](https://github.com/Pavliin/MyOwn/compare/v0.1.35...v0.1.36) (2026-11-24)
+
+### Correctifs
+
+* **mailu:** add the webmail ManageSieve listener on front ([1ef6c82](https://github.com/Pavliin/MyOwn/commit/1ef6c82bdbc11c8638ca3ea86a88dea2c61570b9))
+* **traefik:** pin image 3.7.20 ahead of k3s for security fixes ([47a84d2](https://github.com/Pavliin/MyOwn/commit/47a84d2011ec148b87a9682bf806afa9539fe3d6))
 ## [0.1.35](https://github.com/Pavliin/MyOwn/compare/v0.1.34...v0.1.35) (2026-11-23)
 
 ### Fonctionnalités
