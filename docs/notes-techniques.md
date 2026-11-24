@@ -1456,3 +1456,12 @@ Signalé sur le vrai webmail : la page « Filtres » affichait « La connexion a
 - **Vhost Apache surchargé** (`nextcloud-wellknown-scheme-fix`) : `000-default.conf` est identique dans les images 34.0.2 et 35.0.3, la copie reste valable.
 - **Après la montée** : `occ db:add-missing-indices` (un index ajouté sur `oc_text_steps` sur dev). L'avertissement `oc_federated_invites: unexpected index 'fed_inv_open_email_uniq'` est un faux positif connu de 35 ([nextcloud/server#64505](https://github.com/nextcloud/server/issues/64505)), à ignorer.
 - **SSO non validable sur dev** : `user_oidc` y renvoie 404 sur `/apps/user_oidc/login/1` parce qu'il ne peut pas lire la découverte OIDC, le certificat du dev ayant expiré le 2026-11-21 (jeton Gandi du dev, voir section Traefik). L'erreur précède la montée ; la route existe toujours dans user_oidc 8.13. À valider en production juste après le déploiement.
+
+## Immich v2.6.3 → v3.4.2 (2026-11-24)
+
+- **Image surchargée** (`controllers.main.containers.main.image.tag`, s'applique au serveur et au machine learning) : le chart officiel 0.12.0 fournit encore v2.6.3.
+- **pgvecto.rs abandonné en v3, sans effet chez nous** : la base n'a que `vector` 0.8.1 et `vchord` 0.4.3 (index `clip_index`/`face_index` en `vchordrq`, vérifié en lecture seule en production). L'image Postgres (`14-vectorchord0.4.3-pgvectors0.2.0`) est celle du `docker-compose.yml` d'Immich v3.4.2 ; le serveur accepte VectorChord `>=0.3 <2`.
+- **Autres changements cassants sans effet** : aucune des variables d'environnement supprimées n'est utilisée ; `oauth.issuerUrl` est déjà une URL https valide ; nous n'utilisions pas l'autorisation des requêtes OAuth non sécurisées.
+- **Application mobile** : la v3 supprime les endpoints de l'ancienne synchronisation (`/sync/delta-sync`, `/sync/full-sync`) et l'ancienne timeline. Les téléphones doivent passer à l'application v3. Le machine learning exige un processeur x86-64-v2 (le Core i5 du mini PC l'est).
+- **Nouveau module de sauvegarde intégré** : au premier démarrage, la v3 génère une clé de chiffrement dans `/data/backups/yucca`, sur le volume de la photothèque, donc incluse dans la sauvegarde Restic.
+- **Validé sur dev** : migrations sans erreur, API en v3.4.2, machine learning démarré. Le dev n'a aucune photo : la migration n'a pas été éprouvée sur des données réelles. La découverte OAuth y échoue (`fetch failed`), pour la même cause que Nextcloud (certificat du dev expiré). Le SSO et l'application mobile sont à valider en production, juste après une sauvegarde Restic.
