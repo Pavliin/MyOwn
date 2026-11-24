@@ -9,7 +9,7 @@ spec:
   sources:
     - repoURL: https://jellyfin.github.io/jellyfin-helm
       chart: jellyfin
-      targetRevision: 3.2.0
+      targetRevision: 3.7.0
       helm:
         valuesObject:
           # Chart 3.2.0's default image tag (resolved from its own
@@ -23,7 +23,7 @@ spec:
           # pattern as LiveKit's image.tag pin.
           image:
             # renovate: datasource=docker depName=jellyfin/jellyfin
-            tag: "10.11.11"
+            tag: "12.4"
           # Real bug hit live: crash on startup with "System.IO.IOException:
           # The configured user limit (128) on the number of inotify
           # instances has been reached" (fs.inotify.max_user_instances on
@@ -32,6 +32,12 @@ spec:
           # chart's own documented workaround instead of touching the host
           # sysctl — makes Jellyfin poll for config file changes rather than
           # use inotify watchers.
+          # Never two Jellyfin processes on the same SQLite database: the
+          # chart's default RollingUpdate starts the new pod before stopping
+          # the old one, which during a major upgrade (12.0 runs irreversible
+          # migrations on first boot) means both open jellyfin.db at once.
+          deploymentStrategy:
+            type: Recreate
           jellyfin:
             env:
               - name: DOTNET_USE_POLLING_FILE_WATCHER
