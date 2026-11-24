@@ -1,0 +1,46 @@
+# Real bug found live (2026-11-24): Roundcube's "Filtres" page showed
+# "La connexion au serveur n'aboutit pas", and the "new filter" form only
+# offered 4 actions (redirect / delete / keep / stop) — no "move to
+# folder", no "add flags". Both symptoms have the same root cause: the
+# managesieve plugin could not reach any Sieve server, so it never read the
+# server's extension list (`fileinto`, `imap4flags`, ...) and fell back to
+# the bare minimum UI.
+#
+# Mailu 2024.06's Roundcube config points managesieve at
+# `tls://mailu-front:14190`, and the admin service only accepts the
+# per-session webmail token (what the SSO plugin uses as the IMAP/Sieve
+# "password") when the connection arrives on one of its WEBMAIL_PORTS
+# (`['14190', '10143', '10025']`, mailu/internal/nginx.py). 10143 (IMAP)
+# and 10025 (submission) both have a matching `inet_listener` in
+# front's /etc/dovecot/proxy.conf — 14190 has none: that file lists
+# `sieve` in `protocols` but defines no `service managesieve-login` block
+# at all, so Dovecot only opens its built-in default listener on 4190.
+# Nothing listens on 14190, so every connection from Roundcube is refused.
+#
+# Pointing Roundcube at 4190 instead would NOT work: 4190 is not in
+# WEBMAIL_PORTS, so the webmail token would be rejected there (confirmed by
+# reading check_credentials() — the token branch is gated on the port).
+# The right fix is the missing listener itself.
+#
+# proxy.conf ends with `!include_try /overrides/dovecot/proxy.conf`, so the
+# listener is added as an override instead of copying the whole file —
+# unlike e.g. Nextcloud's vhost, no full-file copy needing re-sync on
+# upstream changes. Mounted via front.extraVolumes/extraVolumeMounts in
+# gitops/apps/templates/mailu.yaml. The built-in 4190 listener stays as is.
+#
+# Validated live on the dev cluster first (same file written into the
+# running front pod, `doveconf` parse check, `doveadm reload`): 14190 opens,
+# STARTTLS handshake works, and the capability list it advertises includes
+# fileinto and imap4flags.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mailu-front-dovecot-overrides
+  namespace: mailu
+data:
+  proxy.conf: |
+    service managesieve-login {
+      inet_listener sieve-webmail {
+        port = 14190
+      }
+    }

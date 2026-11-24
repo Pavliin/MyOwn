@@ -117,10 +117,28 @@ spec:
                 pop3s: false
                 # ManageSieve (4190) left off: only needed for an external
                 # Sieve-editing client (a desktop Thunderbird add-on, a CLI
-                # tool) — Roundcube's own managesieve plugin already
-                # reaches Dovecot over the ClusterIP internally, unaffected
-                # by this Service being off.
+                # tool) — Roundcube's own managesieve plugin reaches front
+                # over the ClusterIP internally on 14190, unaffected by
+                # this Service being off. (Earlier versions of this comment
+                # asserted that path already worked; it never had — see
+                # extraVolumes below and gitops/manifests/
+                # mailu-front-dovecot-overrides/configmap.yaml.)
                 manageSieve: false
+            # Roundcube's Sieve filter editor was broken ("La connexion au
+            # serveur n'aboutit pas"): front's Dovecot proxy had no
+            # listener on 14190, the webmail-only ManageSieve port Mailu's
+            # Roundcube config and admin auth both expect. Adds it via the
+            # `!include_try /overrides/dovecot/proxy.conf` hook already in
+            # the image's own proxy.conf — see the ConfigMap for the full
+            # root-cause write-up.
+            extraVolumes:
+              - name: dovecot-proxy-overrides
+                configMap:
+                  name: mailu-front-dovecot-overrides
+            extraVolumeMounts:
+              - name: dovecot-proxy-overrides
+                mountPath: /overrides/dovecot/proxy.conf
+                subPath: proxy.conf
             service:
               annotations:
                 # `front` terminates its own TLS on the `https` (443) port
@@ -221,6 +239,9 @@ spec:
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/mailu-backup
+    - repoURL: {{ .Values.repoURL }}
+      targetRevision: {{ .Values.revision }}
+      path: gitops/manifests/mailu-front-dovecot-overrides
   destination:
     server: https://kubernetes.default.svc
     namespace: mailu
