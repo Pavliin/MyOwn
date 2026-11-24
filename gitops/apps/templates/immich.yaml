@@ -19,6 +19,14 @@ spec:
             main:
               containers:
                 main:
+                  # Ahead of the chart: 0.12.0 still ships v2.6.3. Applies to both
+                  # immich-server and immich-machine-learning. v3 drops pgvecto.rs
+                  # (we already run VectorChord only, same Postgres image as
+                  # upstream's v3 compose file) and the legacy mobile sync
+                  # endpoints: family phones need the v3 app.
+                  image:
+                    # renovate: datasource=docker depName=ghcr.io/immich-app/immich-server
+                    tag: v3.4.2
                   env:
                     DB_HOSTNAME: immich-postgres
                     DB_USERNAME: immich
