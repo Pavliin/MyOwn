@@ -27,6 +27,17 @@ metadata:
   namespace: kube-system
 spec:
   valuesContent: |-
+    # Image pinned ahead of k3s: 3.7.8 (k3s v1.36.3) carries some twenty
+    # advisories fixed in 3.7.13-3.7.18, and no k3s release bundles a fixed
+    # Traefik yet (v1.36.6/v1.37.2 ship 3.7.15). Rancher's mirror has no
+    # 3.7.20, hence the upstream image. Same minor as the chart k3s bundles
+    # (40.1.x), so no CRD or values change. Remove once k3s bundles
+    # >= 3.7.18, or the image stays frozen here while k3s moves on.
+    image:
+      registry: docker.io
+      repository: traefik
+      # renovate: datasource=docker depName=traefik versioning=regex:^v(?<major>3)\.(?<minor>7)\.(?<patch>\d+)$
+      tag: v3.7.20
     # Keep the real client address. With the default
     # externalTrafficPolicy: Cluster, kube-proxy source-NATs every incoming
     # connection: Traefik, its access logs and Authentik (brute-force
