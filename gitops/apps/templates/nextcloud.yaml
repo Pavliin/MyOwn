@@ -192,6 +192,19 @@ spec:
           # Pas d'Ingress du chart : nom unique <service>.<domaine>, servi par l'Ingress public (gitops/manifests/nextcloud-public).
           ingress:
             enabled: false
+          # Couvre la migration de la base lors d'une montée majeure : sans
+          # elle, la sonde de vivacité tue le conteneur au bout d'une minute
+          # en pleine migration (incident 34 → 35 du 2026-11-28, voir
+          # notes-techniques.md). Les sondes de vivacité et de disponibilité
+          # n'entrent en jeu qu'une fois celle-ci réussie : jusqu'à 30 s +
+          # 60 × 10 s ≈ 10 min pour démarrer.
+          startupProbe:
+            enabled: true
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+            successThreshold: 1
     - repoURL: {{ .Values.repoURL }}
       targetRevision: {{ .Values.revision }}
       path: gitops/manifests/nextcloud-backup
