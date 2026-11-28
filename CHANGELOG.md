@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.37](https://github.com/Pavliin/MyOwn/compare/v0.1.36...v0.1.37) (2026-11-28)
+
+### Fonctionnalités
+
+* **immich:** upgrade to Immich v3.4.2 ([0825aa4](https://github.com/Pavliin/MyOwn/commit/0825aa4afed97c7faec42b416b79bf9918700d4a))
+* **jellyfin:** upgrade to Jellyfin 12.4 (chart 3.7.0) ([f50461a](https://github.com/Pavliin/MyOwn/commit/f50461a2a4b086d518678c30803d81ade9594d94))
+* **nextcloud:** upgrade to Nextcloud 35 (chart 9.4.5) ([86476f4](https://github.com/Pavliin/MyOwn/commit/86476f48946c33759b27a86e21bb7e59d7708ec1))
+
+### Correctifs
+
+* **uptime-kuma:** bump to 2.5.12 for security fixes ([1f63630](https://github.com/Pavliin/MyOwn/commit/1f6363059ad5b90f2d98715e00c13a7c4f953d5e))
+
+### Documentation
+
+* **immich:** document the v3 upgrade ([6c59ac6](https://github.com/Pavliin/MyOwn/commit/6c59ac68ec14c34e533ee36f8782a016d51ed332))
+* **jellyfin:** document the 12 upgrade procedure ([048abda](https://github.com/Pavliin/MyOwn/commit/048abda822ec46197f0725b90806b68edcbf8001))
+* **mailu:** record the Sieve filter fix as validated in real use ([4e3a255](https://github.com/Pavliin/MyOwn/commit/4e3a25592f1f63a85ba48a3fc8d77b9dde3736fa))
+* **nextcloud:** document the 35 upgrade and post-upgrade steps ([776afd4](https://github.com/Pavliin/MyOwn/commit/776afd4d76351bf386f57b9b5424cc62820af13e))
 ## [0.1.36](https://github.com/Pavliin/MyOwn/compare/v0.1.35...v0.1.36) (2026-11-24)
 
 ### Correctifs
