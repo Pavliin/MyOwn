@@ -105,11 +105,11 @@ else:
     if not os.environ.get("JELLYFIN_ADMIN_PASSWORD"):
         raise SystemExit("Startup wizard already done — set JELLYFIN_ADMIN_PASSWORD to authenticate.")
 
-s.headers["X-Emby-Authorization"] = AUTH_HEADER_TMPL
+s.headers["Authorization"] = AUTH_HEADER_TMPL
 auth_resp = s.post(f"{BASE}/Users/AuthenticateByName", json={"Username": ADMIN_USER, "Pw": ADMIN_PASS})
 auth_resp.raise_for_status()
 token = auth_resp.json()["AccessToken"]
-s.headers["X-Emby-Authorization"] = f'{AUTH_HEADER_TMPL}, Token="{token}"'
+s.headers["Authorization"] = f'{AUTH_HEADER_TMPL}, Token="{token}"'
 
 plugins = s.get(f"{BASE}/Plugins").json()
 plugin = next((p for p in plugins if p["Name"] == PLUGIN_NAME), None)
