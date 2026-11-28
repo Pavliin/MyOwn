@@ -456,7 +456,15 @@ kubectl get secret secrets-backup -n myown-backup -o jsonpath='{.data.RESTIC_PAS
 
 - **Contenu du dernier snapshot** : `scripts/secrets-restore.sh --list` (noms et nombre de clés, jamais de valeur).
 - **Restaurer un Secret** supprimé ou abîmé : `scripts/secrets-restore.sh <namespace>/<nom>` (plusieurs possibles, `SNAPSHOT=<id>` pour un autre que le dernier). Les valeurs passent d'un pod jetable directement à `kubectl apply`, sans être affichées ni écrites sur disque. Redémarrer ensuite le service concerné pour qu'il relise ses variables.
-- **Limite actuelle** : le dépôt de sauvegarde est sur le même disque que le cluster, comme celui des autres services. Il protège d'une erreur de manipulation ou d'une réinstallation du cluster, **pas de la perte du disque** : la copie hors machine (« nœud ami ») reste à faire.
+- **Copie hors machine, sur clé USB** : le dépôt est sur le même disque que le cluster. Il protège d'une erreur de manipulation ou d'une réinstallation, **pas de la perte du disque**. Une copie sur une clé USB rangée loin du serveur couvre ce cas pour les secrets. Clé branchée et montée sur le serveur :
+
+```bash
+sudo scripts/secrets-usb.sh copier /media/<utilisateur>/<clé>
+```
+
+Le script lance une sauvegarde immédiate, copie le dépôt chiffré tel quel dans `myown-secrets-backup/` sur la clé, puis le vérifie depuis la clé : `restic check`, restauration du dernier snapshot en mémoire, comparaison Secret par Secret avec le cluster (seuls des noms et des comptes sont affichés). Le mot de passe est demandé à la main, depuis le coffre ou le papier : la vérification prouve aussi que cette copie du mot de passe est la bonne. Il n'est jamais écrit sur la clé. `verifier` au lieu de `copier` refait seulement la vérification. **Refaire `copier` après chaque changement de secrets** : nouveau service, rotation d'un secret, remise des clés (après `transfert retrait`, une ancienne copie ne s'ouvre plus qu'avec l'ancien mot de passe). Démonter la clé (`umount`) avant de la retirer.
+
+- **Données des services** (photos, fichiers, mail) : leurs dépôts Restic sont aussi sur le même disque, et n'ont pas encore de copie hors machine (« nœud ami »).
 
 ## Mises à jour des briques
 
