@@ -165,6 +165,15 @@ kubectl get nodes   # Ready après quelques dizaines de secondes
 
 `kubectl` de k3s (`/usr/local/bin/kubectl`, un symlink vers le binaire `k3s`) ne lit **pas** `~/.kube/config` par défaut comme un vrai `kubectl` — toujours passer par `$KUBECONFIG` explicitement (sinon il retombe sur `/etc/rancher/k3s/k3s.yaml`, illisible sans `sudo`).
 
+**Ubuntu 26.04, noyau 7.0.0-42 ou plus récent** : avant de lancer des conteneurs, désactiver temporairement la restriction AppArmor qui bloque les signaux entre processus d'un même conteneur (Postgres et d'autres ne démarrent pas sinon). `scripts/install.sh` le fait tout seul ; à la main :
+
+```bash
+echo "kernel.apparmor_restrict_unprivileged_unconfined = 0" | sudo tee /etc/sysctl.d/60-myown-apparmor-containerd.conf
+sudo sysctl --system
+```
+
+Contournement à retirer dès que k3s embarque un containerd corrigé — détail dans `notes-techniques.md` (« Noyau 7.0.0-44 : AppArmor bloque les signaux dans les conteneurs »).
+
 ### 14.2 Traefik — pas à déployer, à reconfigurer
 
 k3s embarque Traefik par défaut (contrairement à k3d qui ne fournit qu'un load balancer nu) — inutile de le déployer via GitOps. Le Service Traefik généré par le Helm-controller de k3s écoute déjà nativement sur 80/443 (couvre le port 443 littéral requis par LiveKit/MatrixRTC, section 4 — rien à faire pour ça).
