@@ -1396,7 +1396,15 @@ Ce qui n'a pas marché du premier coup :
 
 **Validé dans la VM** (niveau B, sans Mailu ni supervision) : `init` et ses relances ; `sync` dans les deux sens pour Nextcloud, Immich et Tuwunel ; `coffre` (28 entrées chiffrées côté client, relues par empreinte) ; remise des clés complète. Après le retrait, pour chaque identifiant régénéré : nouvelle valeur acceptée par le service, ancienne valeur (tirée de l'instantané Restic pris avant) refusée, instantané final contenant la nouvelle ; une seule clé restante sur le dépôt Restic. **Non testés** : les chemins Mailu et Grafana, et `init` sur une installation vierge.
 
-**Installation de l'auteur (pas encore faite)** : le groupe est créé vide par le blueprint, et le plugin Jellyfin garde `jellyfin-admins` tant que `jellyfin-sso-setup.py` n'est pas relancé. Le bot Tuwunel y existe déjà, inscrit avant le Secret `tuwunel-bot` : son mot de passe est à reprendre dans ce Secret avant de lancer `init`, qui sinon s'arrêterait sur `M_USER_IN_USE`.
+**Migration de l'installation de l'auteur (2026-11-28)**, après des sauvegardes immédiates (secrets, Authentik, Jellyfin, Tuwunel) :
+
+- Secret `tuwunel/tuwunel-bot` créé par l'utilisateur depuis le mot de passe du bot déjà rangé dans `gitops/secrets/uptime-kuma/` (déchiffré sur sa machine, passé par SSH sans affichage). Le bot ne s'était **pas** inscrit en premier lors de la migration du `server_name` d'août : le compte de l'utilisateur était admin, pas lui. Promu par l'utilisateur (`!admin users make-user-admin @alertbot:offsystem.fr` dans le salon d'admin).
+- `root` passé en `v0.1.35`, 17/17 `Synced`/`Healthy`, groupe `myown-admins` créé vide.
+- `init --email robin.chartier@offsystem.fr` : l'adresse par défaut, celle d'akadmin, n'est plus celle du compte de l'utilisateur depuis son passage en `@offsystem.fr` ; sans `--email`, `init` aurait créé un second compte. Plugin Jellyfin repassé sur `myown-admins`.
+- `sync` : rien à changer (admin de Nextcloud, Tuwunel et Mailu ; aucun admin en trop).
+- `argocd-initial-admin-secret`, supprimé par l'ancienne procédure d'installation (`manuel-installation.md` §5), recréé par l'utilisateur depuis le fichier SOPS d'ArgoCD, puis vérifié par une connexion. `coffre` : 36 entrées, toutes relues à l'identique.
+
+Reste une particularité : l'`ADMIN_EMAIL` d'Immich est l'ancienne adresse (gmail) de l'utilisateur, celle de son propre compte, l'unique admin. `sync` le prend pour le compte technique et ne le touche pas ; `transfert retrait` y échouerait (connexion avec le mot de passe du Secret, a priori pas celui de son compte), ou changerait son mot de passe personnel s'il est le même. À démêler avant toute remise des clés en prod : créer `immich-admin@offsystem.fr` et y faire pointer le Secret.
 
 ## Suivi des versions par Renovate (2026-11-22)
 
