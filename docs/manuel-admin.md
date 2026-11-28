@@ -160,6 +160,16 @@ s'était arrêtée.
   — jamais à la main dans l'UI. Leurs secrets OIDC sont dans le Secret
   `authentik/authentik-sso-clients`, dérivés de ceux des services par
   `scripts/lib/cluster-secrets.py`.
+- **Changer un secret OIDC** (secret exposé, par exemple) : supprimer le
+  secret côté service (pour Immich, le Secret `immich/immich-oauth-config`)
+  et la clé `<SERVICE>_CLIENT_SECRET` de `authentik/authentik-sso-clients`,
+  puis relancer `cluster-secrets.py ensure` : il génère une nouvelle valeur
+  et la recopie côté Authentik, sans l'afficher. Redémarrer
+  `authentik-worker` (le secret y arrive par variable d'environnement), puis
+  `ak apply_blueprint mounted/cm-authentik-blueprint-<service>-sso/<service>-sso.yaml`
+  dans le worker — chemin relatif à `/blueprints` : un chemin absolu est
+  ignoré sans erreur. Redémarrer enfin le service. Pour vérifier sans
+  afficher le secret, comparer les empreintes SHA-256 des deux côtés.
 - La récupération en libre-service (identification + TOTP) exige que
   l'utilisateur ait déjà un authentificateur configuré — sans quoi le flow
   refuse délibérément (`not_configured_action: deny`, pas de contournement
