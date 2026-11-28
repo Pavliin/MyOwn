@@ -57,8 +57,10 @@
 #                           (compte de secours akadmin, puis compte nominatif de
 #                           l'admin dans myown-admins) ; une relance reprend celui
 #                           d'akadmin
-#   (k3s : l'installeur règle aussi les limites inotify du noyau et les
-#   résolveurs DNS du cluster — voir les étapes correspondantes)
+#   (k3s : l'installeur règle aussi les limites inotify du noyau, la
+#   restriction AppArmor qui bloque les signaux dans les conteneurs sur les
+#   noyaux Ubuntu 26.04 récents, et les résolveurs DNS du cluster — voir les
+#   étapes correspondantes)
 #   k3d seulement : MYOWN_CLUSTER_NAME, MYOWN_PORT_443, MYOWN_PORT_LIVEKIT_WS, MYOWN_PORT_LIVEKIT_TCP,
 #   MYOWN_PORT_LIVEKIT_UDP
 
@@ -170,6 +172,31 @@ else
     echo "Limites relevées (instances 8192, watches 524288)."
   else
     echo "Déjà configurées."
+  fi
+
+  step "Signaux dans les conteneurs (AppArmor)"
+  # CONTOURNEMENT TEMPORAIRE (2026-11-28), à retirer dès que k3s embarque un
+  # containerd corrigé (containerd#14485, PR #14487). Depuis les noyaux Ubuntu
+  # 26.04 7.0.0-42/43, cette restriction fait tourner les conteneurs sous le
+  # label empilé « cri-containerd.apparmor.d//&unconfined », que le profil de
+  # containerd ne reconnaît pas pour les signaux : Postgres, gosu, tini se
+  # bloquent (vu sur le mini PC, voir notes-techniques.md). Sans effet si le
+  # noyau n'a pas ce réglage.
+  APPARMOR_CONF=/etc/sysctl.d/60-myown-apparmor-containerd.conf
+  if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_unconfined ]; then
+    WANT_APPARMOR="$(printf '%s\n' \
+      "# Contournement temporaire posé par scripts/install.sh — voir notes-techniques.md" \
+      "# (« Noyau 7.0.0-44 : AppArmor bloque les signaux dans les conteneurs »)." \
+      "kernel.apparmor_restrict_unprivileged_unconfined = 0")"
+    if [ "$(cat "$APPARMOR_CONF" 2>/dev/null)" != "$WANT_APPARMOR" ]; then
+      echo "$WANT_APPARMOR" | sudo tee "$APPARMOR_CONF" >/dev/null
+      sudo sysctl -q -p "$APPARMOR_CONF"
+      echo "Restriction désactivée (les conteneurs déjà lancés doivent redémarrer pour en profiter)."
+    else
+      echo "Déjà configuré."
+    fi
+  else
+    echo "Réglage absent de ce noyau, rien à faire."
   fi
 
   step "Résolveurs DNS du cluster"
