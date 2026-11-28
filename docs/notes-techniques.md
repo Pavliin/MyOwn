@@ -1340,7 +1340,7 @@ Reste chiffré à ce stade (étape 3b et suivantes) : les Secrets de valeurs sim
 
 **Validé sur le dev** : mot de passe généré (en lançant bien le fichier) ; sauvegarde manuelle, 12 Secrets exportés et chiffrés (le dev n'a ni identifiants DNS ni DynDNS) ; **restauration complète** dans un pod jetable avec empreinte de chaque Secret restauré comparée au Secret en place, 12 identiques ; **restauration réelle d'un Secret supprimé** (`monitoring/monitoring-secrets`) par le script, même empreinte qu'avant suppression.
 
-**Limite, conséquence sur la suite** : ce dépôt est sur le même disque que le cluster, comme ceux des autres services (le « nœud ami » n'existe pas). Pour l'installation de l'auteur, les fichiers chiffrés encore présents dans le dépôt Git sont donc aujourd'hui la seule copie des secrets **hors machine**. Leur retrait (étape 3e) attend une copie hors machine de cette sauvegarde.
+**Limite, conséquence sur la suite** : ce dépôt est sur le même disque que le cluster, comme ceux des autres services (le « nœud ami » n'existe pas). Pour l'installation de l'auteur, les fichiers chiffrés encore présents dans le dépôt Git sont donc aujourd'hui la seule copie des secrets **hors machine**. Leur retrait (étape 3e) attend une copie hors machine de cette sauvegarde. *Copie sur clé USB faite le 2026-11-28, voir la section dédiée en fin de document.*
 
 ## Niveaux réseau B et C dans l'installeur, validés en VM — étape 4 (2026-10-29)
 
@@ -1504,3 +1504,20 @@ Signalé sur le vrai webmail : la page « Filtres » affichait « La connexion a
 - **Contournement en place** (choix de l'admin, parmi : revenir au noyau 7.0.0-31 et perdre ses correctifs de sécurité, ou charger une copie modifiée du profil containerd) : `kernel.apparmor_restrict_unprivileged_unconfined = 0` dans `/etc/sysctl.d/60-myown-apparmor-containerd.conf`, puis redémarrage. C'est un affaiblissement volontaire d'une protection de l'hôte ajoutée par Ubuntu 23.10 (limite ce qu'un programme non privilégié et non confiné peut faire avec AppArmor) ; risque jugé faible sur un serveur mono-utilisateur qui ne lance que nos conteneurs. `scripts/install.sh` pose le même réglage sur une installation neuve. Vérifié après redémarrage : 0 refus de signal, tous les services sains, IMAP de nouveau joignable.
 - **À retirer** dès qu'une version de k3s embarque un containerd corrigé : monter k3s, supprimer le fichier (et l'étape de `install.sh`), `sysctl --system`, redémarrer, vérifier que `dmesg | grep 'apparmor="DENIED" operation="signal"'` reste vide et que tout démarre.
 - **Pendant le diagnostic** (annulé ensuite) : base Postgres d'Immich lancée directement en UID 999 pour contourner `gosu`, et sonde de vivacité retirée, synchronisation automatique de l'`Application` coupée. Annulé par patch JSON puis synchronisation réactivée : rien ne reste hors de git.
+
+## Copie de la sauvegarde des secrets sur clé USB (2026-11-28)
+
+Préalable à l'étape 3e convenu le 2026-10-27 : une copie hors machine de la sauvegarde des secrets, sur une clé USB rangée loin du serveur, mot de passe jamais sur la clé.
+
+**`scripts/secrets-usb.sh copier|verifier <point de montage>`**, lancé en root sur le serveur, clé montée :
+
+- **Garde-fous** : la destination doit être un point de montage, sur un autre périphérique que le dépôt (`findmnt`). Testé : refus d'un dossier ordinaire, de `/` (même disque que le cluster) et d'un lancement sans root.
+- **`copier`** : sauvegarde immédiate (Job tiré du CronJob), puis `rsync -rt --delete` du dépôt Restic, tel quel et chiffré, vers `myown-secrets-backup/repo/` sur la clé, avec un `LISEZMOI.txt` (ce que c'est, où est le mot de passe, comment lister et restaurer). `-rt` seulement : une clé FAT/exFAT ne garde ni propriétaire ni droits. Le `--delete` ne porte que sur ce dossier : le reste de la clé n'est jamais touché. Enchaîne sur `verifier`.
+- **`verifier`** : `restic check` sur la copie, restauration du dernier snapshot **de la clé** dans un tmpfs (`/dev/shm`, effacé en sortie), comparaison Secret par Secret (champ `data`) avec le cluster. Seuls des noms et des comptes sont affichés. restic 0.20.0 téléchargé au premier lancement, empreinte SHA-256 épinglée vérifiée (le serveur n'en a pas autrement).
+- **Mot de passe tapé par l'admin**, jamais lu dans le cluster : la vérification prouve que la copie hors serveur du mot de passe ouvre bien la copie hors serveur du dépôt. Le code de sortie 12 de restic (mot de passe refusé) est distingué d'une copie abîmée.
+
+**Validé en prod** (clé vfat de 7,2 Go, 1,6 Mo copiés) : 15/15 Secrets identiques au cluster.
+
+Le premier essai a été refusé : `wrong password or no key found`. La copie était pourtant intacte : contrôlée octet par octet contre le dépôt (120 fichiers), puis `restic check` passé sans erreur avec le mot de passe du Secret, transmis sans affichage. C'était donc le mot de passe tapé qui était faux. Le second essai, avec le mot de passe collé depuis l'entrée « Sauvegarde des secrets — mot de passe Restic » de l'organisation Vaultwarden (remplie par `myown-admin coffre`), est passé. Leçon : vérifier aussi la copie papier contre le coffre.
+
+**Pas encore fait** : la procédure de reprise après perte du disque. Il s'agit de remettre ces Secrets sur une installation neuve **avant** que l'installeur n'en génère d'autres, puis de restaurer les données des services avec. Elle reste à écrire et à tester en VM. Tant qu'elle ne l'est pas, les `*.sops.yaml` restent le seul chemin de reprise éprouvé, et l'étape 3e attend.
